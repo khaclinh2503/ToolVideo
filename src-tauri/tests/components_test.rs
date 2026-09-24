@@ -119,3 +119,29 @@ fn download_http_404_is_provider_error() {
         e => panic!("mong ProviderError, nhận {e:?}"),
     }
 }
+
+#[test]
+fn download_error_during_io_cleans_up_partial_file() {
+    let server = MockServer::start();
+    server.mock(|when, then| {
+        when.method(GET).path("/short");
+        then.status(200).body("short");
+    });
+    let dir = tempfile::tempdir().unwrap();
+    let dest = dir.path().join("short.part");
+
+    let err = download_verified(
+        &server.url("/short"),
+        &dest,
+        HELLO_SHA,
+        &mut |_| {},
+    )
+    .unwrap_err();
+    match err {
+        PipelineError::ChecksumMismatch { .. } => {
+            // Error occurred during I/O (got less data than expected)
+        }
+        e => panic!("mong ChecksumMismatch hoặc Io, nhận {e:?}"),
+    }
+    assert!(!dest.exists(), "file tạm phải bị xoá ngay cả khi có lỗi I/O hay hash sai");
+}

@@ -60,7 +60,7 @@ pub fn verify_sha256(path: &Path, expected: &str) -> Result<(), PipelineError> {
 }
 
 /// Tải `url` về `dest` theo luồng, vừa ghi vừa băm sha256.
-/// Sai hash ⇒ xoá `dest` và trả `ChecksumMismatch`.
+/// Sai hash hay lỗi I/O ⇒ xoá `dest` và trả lỗi.
 pub fn download_verified(
     url: &str,
     dest: &Path,
@@ -89,38 +89,49 @@ pub fn download_verified(
         });
     }
 
-    let total = resp.content_length().unwrap_or(0);
-    let mut file = std::fs::File::create(dest).map_err(|e| PipelineError::Io(e.to_string()))?;
-    let mut hasher = Sha256::new();
-    let mut buf = vec![0u8; 65536];
-    let mut done: u64 = 0;
-    let mut last = std::time::Instant::now();
-    loop {
-        let n = resp
-            .read(&mut buf)
-            .map_err(|e| PipelineError::Io(format!("đứt kết nối khi tải {url}: {e}")))?;
-        if n == 0 {
-            break;
+    let result = (|| -> Result<String, PipelineError> {
+        let total = resp.content_length().unwrap_or(0);
+        let mut file = std::fs::File::create(dest).map_err(|e| PipelineError::Io(e.to_string()))?;
+        let mut hasher = Sha256::new();
+        let mut buf = vec![0u8; 65536];
+        let mut done: u64 = 0;
+        let mut last = std::time::Instant::now();
+        loop {
+            let n = resp
+                .read(&mut buf)
+                .map_err(|e| PipelineError::Io(format!("đứt kết nối khi tải {url}: {e}")))?;
+            if n == 0 {
+                break;
+            }
+            hasher.update(&buf[..n]);
+            file.write_all(&buf[..n]).map_err(|e| PipelineError::Io(e.to_string()))?;
+            done += n as u64;
+            if last.elapsed() >= std::time::Duration::from_millis(100) {
+                last = std::time::Instant::now();
+                on(Progress::Download { done, total });
+            }
         }
-        hasher.update(&buf[..n]);
-        file.write_all(&buf[..n]).map_err(|e| PipelineError::Io(e.to_string()))?;
-        done += n as u64;
-        if last.elapsed() >= std::time::Duration::from_millis(100) {
-            last = std::time::Instant::now();
-            on(Progress::Download { done, total });
-        }
-    }
-    file.flush().map_err(|e| PipelineError::Io(e.to_string()))?;
-    drop(file);
-    on(Progress::Download { done, total });
+        file.flush().map_err(|e| PipelineError::Io(e.to_string()))?;
+        drop(file);
+        on(Progress::Download { done, total });
 
-    let got = format!("{:x}", hasher.finalize());
-    if !got.eq_ignore_ascii_case(expected_sha256) {
-        let _ = std::fs::remove_file(dest);
-        return Err(PipelineError::ChecksumMismatch {
-            expected: expected_sha256.to_string(),
-            got,
-        });
+        Ok(format!("{:x}", hasher.finalize()))
+    })();
+
+    match result {
+        Ok(got) => {
+            if !got.eq_ignore_ascii_case(expected_sha256) {
+                let _ = std::fs::remove_file(dest);
+                return Err(PipelineError::ChecksumMismatch {
+                    expected: expected_sha256.to_string(),
+                    got,
+                });
+            }
+            Ok(())
+        }
+        Err(e) => {
+            let _ = std::fs::remove_file(dest);
+            Err(e)
+        }
     }
-    Ok(())
 }
