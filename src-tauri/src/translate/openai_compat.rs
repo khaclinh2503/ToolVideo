@@ -63,7 +63,7 @@ impl OpenAiCompat {
             ]
         });
         let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
-        let resp = http_client()
+        let resp = http_client()?
             .post(url)
             .bearer_auth(&self.api_key)
             .json(&body)

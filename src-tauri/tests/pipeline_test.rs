@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use app_lib::pipeline::{finalize_srt, run_translate_stage};
+    use app_lib::pipeline::{finalize_srt, is_valid_lang_tag, run_translate_stage};
     use app_lib::srt::Segment;
     use app_lib::translate::TranslateProvider;
     use app_lib::error::PipelineError;
@@ -69,5 +69,75 @@ mod tests {
         let r = run_translate_stage(dir.path(), &Upper, "auto", "vi").unwrap();
         assert_eq!(r.cue_count, 0);
         assert_eq!(std::fs::read_to_string(r.srt_path).unwrap(), "");
+    }
+
+    #[test]
+    fn is_valid_lang_tag_accepts_common_tags() {
+        assert!(is_valid_lang_tag("vi"));
+        assert!(is_valid_lang_tag("en"));
+        assert!(is_valid_lang_tag("zh-TW"));
+        assert!(is_valid_lang_tag("pt-BR"));
+    }
+
+    #[test]
+    fn is_valid_lang_tag_rejects_invalid_input() {
+        assert!(!is_valid_lang_tag(""));
+        // "vi " has a trailing space; invalid as-is, valid once trimmed.
+        assert!(!is_valid_lang_tag("vi "));
+        assert!(is_valid_lang_tag("vi ".trim()));
+        assert!(!is_valid_lang_tag("zh:TW"));
+        assert!(!is_valid_lang_tag("../x"));
+        assert!(!is_valid_lang_tag("a"));
+    }
+
+    struct Failer;
+    impl TranslateProvider for Failer {
+        fn id(&self) -> &'static str { "failer" }
+        fn batch_size(&self) -> usize { 10 }
+        fn translate_batch(&self, _t: &[&str], _: &str, _: &str) -> Result<Vec<String>, PipelineError> {
+            Err(PipelineError::ProviderError { provider: "failer".into(), status: None, msg: "boom".into() })
+        }
+    }
+
+    #[test]
+    fn invalid_tgt_is_rejected_and_writes_no_file_outside_subtitles() {
+        let dir = tempfile::tempdir().unwrap();
+        let segs = vec![Segment { start_ms: 0, end_ms: 1000, text: "abc".into() }];
+        app_lib::pipeline::finalize_srt(&segs, dir.path()).unwrap();
+        let err = run_translate_stage(dir.path(), &Upper, "auto", "../x").unwrap_err();
+        match err {
+            PipelineError::ProviderError { msg, .. } => assert!(msg.contains("không hợp lệ")),
+            e => panic!("{e:?}"),
+        }
+        // No file written anywhere named after the malicious tgt, inside or outside subtitles/.
+        assert!(!dir.path().join("x").exists());
+        assert!(!dir.path().parent().unwrap().join("x").exists());
+        let sub = dir.path().join("subtitles");
+        let names: Vec<String> = std::fs::read_dir(&sub)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+            .collect();
+        assert_eq!(names, vec!["source.srt".to_string()]);
+    }
+
+    #[test]
+    fn stale_output_removed_on_failure_and_no_tmp_left_on_success() {
+        let dir = tempfile::tempdir().unwrap();
+        let segs = vec![Segment { start_ms: 0, end_ms: 1000, text: "abc".into() }];
+        app_lib::pipeline::finalize_srt(&segs, dir.path()).unwrap();
+        let sub = dir.path().join("subtitles");
+        let stale = sub.join("translated.vi.srt");
+        std::fs::write(&stale, "JUNK-NOT-SRT").unwrap();
+
+        // Provider fails: stale file must be gone, no final file present.
+        let err = run_translate_stage(dir.path(), &Failer, "auto", "vi").unwrap_err();
+        assert!(matches!(err, PipelineError::ProviderError { .. }));
+        assert!(!stale.exists());
+        assert!(!sub.join("translated.vi.srt.tmp").exists());
+
+        // Now succeed: final file exists, no leftover .tmp.
+        let r = run_translate_stage(dir.path(), &Upper, "auto", "vi").unwrap();
+        assert!(r.srt_path.exists());
+        assert!(!sub.join("translated.vi.srt.tmp").exists());
     }
 }

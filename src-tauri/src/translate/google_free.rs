@@ -1,5 +1,6 @@
 use super::{http_client, map_http_err, TranslateProvider};
 use crate::error::PipelineError;
+use reqwest::blocking::Client;
 
 pub struct GoogleFree {
     pub endpoint: String,
@@ -14,8 +15,8 @@ impl GoogleFree {
         Self { endpoint }
     }
 
-    fn one(&self, text: &str, src: &str, tgt: &str) -> Result<String, PipelineError> {
-        let resp = http_client()
+    fn one(&self, client: &Client, text: &str, src: &str, tgt: &str) -> Result<String, PipelineError> {
+        let resp = client
             .get(&self.endpoint)
             .query(&[
                 ("client", "gtx"),
@@ -75,6 +76,7 @@ impl TranslateProvider for GoogleFree {
         src: &str,
         tgt: &str,
     ) -> Result<Vec<String>, PipelineError> {
-        texts.iter().map(|t| self.one(t, src, tgt)).collect()
+        let client = http_client()?;
+        texts.iter().map(|t| self.one(&client, t, src, tgt)).collect()
     }
 }

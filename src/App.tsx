@@ -40,6 +40,14 @@ function App() {
     if (!projectDir) { setStatus("Chạy STT trước."); return; }
     setRunning(true); setStatus(`Đang dịch bằng ${provider}...`);
     try {
+      if (provider === "openai_compat" && cfg) {
+        try {
+          await invoke("save_config", { cfg });
+        } catch (e) {
+          setStatus(`Lỗi lưu cấu hình: ${String(e)}`);
+          return;
+        }
+      }
       const src = provider === "google_free" ? "auto" : "zh";
       const r = await invoke<TranslateResultDto>("run_translate", { projectDir, provider, src, tgt });
       setStatus(`Dịch xong: ${r.cueCount} cue → ${r.srtPath}`);

@@ -78,6 +78,92 @@ fn http_401_is_provider_error_with_vietnamese_message() {
 }
 
 #[test]
+fn bad_json_content_is_error_after_retry() {
+    let server = MockServer::start();
+    let m = server.mock(|when, then| {
+        when.method(POST);
+        then.status(200).body(
+            serde_json::json!({"choices":[{"message":{"role":"assistant","content":"not json"}}]})
+                .to_string(),
+        );
+    });
+    let err = p(&server).translate_batch(&["a", "b"], "zh", "vi").unwrap_err();
+    match &err {
+        PipelineError::ProviderError { status, .. } => assert_eq!(*status, Some(200)),
+        e => panic!("{e:?}"),
+    }
+    assert_eq!(m.hits(), 2, "phải retry đúng 1 lần trước khi báo lỗi");
+}
+
+/// Deterministic two-response fake HTTP server: first connection gets a
+/// bad-count body, second gets a valid one. httpmock cannot vary its
+/// response between two requests to the same mock, so this proves the
+/// retry path succeeds when only the SECOND attempt is valid.
+mod fake_server {
+    use std::io::{BufRead, BufReader, Read, Write};
+    use std::net::TcpStream;
+
+    pub fn read_request(stream: &mut TcpStream) {
+        let mut reader = BufReader::new(stream.try_clone().expect("clone stream"));
+        let mut content_length = 0usize;
+        loop {
+            let mut line = String::new();
+            reader.read_line(&mut line).expect("read header line");
+            if line == "\r\n" || line.is_empty() {
+                break;
+            }
+            if let Some(rest) = line.to_ascii_lowercase().strip_prefix("content-length:") {
+                content_length = rest.trim().parse().unwrap_or(0);
+            }
+        }
+        let mut body = vec![0u8; content_length];
+        reader.read_exact(&mut body).expect("read body");
+    }
+
+    pub fn respond(stream: &mut TcpStream, body: &str) {
+        let resp = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            body.len(),
+            body
+        );
+        stream.write_all(resp.as_bytes()).expect("write response");
+        stream.flush().expect("flush response");
+    }
+}
+
+#[test]
+fn retry_succeeds_when_second_attempt_is_valid() {
+    use std::net::TcpListener;
+
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    let bad_body = ok_body(r#"{"i":0,"text":"x"}"#); // wrong count: 1 item, need 2
+    let good_body = ok_body(r#"{"i":0,"text":"A"},{"i":1,"text":"B"}"#);
+
+    let handle = std::thread::spawn(move || {
+        for (i, stream) in listener.incoming().enumerate() {
+            let mut stream = stream.expect("accept connection");
+            fake_server::read_request(&mut stream);
+            if i == 0 {
+                fake_server::respond(&mut stream, &bad_body);
+            } else {
+                fake_server::respond(&mut stream, &good_body);
+                break;
+            }
+        }
+    });
+
+    let provider = OpenAiCompat {
+        base_url: format!("http://{addr}"),
+        api_key: "sk-test".into(),
+        model: "gpt-4o-mini".into(),
+    };
+    let out = provider.translate_batch(&["a", "b"], "zh", "vi").unwrap();
+    assert_eq!(out, vec!["A", "B"]);
+    handle.join().expect("fake server thread");
+}
+
+#[test]
 fn make_provider_requires_config() {
     let mut cfg = TranslateConfig::default(); // api_key rỗng
     match make_provider("openai_compat", &cfg) {

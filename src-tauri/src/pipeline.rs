@@ -51,19 +51,69 @@ pub struct TranslateResult {
     pub cue_count: usize,
 }
 
+/// Validates a target-language tag like "vi", "en", "zh-TW", "pt-BR":
+/// `^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})?$`, implemented by hand (no regex crate).
+pub fn is_valid_lang_tag(s: &str) -> bool {
+    let mut parts = s.split('-');
+    let primary = match parts.next() {
+        Some(p) => p,
+        None => return false,
+    };
+    if primary.is_empty() || primary.len() < 2 || primary.len() > 3 {
+        return false;
+    }
+    if !primary.chars().all(|c| c.is_ascii_alphabetic()) {
+        return false;
+    }
+    match parts.next() {
+        None => parts.next().is_none(),
+        Some(sub) => {
+            if sub.is_empty() || sub.len() < 2 || sub.len() > 8 {
+                return false;
+            }
+            if !sub.chars().all(|c| c.is_ascii_alphanumeric()) {
+                return false;
+            }
+            // No further '-' segments allowed.
+            parts.next().is_none()
+        }
+    }
+}
+
 pub fn run_translate_stage(
     project_dir: &Path,
     p: &dyn TranslateProvider,
     src: &str,
     tgt: &str,
 ) -> Result<TranslateResult, PipelineError> {
+    let tgt = tgt.trim();
+    if !is_valid_lang_tag(tgt) {
+        return Err(PipelineError::ProviderError {
+            provider: "pipeline".into(),
+            status: None,
+            msg: format!("Mã ngôn ngữ đích không hợp lệ: '{tgt}' (ví dụ: vi, en, zh-TW)"),
+        });
+    }
+
     let sub = project_dir.join("subtitles");
     let source = sub.join("source.srt");
     let text = std::fs::read_to_string(&source)
         .map_err(|_| PipelineError::Io(format!("Chưa có source.srt — chạy STT trước ({})", source.display())))?;
     let segs = srt::parse_srt(&text)?;
-    let translated = translate_segments(p, &segs, src, tgt)?;
+
     let srt_path = sub.join(format!("translated.{tgt}.srt"));
-    std::fs::write(&srt_path, srt::write_srt(&translated)).map_err(|e| PipelineError::Io(e.to_string()))?;
+    // No stale/partial output: remove any previous final file up front.
+    match std::fs::remove_file(&srt_path) {
+        Ok(()) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => return Err(PipelineError::Io(e.to_string())),
+    }
+
+    let translated = translate_segments(p, &segs, src, tgt)?;
+
+    let tmp_path = sub.join(format!("translated.{tgt}.srt.tmp"));
+    std::fs::write(&tmp_path, srt::write_srt(&translated)).map_err(|e| PipelineError::Io(e.to_string()))?;
+    std::fs::rename(&tmp_path, &srt_path).map_err(|e| PipelineError::Io(e.to_string()))?;
+
     Ok(TranslateResult { srt_path, cue_count: translated.len() })
 }
