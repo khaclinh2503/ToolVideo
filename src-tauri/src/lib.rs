@@ -2,6 +2,7 @@
 pub mod components;
 pub mod config;
 pub mod error;
+pub mod ffmpeg;
 pub mod srt;
 
 #[tauri::command]
