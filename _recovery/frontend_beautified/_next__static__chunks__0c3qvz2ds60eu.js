@@ -1,0 +1,1941 @@
+(globalThis.TURBOPACK || (globalThis.TURBOPACK = [])).push(["object" == typeof document ? document.currentScript : void 0, 87876, e => {
+  "use strict";
+
+  function t(e) {
+    return "final_status" === e.kind
+  }
+  e.s(["isOfflineDiagnosticQueuedUpdate", 0, function(e) {
+    return "diagnostics" === e.kind
+  }, "isOfflineFinalStatusQueuedUpdate", 0, t, "isOfflineMetricsQueuedUpdate", 0, function(e) {
+    return "metrics" === e.kind
+  }, "normalizeOfflineQueue", 0, function(e) {
+    return Array.isArray(e) ? e.filter(e => "object" == typeof e && null !== e && "string" == typeof e.jobId && ("metrics" === e.kind || "diagnostics" === e.kind || "final_status" === e.kind) && "payload" in e && "string" == typeof e.queuedAt) : []
+  }, "offlineQueuedUpdateKey", 0, function(e) {
+    return `${e.kind}:${e.jobId}`
+  }, "retainOfflineFinalStatusEvidence", 0, function(e) {
+    return e.filter(t)
+  }])
+}, 11101, 92997, e => {
+  "use strict";
+  var t = e.i(68476);
+  let r = new Set(["lease_generation", "status", "error_code", "error_message", "metrics", "diagnostic"]),
+    a = new Set([...r, "delivery_id", "payload_sha256"]),
+    i = new Set(["stage_timings", "source_duration_seconds", "output_duration_seconds", "real_time_factor", "subtitle_cue_count", "voiceover_cue_count", "output_audio_stream_count", "watermark_present", "engine_provider", "runtime_version", "runtime_hash", "preflight_wall_ms", "preflight_backend_ms", "runtime_package_hash", "engine_family", "engine_policy_version", "translation_route", "tts_route", "tts_fallback_reason", "runtime_trust_set_id", "translation_input_tokens", "translation_output_tokens", "estimated_provider_cost_vnd", "quality_warnings", "funnel_events"]),
+    n = new Set(["stage", "error_code", "error_message", "diagnostic"]),
+    o = new Set(["event", "metadata"]),
+    l = new Set(["jobtoken", "signedjobtoken", "authtoken", "accounttoken", "accesstoken", "refreshtoken", "bearertoken", "authorization", "password", "secret", "apikey", "cookie", "customprompt", "translationstyleprompt", "glossary", "transcript", "sourcepath", "inputpath", "outputpath", "filepath", "localpath", "email", "userid", "accountid"]),
+    s = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    u = /^[0-9a-f]{64}$/;
+
+  function d(e) {
+    throw Error(e)
+  }
+
+  function c(e, t) {
+    return ("object" != typeof e || null === e || Array.isArray(e)) && d(t), e
+  }
+
+  function _(e, t) {
+    Object.keys(e).some(e => !t.has(e)) && d("terminal_payload_unknown_field")
+  }
+
+  function h(e, t) {
+    [...t].some(t => !Object.hasOwn(e, t)) && d("terminal_payload_missing_field")
+  }
+
+  function f(e) {
+    return [...e].length
+  }
+
+  function g(e, t, r, a = !0) {
+    return ("string" != typeof e || f(e) > t || !a && 0 === e.trim().length) && d(r), e
+  }
+
+  function p(e, t = {}) {
+    if (null == e) return null;
+    let r = t.code ?? "terminal_metric_string_invalid";
+    return "string" != typeof e && d(r), void 0 !== t.max && f(e) > t.max && d(r), t.nonEmpty && 0 === e.length && d(r), e
+  }
+
+  function m(e, t = "terminal_metric_number_invalid") {
+    return ("number" != typeof e || !Number.isFinite(e) || e < 0) && d(t), 0 === e ? 0 : e
+  }
+
+  function v(e) {
+    return null == e ? null : m(e)
+  }
+
+  function y(e, t = 0) {
+    let r = void 0 === e ? t : e;
+    return ("number" != typeof r || !Number.isSafeInteger(r) || r < 0) && d("terminal_metric_integer_invalid"), r
+  }
+
+  function b(e) {
+    let t = function e(t) {
+      if (null === t || "boolean" == typeof t || "string" == typeof t) return t;
+      if ("number" == typeof t) return Number.isFinite(t) || d("terminal_payload_number_invalid"), 0 === t ? 0 : t;
+      if (Array.isArray(t)) return t.map(e);
+      let r = c(t, "terminal_payload_json_invalid"),
+        a = {};
+      for (let [t, i] of Object.entries(r)) l.has(t.toLowerCase().replace(/[^a-z0-9]/g, "")) && d("terminal_payload_forbidden_key"), a[t] = e(i);
+      return a
+    }(e);
+    return ("object" != typeof t || null === t || Array.isArray(t)) && d("terminal_payload_json_invalid"), t
+  }
+
+  function S(e) {
+    return "string" == typeof e && s.test(e) || d("terminal_delivery_id_invalid"), e.toLowerCase()
+  }
+
+  function k(e, t) {
+    let r = [...e].map(e => e.codePointAt(0) ?? 0),
+      a = [...t].map(e => e.codePointAt(0) ?? 0),
+      i = Math.min(r.length, a.length);
+    for (let e = 0; e < i; e += 1)
+      if (r[e] !== a[e]) return r[e] - a[e];
+    return r.length - a.length
+  }
+
+  function w(e) {
+    let t;
+    if (Number.isFinite(e) || d("terminal_payload_number_invalid"), Object.is(e, -0)) return "-0.0";
+    if (0 === e) return "0.0";
+    let r = e < 0,
+      {
+        digits: a,
+        exponent: i
+      } = function(e) {
+        let t = Math.abs(e).toString(),
+          r = t.search(/[eE]/);
+        if (r >= 0) {
+          let e = t.slice(0, r),
+            a = Number.parseInt(t.slice(r + 1), 10),
+            i = e.replace(".", "").replace(/^0+|0+$/g, "");
+          return i && Number.isInteger(a) || d("terminal_payload_number_invalid"), {
+            digits: i,
+            exponent: a
+          }
+        }
+        let [a, i = ""] = t.split("."), n = `${a}${i}`, o = [...n].findIndex(e => "0" !== e);
+        return o < 0 && d("terminal_payload_number_invalid"), {
+          digits: n.slice(o).replace(/0+$/, ""),
+          exponent: a.length - o - 1
+        }
+      }(e);
+    if (i < -4 || i >= 16) {
+      let e = 1 === a.length ? a : `${a[0]}.${a.slice(1)}`;
+      t = `${e}e${i>=0?"+":"-"}${Math.abs(i).toString().padStart(2,"0")}`
+    } else {
+      let e = i + 1;
+      t = e <= 0 ? `0.${"0".repeat(-e)}${a}` : e >= a.length ? `${a}${"0".repeat(e-a.length)}.0` : `${a.slice(0,e)}.${a.slice(e)}`
+    }
+    return r ? `-${t}` : t
+  }
+  async function A(e) {
+    return [...new Uint8Array(await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(e)))].map(e => e.toString(16).padStart(2, "0")).join("")
+  }
+  async function x(e, t = {}) {
+    var a;
+    let l = c(e, "terminal_payload_invalid");
+    _(l, r);
+    let s = (a = l.lease_generation, ("number" != typeof a || !Number.isSafeInteger(a) || a < 0) && d("terminal_lease_generation_invalid"), a);
+    ["completed", "failed", "canceled"].includes(l.status) || d("terminal_status_invalid");
+    let u = {
+      delivery_id: S(t.deliveryId ?? globalThis.crypto.randomUUID()),
+      payload_sha256: "",
+      lease_generation: s,
+      status: l.status,
+      error_code: p(l.error_code, {
+        max: 64,
+        code: "terminal_error_code_invalid"
+      }),
+      error_message: p(l.error_message, {
+        max: 255,
+        code: "terminal_error_message_invalid"
+      }),
+      metrics: function(e) {
+        let t = void 0 === e ? {} : c(e, "terminal_metrics_invalid");
+        _(t, i);
+        let r = void 0 === t.stage_timings ? {} : c(t.stage_timings, "terminal_stage_timings_invalid"),
+          a = {};
+        for (let [e, t] of Object.entries(r)) a[e] = m(t);
+        let n = void 0 === t.engine_provider ? "unknown" : g(t.engine_provider, 64, "terminal_engine_provider_invalid", !1),
+          l = void 0 === t.quality_warnings ? [] : t.quality_warnings;
+        (!Array.isArray(l) || l.some(e => "string" != typeof e)) && d("terminal_quality_warnings_invalid");
+        let s = void 0 === t.funnel_events ? [] : t.funnel_events;
+        Array.isArray(s) || d("terminal_funnel_events_invalid");
+        let u = s.map(e => {
+          let t = c(e, "terminal_funnel_event_invalid");
+          return _(t, o), {
+            event: g(t.event, 96, "terminal_funnel_event_invalid", !1),
+            metadata: void 0 === t.metadata ? {} : b(t.metadata)
+          }
+        });
+        return {
+          stage_timings: a,
+          source_duration_seconds: v(t.source_duration_seconds),
+          output_duration_seconds: v(t.output_duration_seconds),
+          real_time_factor: v(t.real_time_factor),
+          subtitle_cue_count: y(t.subtitle_cue_count),
+          voiceover_cue_count: y(t.voiceover_cue_count),
+          output_audio_stream_count: y(t.output_audio_stream_count),
+          watermark_present: void 0 !== t.watermark_present && ("boolean" == typeof t.watermark_present ? t.watermark_present : d("terminal_watermark_invalid")),
+          engine_provider: n,
+          runtime_version: p(t.runtime_version),
+          runtime_hash: p(t.runtime_hash),
+          preflight_wall_ms: void 0 === t.preflight_wall_ms || null === t.preflight_wall_ms ? null : y(t.preflight_wall_ms),
+          preflight_backend_ms: void 0 === t.preflight_backend_ms || null === t.preflight_backend_ms ? null : y(t.preflight_backend_ms),
+          runtime_package_hash: p(t.runtime_package_hash, {
+            max: 128,
+            nonEmpty: !0
+          }),
+          engine_family: p(t.engine_family, {
+            max: 96,
+            nonEmpty: !0
+          }),
+          engine_policy_version: p(t.engine_policy_version),
+          translation_route: p(t.translation_route),
+          tts_route: p(t.tts_route),
+          tts_fallback_reason: p(t.tts_fallback_reason),
+          runtime_trust_set_id: p(t.runtime_trust_set_id),
+          translation_input_tokens: y(t.translation_input_tokens),
+          translation_output_tokens: y(t.translation_output_tokens),
+          estimated_provider_cost_vnd: void 0 === t.estimated_provider_cost_vnd ? 0 : m(t.estimated_provider_cost_vnd),
+          quality_warnings: [...l],
+          funnel_events: u
+        }
+      }(l.metrics),
+      diagnostic: function(e) {
+        if (null == e) return null;
+        let t = c(e, "terminal_diagnostic_invalid");
+        return _(t, n), {
+          stage: g(t.stage, 64, "terminal_diagnostic_stage_invalid", !1),
+          error_code: p(t.error_code, {
+            max: 64
+          }),
+          error_message: p(t.error_message, {
+            max: 255
+          }),
+          diagnostic: void 0 === t.diagnostic ? {} : b(t.diagnostic)
+        }
+      }(l.diagnostic)
+    };
+    return u.payload_sha256 = await A(function e(t, r = []) {
+      if (null === t) return "null";
+      if ("boolean" == typeof t) return t ? "true" : "false";
+      if ("string" == typeof t) return JSON.stringify(t);
+      if ("number" == typeof t) return (Number.isFinite(t) || d("terminal_payload_number_invalid"), 3 === r.length && "metrics" === r[0] && "stage_timings" === r[1] || 2 === r.length && "metrics" === r[0] && new Set(["source_duration_seconds", "output_duration_seconds", "real_time_factor", "estimated_provider_cost_vnd"]).has(r[1])) ? w(t) : Number.isInteger(t) && !Object.is(t, -0) ? t.toString() : w(t);
+      return Array.isArray(t) ? `[${t.map((t,a)=>e(t,[...r,String(a)])).join(",")}]` : `{${Object.keys(t).sort(k).map(a=>`${JSON.stringify(a)}:${e(t[a],[...r,a])}`).join(",")}}`
+    }({
+      delivery_id: u.delivery_id,
+      lease_generation: u.lease_generation,
+      status: u.status,
+      error_code: u.error_code,
+      error_message: u.error_message,
+      metrics: u.metrics,
+      diagnostic: u.diagnostic
+    })), u
+  }
+  async function T(e) {
+    let t = c(e, "terminal_payload_invalid");
+    _(t, a), h(t, a);
+    let r = c(t.metrics, "terminal_metrics_invalid");
+    if (_(r, i), h(r, i), null !== t.diagnostic) {
+      let e = c(t.diagnostic, "terminal_diagnostic_invalid");
+      _(e, n), h(e, n)
+    }
+    for (let e of (Array.isArray(r.funnel_events) || d("terminal_funnel_events_invalid"), r.funnel_events)) {
+      let t = c(e, "terminal_funnel_event_invalid");
+      _(t, o), h(t, o)
+    }
+    "string" == typeof t.payload_sha256 && u.test(t.payload_sha256) || d("terminal_payload_hash_invalid");
+    let l = await x({
+      lease_generation: t.lease_generation,
+      status: t.status,
+      error_code: t.error_code,
+      error_message: t.error_message,
+      metrics: t.metrics,
+      diagnostic: t.diagnostic
+    }, {
+      deliveryId: S(t.delivery_id)
+    });
+    return l.payload_sha256 !== t.payload_sha256 && d("terminal_payload_hash_invalid"), l
+  }
+  var E = e.i(81341),
+    z = e.i(3570);
+  let j = "terminal-report-outbox-v1";
+  e.s(["LOCAL_JOB_LIFECYCLE_CONTRACT", 0, "local-job-resume-v1", "TERMINAL_REPORT_OUTBOX_SCHEMA", 0, j], 92997);
+  let D = "dichvideo:terminal-report-outbox-v1:primary",
+    C = "dichvideo:terminal-report-outbox-v1:backup",
+    O = new Set(["schema_version", "revision", "items", "quarantined_evidence"]),
+    R = new Set(["job_id", "request"]),
+    q = new Set(["job_id", "reason_code", "evidence_sha256"]),
+    I = /^[0-9a-f]{64}$/;
+
+  function U(e) {
+    throw Error(e)
+  }
+
+  function L(e) {
+    return ("object" != typeof e || null === e || Array.isArray(e)) && U("terminal_outbox_payload_invalid"), e
+  }
+
+  function P(e, t) {
+    Object.keys(e).some(e => !t.has(e)) && U("terminal_outbox_payload_invalid")
+  }
+
+  function M(e, t, r) {
+    return ("string" != typeof e || 0 === e.trim().length || [...e].length > t) && U(r), e
+  }
+
+  function F(e) {
+    return new TextEncoder().encode(e).byteLength
+  }
+
+  function N(e, t) {
+    let r = e.quarantined_evidence ?? [];
+    return {
+      state: r.length > 0 ? "durability_blocked" : t,
+      revision: e.revision,
+      items: e.items,
+      quarantined_evidence: r
+    }
+  }
+  class J {
+    #e;
+    #t;
+    #r;
+    #a = Promise.resolve();
+    constructor(e, t = {}) {
+      e ? this.#e = e : this.#e = window.localStorage, this.#t = t.maxItems ?? 1e4, this.#r = t.maxBytes ?? 0x4000000
+    }
+    async read() {
+      return this.#i(async () => this.#n())
+    }
+    async enqueue(e, t) {
+      return this.#i(async () => {
+        M(e, 128, "terminal_job_id_invalid");
+        let r = await this.#o(),
+          a = r.items.find(t => t.job_id === e);
+        if (a) {
+          if ((await x(t, {
+              deliveryId: a.request.delivery_id
+            })).payload_sha256 === a.request.payload_sha256) return a;
+          U("terminal_report_conflict")
+        }
+        let i = {
+            job_id: e,
+            request: await x(t)
+          },
+          n = {
+            ...r,
+            revision: this.#l(r.revision),
+            items: [...r.items, i]
+          };
+        return await this.#s(n), i
+      })
+    }
+    async ack(e, t) {
+      return this.#i(async () => {
+        let r = await this.#o(),
+          a = r.items.filter(r => r.request.delivery_id !== e || r.request.payload_sha256 !== t);
+        if (a.length === r.items.length) return N(r, "healthy");
+        let i = {
+          ...r,
+          revision: this.#l(r.revision),
+          items: a
+        };
+        return await this.#s(i), N(i, "healthy")
+      })
+    }
+    async quarantineLegacyEvidence(e, t, r) {
+      return this.#i(async () => {
+        M(e, 128, "terminal_job_id_invalid"), M(t, 96, "terminal_quarantine_reason_invalid"), I.test(r) || U("terminal_quarantine_hash_invalid");
+        let a = await this.#o(),
+          i = {
+            job_id: e,
+            reason_code: t,
+            evidence_sha256: r
+          },
+          n = a.quarantined_evidence ?? [];
+        if (n.some(e => e.job_id === i.job_id && e.reason_code === i.reason_code && e.evidence_sha256 === i.evidence_sha256)) return N(a, "healthy");
+        let o = {
+          ...a,
+          revision: this.#l(a.revision),
+          quarantined_evidence: [...n, i]
+        };
+        return await this.#s(o), N(o, "healthy")
+      })
+    }
+    async #i(e) {
+      let t = () => void 0,
+        r = this.#a;
+      this.#a = new Promise(e => {
+        t = e
+      }), await r;
+      try {
+        return await e()
+      } finally {
+        t()
+      }
+    }
+    async #n() {
+      let e = await this.#u();
+      return "blocked" === e.outcome ? {
+        state: "durability_blocked",
+        revision: 0,
+        items: [],
+        quarantined_evidence: []
+      } : (e.repairNeeded && await this.#s(e.envelope), N(e.envelope, e.state))
+    }
+    async #o() {
+      let e = await this.#u();
+      return "blocked" === e.outcome && U("terminal_outbox_durability_blocked"), e.repairNeeded && await this.#s(e.envelope), e.envelope
+    }
+    async #u() {
+      let [e, t] = await Promise.all([this.#d(D), this.#d(C)]);
+      return "missing" === e.outcome && "missing" === t.outcome ? {
+        outcome: "valid",
+        envelope: {
+          schema_version: j,
+          revision: 0,
+          items: []
+        },
+        state: "healthy",
+        repairNeeded: !0
+      } : "valid" === e.outcome && "valid" === t.outcome ? t.envelope.revision > e.envelope.revision ? {
+        outcome: "valid",
+        envelope: t.envelope,
+        state: "recovered_from_backup",
+        repairNeeded: !0
+      } : e.envelope.revision > t.envelope.revision ? {
+        outcome: "valid",
+        envelope: e.envelope,
+        state: "healthy",
+        repairNeeded: !0
+      } : JSON.stringify(e.envelope) !== JSON.stringify(t.envelope) ? {
+        outcome: "blocked"
+      } : {
+        outcome: "valid",
+        envelope: e.envelope,
+        state: "healthy",
+        repairNeeded: !1
+      } : "valid" === e.outcome ? {
+        outcome: "valid",
+        envelope: e.envelope,
+        state: "healthy",
+        repairNeeded: !0
+      } : "valid" === t.outcome ? {
+        outcome: "valid",
+        envelope: t.envelope,
+        state: "recovered_from_backup",
+        repairNeeded: !0
+      } : {
+        outcome: "blocked"
+      }
+    }
+    async #d(e) {
+      let t;
+      try {
+        t = this.#e.getItem(e)
+      } catch {
+        return {
+          outcome: "invalid"
+        }
+      }
+      return null === t ? {
+        outcome: "missing"
+      } : this.#c(t)
+    }
+    async #c(e) {
+      if (F(e) > this.#r) return {
+        outcome: "invalid"
+      };
+      try {
+        let t = L(JSON.parse(e));
+        P(t, O), t.schema_version !== j && U("terminal_outbox_schema_invalid"), (!Number.isSafeInteger(t.revision) || t.revision < 0) && U("terminal_outbox_revision_invalid"), (!Array.isArray(t.items) || t.items.length > this.#t) && U("terminal_outbox_item_limit");
+        let r = new Set,
+          a = new Set,
+          i = [];
+        for (let e of t.items) {
+          let t = L(e);
+          P(t, R);
+          let n = M(t.job_id, 128, "terminal_job_id_invalid"),
+            o = await T(t.request);
+          (r.has(n) || a.has(o.delivery_id)) && U("terminal_outbox_duplicate_identity"), r.add(n), a.add(o.delivery_id), i.push({
+            job_id: n,
+            request: o
+          })
+        }
+        let n = t.quarantined_evidence ?? [];
+        Array.isArray(n) || U("terminal_quarantine_invalid");
+        let o = n.map(e => {
+          let t = L(e);
+          P(t, q);
+          let r = "string" == typeof t.evidence_sha256 ? t.evidence_sha256 : "";
+          return I.test(r) || U("terminal_quarantine_hash_invalid"), {
+            job_id: M(t.job_id, 128, "terminal_job_id_invalid"),
+            reason_code: M(t.reason_code, 96, "terminal_quarantine_reason_invalid"),
+            evidence_sha256: r
+          }
+        });
+        return {
+          outcome: "valid",
+          envelope: {
+            schema_version: j,
+            revision: t.revision,
+            items: i,
+            ...o.length > 0 ? {
+              quarantined_evidence: o
+            } : {}
+          }
+        }
+      } catch {
+        return {
+          outcome: "invalid"
+        }
+      }
+    }
+    async #s(e) {
+      e.items.length > this.#t && U("terminal_outbox_item_limit");
+      let t = JSON.stringify(e);
+      F(t) > this.#r && U("terminal_outbox_byte_limit"), await this.#_(D, t, e.revision), await this.#_(C, t, e.revision)
+    }
+    async #_(e, t, r) {
+      let a;
+      try {
+        this.#e.setItem(e, t)
+      } catch {
+        U("terminal_outbox_write_failed")
+      }
+      try {
+        a = this.#e.getItem(e)
+      } catch {
+        U("terminal_outbox_readback_failed")
+      }
+      a !== t && U("terminal_outbox_readback_mismatch");
+      let i = await this.#c(a);
+      ("valid" !== i.outcome || i.envelope.revision !== r) && U("terminal_outbox_readback_invalid")
+    }
+    #l(e) {
+      return (!Number.isSafeInteger(e) || e >= Number.MAX_SAFE_INTEGER) && U("terminal_outbox_revision_exhausted"), e + 1
+    }
+  }
+  var Q = e.i(64581);
+  let B = [5e3, 3e4, 12e4, 6e5, 18e5];
+  class $ extends Error {
+    code = "terminal_outbox_durability_blocked";
+    constructor() {
+      super("terminal_outbox_durability_blocked"), this.name = "TerminalOutboxDurabilityError"
+    }
+  }
+  let H = null,
+    V = null,
+    K = null,
+    W = null;
+  async function G(e) {
+    return await x(e, {
+      deliveryId: "00000000-0000-4000-8000-000000000000"
+    }), e
+  }
+  async function X(e) {
+    let t = new TextEncoder().encode(function e(t) {
+      if (null === t || "boolean" == typeof t || "number" == typeof t || "string" == typeof t) return JSON.stringify(t);
+      if (Array.isArray(t)) return `[${t.map(e).join(",")}]`;
+      if ("object" != typeof t) throw Error("legacy_terminal_payload_invalid");
+      return `{${Object.keys(t).sort().map(r=>`${JSON.stringify(r)}:${e(t[r])}`).join(",")}}`
+    }(e));
+    return [...new Uint8Array(await globalThis.crypto.subtle.digest("SHA-256", t))].map(e => e.toString(16).padStart(2, "0")).join("")
+  }
+
+  function Y() {
+    return V ??= function() {
+      let e = H;
+      if (!e) throw new $;
+      return function(e) {
+        let t = new Map,
+          r = null,
+          a = 0,
+          i = null,
+          n = t => {
+            e.onSnapshot(t), "durability_blocked" === t.state && e.onDeliveryState?.("blocked", null)
+          },
+          o = null,
+          l = null,
+          s = () => {
+            null !== i && (e.cancelSchedule(i), i = null, o = null, l = null)
+          },
+          u = (r, a = !1) => {
+            let i = r.request.delivery_id,
+              n = t.get(i),
+              o = (n?.attempts ?? 0) + 1,
+              l = B[Math.min(o - 1, B.length - 1)],
+              s = e.now() + l;
+            return t.set(i, {
+              attempts: o,
+              nextAttemptAt: s,
+              independent: a
+            }), s
+          },
+          d = (r, a, n = !1) => {
+            let u = e.now(),
+              d = new Set(r.items.map(e => e.request.delivery_id));
+            for (let e of t.keys()) d.has(e) || t.delete(e);
+            let c = null;
+            for (let e of a) {
+              let r = t.get(e.request.delivery_id);
+              r && (null === c || r.nextAttemptAt < c) && (c = r.nextAttemptAt)
+            }
+            if (n || null !== c) {
+              if (null !== c) {
+                e.onDeliveryState?.("backoff", c);
+                let t = Math.max(0, c - u);
+                if (null !== i && o === c && l === t) return;
+                s(), o = c, l = t, i = e.schedule(() => {
+                  i = null, o = null, l = null, f().catch(() => void 0)
+                }, t)
+              }
+            } else s(), e.onDeliveryState?.("idle", null)
+          },
+          c = async r => {
+            let a;
+            try {
+              a = await e.withFreshAuth((t, a) => e.reportTerminal(t, a, r.job_id, r.request))
+            } catch (l) {
+              let a, i;
+              if (a = l && "object" == typeof l ? Reflect.get(l, "status") : null, i = l && "object" == typeof l ? Reflect.get(l, "code") : null, 409 === a && "stale_job_lease_generation" === i) {
+                await e.quarantineEvidence(r.job_id, "stale_generation_superseded", r.request.payload_sha256);
+                let a = await e.ackReport(r.request.delivery_id, r.request.payload_sha256);
+                return t.delete(r.request.delivery_id), n(a), "delivered"
+              }
+              if (!e.reconcileTerminalConflict) throw l;
+              if (!await e.withFreshAuth((t, a) => e.reconcileTerminalConflict(t, a, r, l))) {
+                let e, t = "number" == typeof(e = l && "object" == typeof l ? Reflect.get(l, "status") : null) && e >= 400 && e < 500 && 401 !== e && 403 !== e && 408 !== e && 425 !== e && 429 !== e;
+                return u(r, t), t ? "retry_continue" : "retry_stop"
+              }
+              let o = await e.ackReport(r.request.delivery_id, r.request.payload_sha256);
+              return t.delete(r.request.delivery_id), n(o), "delivered"
+            }
+            if (a.delivery_id !== r.request.delivery_id || a.payload_sha256 !== r.request.payload_sha256) throw Error("terminal_report_ack_mismatch");
+            let i = await e.ackReport(r.request.delivery_id, r.request.payload_sha256);
+            return t.delete(r.request.delivery_id), n(i), "delivered"
+          }, _ = async r => {
+            let i = a,
+              o = await e.readOutbox();
+            if (n(o), "durability_blocked" === o.state || !e.canDeliver()) return i;
+            e.onDeliveryState?.("flushing", null);
+            let l = !1;
+            for (let a = 0; a < o.items.length; a++) {
+              let n = o.items[a],
+                s = t.get(n.request.delivery_id);
+              if (!r && s && s.nextAttemptAt > e.now()) {
+                if (!s.independent) return d(o, o.items.slice(0, a + 1), !0), i;
+                l = !0;
+                continue
+              }
+              try {
+                let e = await c(n);
+                if ("retry_stop" === e) return d(o, o.items.slice(0, a + 1), !0), i;
+                "retry_continue" === e && (l = !0)
+              } catch {
+                return u(n, !1), d(o, o.items.slice(0, a + 1), !0), i
+              }
+            }
+            return d(o, o.items, l), i
+          };
+        async function h(e) {
+          let t = e;
+          try {
+            for (;;) {
+              let e = await _(t);
+              if (a !== e) {
+                t = !1;
+                continue
+              }
+              break
+            }
+          } finally {
+            r = null
+          }
+        }
+
+        function f(e = {}) {
+          return (a += 1, r) ? r : r = h(!!e.force)
+        }
+        let g = async () => {
+          for (let t of [...e.getLegacyQueue()]) {
+            let r;
+            if ("final_status" === t.kind) {
+              try {
+                r = await e.validateDraft(t.payload)
+              } catch {
+                let r = await e.evidenceSha256(t.payload);
+                n(await e.quarantineEvidence(t.jobId, "legacy_terminal_payload_invalid", r));
+                return
+              }
+              await e.enqueueDraft(t.jobId, r), n(await e.readOutbox()), e.removeLegacyUpdate(t)
+            }
+          }
+        }, p = async () => {
+          try {
+            await g();
+            let t = await e.readOutbox();
+            n(t);
+            let r = new TextEncoder().encode(JSON.stringify(t)).byteLength;
+            if ("durability_blocked" === t.state || t.items.length >= 1e4 || r >= 0x4000000) throw new $
+          } catch (e) {
+            if (e instanceof $) throw e;
+            throw new $
+          }
+        };
+        return {
+          enqueueLocalJobTerminalReport: async (t, r) => {
+            let a = await e.enqueueDraft(t, r);
+            return n(await e.readOutbox()), f().catch(() => void 0), a
+          },
+          flushTerminalReportOutbox: f,
+          migrateLegacyFinalStatusEvidence: g,
+          assertTerminalDurabilityHealthyForAuthorization: p
+        }
+      }({
+        ...(0, E.isTauri)() ? {
+          readOutbox: z.readTerminalReportOutbox,
+          enqueueDraft: z.enqueueTerminalReportDraft,
+          ackReport: z.ackTerminalReport,
+          quarantineEvidence: z.quarantineLegacyTerminalEvidence
+        } : (K ??= new J, {
+          readOutbox: () => K.read(),
+          enqueueDraft: (e, t) => K.enqueue(e, t),
+          ackReport: (e, t) => K.ack(e, t),
+          quarantineEvidence: (e, t, r) => K.quarantineLegacyEvidence(e, t, r)
+        }),
+        validateDraft: G,
+        evidenceSha256: X,
+        canDeliver: () => !!e.getState().token,
+        withFreshAuth: t => (0, Q.withFreshAuthToken)(e.getState, e.setState, t),
+        reportTerminal: (e, r, a, i) => t.cloudApi.reportJobTerminal(e, r, a, i),
+        reconcileTerminalConflict: async (e, r, a, i) => {
+          let n, o, l = i && "object" == typeof i ? Reflect.get(i, "status") : null,
+            s = i && "object" == typeof i ? Reflect.get(i, "code") : null;
+          if (409 !== l || "job_terminal_already_delivered" !== s) return !1;
+          let u = await t.cloudApi.getJob(e, r, a.job_id),
+            d = await t.cloudApi.getJobDisposition(e, r, a.job_id);
+          return n = i && "object" == typeof i ? Reflect.get(i, "status") : null, o = i && "object" == typeof i ? Reflect.get(i, "code") : null, 409 === n && "job_terminal_already_delivered" === o && ("completed" === u.status || "failed" === u.status || "canceled" === u.status) && 0 === d.outstanding_total_seconds && Array.isArray(d.unknown_positive_reasons) && 0 === d.unknown_positive_reasons.length
+        },
+        getLegacyQueue: () => e.getState().offlineQueue,
+        removeLegacyUpdate: e.removeLegacyUpdate,
+        onSnapshot: t => e.setState({
+          terminalOutboxSnapshot: t
+        }),
+        onDeliveryState: (t, r) => e.setState({
+          terminalOutboxDeliveryState: t,
+          terminalOutboxNextAttemptAt: r
+        }),
+        now: () => Date.now(),
+        schedule: (e, t) => globalThis.setTimeout(e, t),
+        cancelSchedule: e => globalThis.clearTimeout(e)
+      })
+    }()
+  }
+  async function Z(e, t) {
+    return Y().enqueueLocalJobTerminalReport(e, t)
+  }
+
+  function ee(e = {}) {
+    return Y().flushTerminalReportOutbox(e)
+  }
+  async function et() {
+    return Y().migrateLegacyFinalStatusEvidence()
+  }
+  async function er() {
+    return Y().assertTerminalDurabilityHealthyForAuthorization()
+  }
+  async function ea() {
+    await et(), await ee({
+      force: !0
+    })
+  }
+  e.s(["assertTerminalDurabilityHealthyForAuthorization", 0, er, "configureLocalJobTerminalDelivery", 0, function(e) {
+    H = e, V = null, W?.(), W = null;
+    let t = () => {
+        ee({
+          force: !0
+        }).catch(() => void 0)
+      },
+      r = () => {
+        "visible" === document.visibilityState && t()
+      };
+    window.addEventListener("online", t), document.addEventListener("visibilitychange", r), W = () => {
+      window.removeEventListener("online", t), document.removeEventListener("visibilitychange", r)
+    }
+  }, "enqueueLocalJobTerminalReport", 0, Z, "flushTerminalReportOutbox", 0, ee, "initializeLocalJobTerminalDelivery", 0, ea, "migrateLegacyFinalStatusEvidence", 0, et, "terminalOutboxErrorCode", 0, function(e) {
+    return e instanceof $ ? e.code : null
+  }], 11101)
+}, 65207, e => {
+  "use strict";
+  e.i(89268);
+  var t = e.i(81341);
+  let r = "charged_after_refund_cancelled";
+  async function a(e) {
+    if (e?.billing_note !== "charged_after_refund") return "confirmed";
+    let r = Math.max(1, Math.ceil(Math.max(0, Math.round(e.charged_seconds || 0)) / 60));
+    return await (0, t.askMessage)("Xử lý lại video?", `Ph\xfat của lần lỗi trước đ\xe3 được ho\xe0n. Lần n\xe0y sẽ t\xednh như video mới (${r} ph\xfat). Tiếp tục xử l\xfd?`, "warning", {
+      confirmLabel: "Tính như video mới",
+      cancelLabel: "Hủy"
+    }) ? "confirmed" : "cancelled"
+  }
+  e.s(["chargedAfterRefundCancelledError", 0, function() {
+    return Object.assign(Error(r), {
+      code: r,
+      customerMessage: "Đã hủy xử lý lại video."
+    })
+  }, "confirmChargedAfterRefundAuthorization", 0, a, "isChargedAfterRefundCancelledError", 0, function(e) {
+    return !!e && "object" == typeof e && (e.code === r || e.errorCode === r || e.error_code === r)
+  }])
+}, 64192, e => {
+  "use strict";
+
+  function t(e) {
+    let t = e?.trim();
+    return t && t.length > 0 ? t : void 0
+  }
+  e.s(["billingMetadataFromAuthorization", 0, function(e, r, a, i, n, o, l) {
+    return {
+      billingScopeJobId: t(l) ?? t(e.retry_of_job_id) ?? e.job_id,
+      pausedBillingScopeJobId: void 0,
+      lastAuthorizedJobId: e.job_id,
+      billingSourceVideoSeconds: r,
+      billingChargedSeconds: e.charged_seconds,
+      billingNonRefundableSeconds: Math.max(0, Math.round(e.charged_seconds + e.fair_use_seconds_used + e.voice_premium_charged_seconds)),
+      billingTargetLanguage: a,
+      billingTtsProvider: i,
+      nativeTtsProvider: n.trim() || void 0,
+      nativeTtsVoice: o.trim() || void 0
+    }
+  }, "buildServerTranslationPolicy", 0, function(e, t, r, a, i, n, o, l, s) {
+    return {
+      api_url: e,
+      job_id: t.job_id,
+      job_token: t.token,
+      auth_token: r ?? t.token,
+      source_language: a,
+      target_language: i,
+      source_video_seconds: n,
+      model: o,
+      translation_style_id: s.styleId,
+      translation_style_prompt: s.prompt,
+      user_glossary: l,
+      global_context: {
+        source_language: a,
+        target_language: i,
+        rules: [],
+        entity_candidates: [],
+        source_samples: []
+      },
+      character_context: null,
+      character_context_enabled: !0 === t.translation_character_context_enabled,
+      retry_on_network_loss: !0,
+      allow_local_fallback: !1,
+      stage: "server_translate"
+    }
+  }, "buildVerifiedServerConfig", 0, function(e) {
+    let {
+      payload: t
+    } = e.signed_config_bundle;
+    return {
+      api_url: t.api_url,
+      runtime_trust_set_id: t.runtime_trust_set_id,
+      trusted_runtime_hashes: t.trusted_runtime_hashes,
+      trusted_runtime_packages: t.trusted_runtime_packages,
+      runtime_manifest_key_id: t.runtime_manifest_key_id,
+      runtime_manifest_public_keys: t.runtime_manifest_public_keys,
+      job_token_key_id: t.job_token_key_id,
+      job_token_public_keys: t.job_token_public_keys,
+      engine_policy: t.engine_policy,
+      desktop_api_capabilities: t.desktop_api_capabilities ?? null,
+      signed_config_bundle: e.signed_config_bundle
+    }
+  }, "exportWatermarkPolicyFromAuthorization", 0, function(e) {
+    return {
+      watermarkRequired: e.watermark_required,
+      watermarkText: e.watermark_text,
+      authorizationJti: e.authorization_jti,
+      deviceId: e.device_id,
+      jobId: e.job_id,
+      planCode: e.plan_code,
+      tokenExpiresAt: e.token_expires_at,
+      chargedSeconds: e.charged_seconds,
+      fairUseSecondsUsed: e.fair_use_seconds_used,
+      paygOverageChargedSeconds: e.payg_overage_charged_seconds,
+      voicePremiumChargedSeconds: e.voice_premium_charged_seconds,
+      authorizationContractVersion: e.authorization_contract_version ?? void 0,
+      billingSource: e.billing_source ?? void 0,
+      sourceContentHash: e.source_content_hash ?? void 0,
+      grantedFeatures: [...e.granted_features]
+    }
+  }, "exportWatermarkPolicyFromExportPolicyResponse", 0, function(e) {
+    return {
+      watermarkRequired: e.watermark_required,
+      watermarkText: e.watermark_text,
+      authorizationJti: e.authorization_jti,
+      deviceId: e.device_id,
+      jobId: e.job_id,
+      planCode: e.plan_code,
+      tokenExpiresAt: e.token_expires_at,
+      chargedSeconds: e.charged_seconds,
+      fairUseSecondsUsed: e.fair_use_seconds_used,
+      paygOverageChargedSeconds: e.payg_overage_charged_seconds,
+      voicePremiumChargedSeconds: e.voice_premium_charged_seconds
+    }
+  }, "retryOfJobIdForLocalPreflight", 0, function(e, r, a, i) {
+    let n = t(e.pausedBillingScopeJobId);
+    return e.billingTargetLanguage && e.billingTargetLanguage !== r || e.billingTtsProvider && e.billingTtsProvider !== a || "number" == typeof e.billingSourceVideoSeconds && Number.isFinite(e.billingSourceVideoSeconds) && e.billingSourceVideoSeconds !== i ? void 0 : n || ("error" === e.status || !0 === e.billingAuthorizationPending ? t(e.lastAuthorizedJobId) ?? t(e.billingScopeJobId) ?? t(e.exportWatermarkPolicy?.jobId) : void 0)
+  }, "retryScopeTtsProvider", 0, function(e, t) {
+    if (!e) return "none";
+    let r = t?.trim();
+    return "viral_tts" === r ? "viral_tts" : "vieneu_native" === r || "vieneu_tts" === r || "vieneu" === r ? "vieneu_native" : "edge"
+  }, "safeLocalEngineSoniSettings", 0, function(e) {
+    return 1 >= Number(e.max_speakers || 1) ? {
+      ...e,
+      min_speakers: 1,
+      max_speakers: 1,
+      diarization_model: "disable"
+    } : e
+  }, "sourceVideoSeconds", 0, function(e) {
+    return Math.max(1, Math.ceil(e.duration || 0))
+  }])
+}, 57342, e => {
+  "use strict";
+  var t = e.i(67034),
+    r = e.i(68834),
+    a = e.i(79473),
+    i = e.i(48868),
+    n = e.i(15430),
+    o = e.i(22130),
+    l = e.i(87876),
+    s = e.i(11101),
+    u = e.i(64581),
+    d = e.i(90676);
+  e.i(89268);
+  var c = e.i(30797),
+    _ = e.i(41824),
+    h = e.i(81341),
+    f = e.i(65207),
+    g = e.i(68476),
+    p = e.i(21826),
+    m = e.i(64192);
+  let v = !1,
+    y = null,
+    b = 0,
+    S = 0,
+    k = !1,
+    w = null,
+    A = 0;
+
+  function x() {
+    w && (w.invalidated = !0, w = null)
+  }
+
+  function T(e) {
+    let r = e.user?.id || function(e) {
+      if (!e) return null;
+      try {
+        let r = e.split(".");
+        if (r.length < 2) return null;
+        let a = r[1].replace(/-/g, "+").replace(/_/g, "/"),
+          i = "function" == typeof atob ? atob(a) : t.Buffer.from(a, "base64").toString("utf8"),
+          n = JSON.parse(i);
+        return "string" == typeof n.sub ? n.sub : null
+      } catch {
+        return null
+      }
+    }(e.token ?? null);
+    return r ? `user:${r}` : `gen:${A}:${e.token??"none"}`
+  }
+
+  function E(e) {
+    return e instanceof p.CloudApiError && "database_busy" === e.code
+  }
+  let z = (0, r.create)()((0, a.persist)((e, t) => ({
+    apiUrl: p.DEFAULT_CLOUD_API_URL,
+    token: null,
+    authTokenExpiresAt: null,
+    user: null,
+    license: null,
+    balance: null,
+    freeEntitlement: null,
+    accountStatusState: "logged_out",
+    authSessionState: "logged_out",
+    accountDataState: "idle",
+    storageHealthState: "ready",
+    hasTrustedAccountData: !1,
+    jobs: [],
+    jobAuthorizations: [],
+    authorizationStatus: "idle",
+    authorizationBlockedReason: null,
+    authorizationError: null,
+    currentJobAuthorization: null,
+    authorizationTokenExpiresAt: null,
+    authorizationChargedSeconds: 0,
+    authorizationPaygOverageChargedSeconds: 0,
+    authorizationPlanCode: null,
+    offlineLease: null,
+    offlineState: "online",
+    offlineQueue: [],
+    terminalOutboxSnapshot: null,
+    terminalOutboxDeliveryState: "idle",
+    terminalOutboxNextAttemptAt: null,
+    paymentSessions: [],
+    plans: null,
+    serverConfig: null,
+    deviceSession: null,
+    serverConfigFetchedAt: null,
+    cloudStatusFetchedAt: null,
+    devices: [],
+    loading: !1,
+    error: null,
+    setApiUrl: t => {
+      if (!p.CLOUD_API_URL_EDITABLE) return void e({
+        apiUrl: (0, p.normalizeCloudApiUrl)(p.DEFAULT_CLOUD_API_URL)
+      });
+      let r = (0, p.normalizeCloudApiUrl)(t);
+      e(e => e.apiUrl === r ? {} : {
+        apiUrl: r,
+        plans: null,
+        ...(0, u.clearedCloudSession)(),
+        offlineQueue: (0, l.retainOfflineFinalStatusEvidence)(e.offlineQueue)
+      })
+    },
+    devLogin: async () => {
+      e({
+        loading: !0,
+        error: null
+      });
+      try {
+        let {
+          apiUrl: r
+        } = t(), a = await g.cloudApi.devLogin(r, {
+          email: "dev@example.com",
+          display_name: "dichvideo.com Dev User"
+        });
+        e({
+          token: a.token,
+          authTokenExpiresAt: a.token_expires_at,
+          user: a.user,
+          authSessionState: "authenticated",
+          accountDataState: "loading",
+          accountStatusState: "loading"
+        }), await t().refreshCloudStatus()
+      } catch (t) {
+        e({
+          error: (0, o.errorMessage)(t),
+          loading: !1
+        })
+      }
+    },
+    refreshAuthToken: async () => {
+      let {
+        token: r
+      } = t();
+      if (!r) return !1;
+      e({
+        loading: !0,
+        error: null
+      });
+      try {
+        let a = await (0, u.retrySupabaseSessionPersistence)();
+        if (t().token !== r && t().token !== a.accessToken) return !1;
+        return e({
+          token: a.accessToken,
+          authTokenExpiresAt: a.expiresAt,
+          authSessionState: "authenticated",
+          loading: !1
+        }), !0
+      } catch (a) {
+        if (t().token !== r && "authenticated" === t().authSessionState) return !1;
+        if ((0, o.isMissingAuthSessionError)(a)) return e({
+          authSessionState: "reauthentication_required",
+          accountDataState: "refresh_error",
+          accountStatusState: "refresh_error",
+          error: o.AUTH_REAUTHENTICATION_REQUIRED_ERROR,
+          loading: !1
+        }), !1;
+        if ((0, o.isInvalidSupabaseRefreshError)(a)) return await (0, u.clearSupabaseBrowserSession)(), e({
+          ...(0, u.clearedCloudSession)(),
+          offlineQueue: t().offlineQueue,
+          error: (0, o.errorMessage)(a),
+          loading: !1
+        }), !1;
+        return e({
+          authSessionState: "authenticated",
+          accountDataState: "refresh_error",
+          accountStatusState: "refresh_error",
+          error: (0, o.errorMessage)(a),
+          loading: !1
+        }), !1
+      }
+    },
+    logout: async () => {
+      S += 1, A++, x(), e({
+        loading: !0,
+        error: null
+      });
+      try {
+        await (0, u.clearSupabaseBrowserSession)(), e(e => ({
+          ...(0, u.clearedCloudSession)(),
+          offlineQueue: (0, l.retainOfflineFinalStatusEvidence)(e.offlineQueue),
+          loading: !1
+        }))
+      } catch (t) {
+        await (0, u.clearSupabaseBrowserSession)(), e(e => ({
+          ...(0, u.clearedCloudSession)(),
+          offlineQueue: (0, l.retainOfflineFinalStatusEvidence)(e.offlineQueue),
+          error: (0, o.errorMessage)(t),
+          loading: !1
+        }))
+      }
+    },
+    refreshCloudStatus: async (r = {}) => {
+      let {
+        token: a,
+        cloudStatusFetchedAt: i
+      } = t(), n = !!(r.background || r.suppressErrors);
+      if (!a) {
+        A++, x(), e({
+          license: null,
+          balance: null,
+          freeEntitlement: null,
+          accountStatusState: "logged_out",
+          authSessionState: "logged_out",
+          accountDataState: "idle",
+          storageHealthState: "ready",
+          hasTrustedAccountData: !1,
+          jobs: [],
+          jobAuthorizations: [],
+          authorizationStatus: "idle",
+          authorizationBlockedReason: null,
+          authorizationError: null,
+          currentJobAuthorization: null,
+          authorizationTokenExpiresAt: null,
+          authorizationChargedSeconds: 0,
+          authorizationPaygOverageChargedSeconds: 0,
+          authorizationPlanCode: null,
+          offlineLease: null,
+          offlineState: "online",
+          serverConfig: null,
+          serverConfigFetchedAt: null,
+          cloudStatusFetchedAt: null,
+          devices: [],
+          loading: !1
+        });
+        return
+      }
+      if (!r.force && r.staleMs && i && Date.now() - i < r.staleMs) return void t().flushOfflineJobUpdates();
+      if (n && !r.force && Date.now() < b) return;
+      let l = T(t()),
+        s = void 0 !== A ? A : 0;
+      if (void 0 !== w && w && w.accountKey === l && !w.invalidated) {
+        if (Date.now() - w.startedAt <= 3e4) return w.promise;
+        w.invalidated = !0, w = null
+      }
+      void 0 !== w && w && w.accountKey !== l && (w.invalidated = !0, w = null);
+      let d = {
+          accountKey: l,
+          generation: s,
+          invalidated: !1,
+          promise: Promise.resolve(),
+          startedAt: Date.now()
+        },
+        c = () => !d.invalidated && (void 0 === A || d.generation === A) && "authenticated" === t().authSessionState && !!t().token && T(t()) === d.accountKey,
+        _ = t().error,
+        h = async () => {
+          try {
+            r.background ? e({
+              accountDataState: "loading",
+              accountStatusState: "loading"
+            }) : e({
+              loading: !0,
+              error: null,
+              accountDataState: "loading",
+              accountStatusState: "loading"
+            });
+            try {
+              let {
+                user: a,
+                license: i,
+                balance: n,
+                jobs: o,
+                plans: l,
+                devices: s,
+                free_entitlement: d
+              } = await (0, u.withFreshAuthToken)(t, e, async (e, r) => {
+                if (!c()) throw Error("account_flight_invalidated");
+                let a = await g.cloudApi.accountStatus(e, r),
+                  i = t().plans ?? await g.cloudApi.plans(e);
+                return {
+                  ...a,
+                  plans: i
+                }
+              });
+              if (!c()) return;
+              b = 0, e({
+                user: a,
+                license: i,
+                balance: n,
+                freeEntitlement: d ?? null,
+                accountDataState: "ready",
+                accountStatusState: "ready",
+                hasTrustedAccountData: !0,
+                jobs: o,
+                plans: l,
+                devices: s,
+                cloudStatusFetchedAt: Date.now(),
+                ...t().error === _ && "Trial authorization was not granted." === _ ? {
+                  error: null
+                } : {},
+                ...r.background ? {} : {
+                  loading: !1
+                }
+              }), t().flushOfflineJobUpdates()
+            } catch (a) {
+              if (!c()) return;
+              let t = (0, o.errorMessage)(a);
+              if ("account_flight_invalidated" === t) return;
+              if (E(a) && (b = Date.now() + 6e4), t === o.AUTH_SESSION_INVALID_ERROR) return void e({
+                error: t,
+                loading: !1,
+                authSessionState: "logged_out",
+                accountDataState: "idle",
+                accountStatusState: "logged_out",
+                storageHealthState: "ready",
+                hasTrustedAccountData: !1
+              });
+              if (e({
+                  accountDataState: "refresh_error",
+                  accountStatusState: "refresh_error"
+                }), r.suppressErrors || r.background && E(a)) {
+                console.warn("[cloud-status] Background refresh failed", {
+                  message: t
+                }), r.background || e({
+                  loading: !1
+                });
+                return
+              }
+              e({
+                error: t,
+                ...r.background ? {} : {
+                  loading: !1
+                }
+              })
+            }
+          } finally {
+            void 0 !== w && w === d && (w = null), c() && !r.background && t().loading && e({
+              loading: !1
+            })
+          }
+        };
+      return d.promise = h(), void 0 !== w && (w = d), d.promise
+    },
+    passwordLogin: async (r, a) => {
+      if (k) return;
+      k = !0;
+      let i = ++S;
+      e({
+        loading: !0,
+        error: null
+      });
+      try {
+        if (!d.isSupabaseConfigured) throw (0, d.createSupabaseAuthNotConfiguredError)();
+        let {
+          data: n,
+          error: l
+        } = await (0, d.withSessionTimeout)(d.supabase.auth.signInWithPassword({
+          email: r,
+          password: a
+        }));
+        if (i !== S) return void await (0, u.clearSupabaseBrowserSession)();
+        if (l) throw l;
+        let s = n.session,
+          c = s?.access_token;
+        if (!s || !c) throw Error("Supabase did not return an access token.");
+        let _ = t().apiUrl,
+          h = await g.cloudApi.bootstrapSupabaseAccount(_, c);
+        if (i !== S || t().token !== c) return;
+        e({
+          token: c,
+          authTokenExpiresAt: (0, o.supabaseSessionExpiry)(s.expires_at),
+          user: h,
+          authSessionState: "authenticated",
+          accountDataState: "loading",
+          accountStatusState: "loading",
+          hasTrustedAccountData: !1,
+          error: null,
+          loading: !1
+        }), t().refreshCloudStatus({
+          force: !0,
+          background: !0,
+          suppressErrors: !0
+        })
+      } catch (t) {
+        if (i !== S) return;
+        e({
+          error: (0, o.errorMessage)(t),
+          loading: !1
+        })
+      } finally {
+        k = !1
+      }
+    },
+    googleLogin: async () => {
+      if (k) return;
+      k = !0;
+      let r = ++S;
+      e({
+        loading: !0,
+        error: null
+      });
+      try {
+        if (!d.isSupabaseConfigured) throw (0, d.createSupabaseAuthNotConfiguredError)();
+        if ((0, u.isTauriRuntime)()) {
+          let a = await (0, _.startDesktopAuthBridge)(),
+            i = await (0, d.getGoogleOAuthUrl)(a.callback_url);
+          await (0, h.openUrlInSystemBrowser)(i);
+          let n = await (0, u.waitForDesktopAuthCallback)(a.state);
+          if (r !== S) return;
+          if (n.error) throw Error("Chưa hoàn tất đăng nhập Google. Hãy quay lại app và thử đăng nhập lại.");
+          if (!n.code) throw Error("Chưa nhận được mã đăng nhập Google. Hãy quay lại app và thử đăng nhập lại.");
+          let {
+            data: l,
+            error: s
+          } = await (0, d.withSessionTimeout)(d.supabase.auth.exchangeCodeForSession(n.code));
+          if (r !== S) return void await (0, u.clearSupabaseBrowserSession)();
+          if (s) throw s;
+          let c = l.session,
+            f = c?.access_token;
+          if (!c || !f) throw Error("Supabase did not return an access token.");
+          let p = t().apiUrl,
+            m = await g.cloudApi.bootstrapSupabaseAccount(p, f);
+          if (r !== S || t().token !== f) return;
+          e({
+            token: f,
+            authTokenExpiresAt: (0, o.supabaseSessionExpiry)(c.expires_at),
+            user: m,
+            authSessionState: "authenticated",
+            accountDataState: "loading",
+            accountStatusState: "loading",
+            hasTrustedAccountData: !1,
+            error: null,
+            loading: !1
+          }), t().refreshCloudStatus({
+            force: !0,
+            background: !0,
+            suppressErrors: !0
+          });
+          return
+        }
+        let {
+          error: a
+        } = await (0, d.signInWithGoogle)((0, d.getSupabaseAuthRedirectUrl)("/account"));
+        if (a) throw a;
+        e({
+          loading: !1
+        })
+      } catch (t) {
+        if (r !== S) return;
+        e({
+          error: (0, o.errorMessage)(t),
+          loading: !1
+        })
+      } finally {
+        k = !1
+      }
+    },
+    devGrant: async () => {
+      e({
+        loading: !0,
+        error: null
+      });
+      try {
+        let {
+          apiUrl: r,
+          token: a
+        } = t(), i = await g.cloudApi.devGrant(r, (0, o.requireToken)(a), {
+          video_credits_seconds: 3600,
+          reason: "dev_grant"
+        });
+        e({
+          balance: i,
+          loading: !1
+        })
+      } catch (t) {
+        e({
+          error: (0, o.errorMessage)(t),
+          loading: !1
+        })
+      }
+    },
+    createSimulatedJob: async (r = {}) => {
+      e({
+        loading: !0,
+        error: null
+      });
+      try {
+        let {
+          apiUrl: a,
+          token: i
+        } = t(), n = {
+          source: r.source ?? "desktop",
+          job_type: r.job_type ?? "video_translate",
+          video_seconds: r.video_seconds ?? 120,
+          target_language: r.target_language ?? "vi",
+          tts_provider: r.tts_provider ?? "edge",
+          premium_voice_seconds: r.premium_voice_seconds ?? 0
+        }, l = await g.cloudApi.createJob(a, (0, o.requireToken)(i), n);
+        e(e => ({
+          jobs: [l, ...e.jobs]
+        })), await t().refreshCloudStatus()
+      } catch (t) {
+        e({
+          error: (0, o.errorMessage)(t),
+          loading: !1
+        })
+      }
+    },
+    authorizeLocalJob: async r => {
+      e({
+        loading: !0,
+        authorizationStatus: "authorizing",
+        authorizationBlockedReason: null,
+        authorizationError: null
+      });
+      try {
+        await (0, s.assertTerminalDurabilityHealthyForAuthorization)();
+        let a = await (0, u.withFreshAuthToken)(t, e, (e, t) => g.cloudApi.authorizeLocalJob(e, t, r));
+        if (await (0, f.confirmChargedAfterRefundAuthorization)(a) === "cancelled") return e({
+          loading: !1,
+          authorizationStatus: "idle",
+          authorizationBlockedReason: null,
+          authorizationError: null
+        }), null;
+        return e(e => ({
+          jobAuthorizations: [a, ...e.jobAuthorizations],
+          currentJobAuthorization: a,
+          authorizationStatus: "authorized",
+          authorizationBlockedReason: null,
+          authorizationError: null,
+          authorizationTokenExpiresAt: a.token_expires_at,
+          authorizationChargedSeconds: a.charged_seconds,
+          authorizationPaygOverageChargedSeconds: a.payg_overage_charged_seconds,
+          authorizationPlanCode: a.plan_code,
+          loading: !1
+        })), t().refreshCloudStatus({
+          background: !0,
+          suppressErrors: !0
+        }), a
+      } catch (t) {
+        if (t instanceof p.CloudApiError) console.error("[cloud-auth] authorizeLocalJob failed", {
+          status: t.status,
+          code: t.code,
+          message: t.message
+        }), e({
+          authorizationError: (0, o.errorMessage)(t),
+          authorizationStatus: "blocked",
+          authorizationBlockedReason: t.code,
+          loading: !1
+        });
+        else {
+          let r = (0, s.terminalOutboxErrorCode)(t);
+          if (r) return console.error("[cloud-auth] authorizeLocalJob failed", {
+            status: null,
+            code: r,
+            message: r
+          }), e({
+            authorizationError: r,
+            authorizationStatus: "blocked",
+            authorizationBlockedReason: r,
+            loading: !1
+          }), null;
+          let a = (0, o.errorMessage)(t),
+            i = a === o.AUTH_SESSION_INVALID_ERROR || a === o.AUTH_REAUTHENTICATION_REQUIRED_ERROR ? a : "authorization_failed";
+          console.error("[cloud-auth] authorizeLocalJob failed", {
+            status: null,
+            code: i,
+            message: a
+          }), e({
+            authorizationError: a,
+            authorizationStatus: "blocked",
+            authorizationBlockedReason: i,
+            loading: !1
+          })
+        }
+        return null
+      }
+    },
+    getJobDisposition: async r => {
+      let a = r.trim();
+      if (!a) throw Error("job_id_required");
+      return (0, u.withFreshAuthToken)(t, e, (e, t) => g.cloudApi.getJobDisposition(e, t, a))
+    },
+    refreshExportWatermarkPolicy: async r => {
+      let a = r.trim();
+      if (!a) return null;
+      try {
+        let r = await (0, u.withFreshAuthToken)(t, e, (e, t) => g.cloudApi.exportPolicyForLocalJob(e, t, a));
+        return (0, m.exportWatermarkPolicyFromExportPolicyResponse)(r)
+      } catch (e) {
+        return console.warn("[cloud-auth] refreshExportWatermarkPolicy failed", {
+          jobId: a,
+          message: (0, o.errorMessage)(e)
+        }), null
+      }
+    },
+    localPreflight: async r => {
+      e({
+        loading: !0,
+        authorizationStatus: "authorizing",
+        authorizationBlockedReason: null,
+        authorizationError: null
+      });
+      try {
+        await (0, s.assertTerminalDurabilityHealthyForAuthorization)();
+        let a = await (0, u.withFreshAuthToken)(t, e, (e, t) => g.cloudApi.localPreflight(e, t, r)),
+          i = a.authorization;
+        return e(e => ({
+          devices: (0, u.upsertDevice)(e.devices, a.device),
+          offlineLease: a.offline_lease,
+          offlineState: a.offline_lease.offline_state,
+          jobAuthorizations: [i, ...e.jobAuthorizations],
+          currentJobAuthorization: i,
+          authorizationStatus: "authorized",
+          authorizationBlockedReason: null,
+          authorizationError: null,
+          authorizationTokenExpiresAt: i.token_expires_at,
+          authorizationChargedSeconds: i.charged_seconds,
+          authorizationPaygOverageChargedSeconds: i.payg_overage_charged_seconds,
+          authorizationPlanCode: i.plan_code,
+          loading: !1
+        })), t().refreshCloudStatus({
+          background: !0,
+          suppressErrors: !0
+        }), a
+      } catch (t) {
+        if (t instanceof p.CloudApiError) console.error("[cloud-auth] localPreflight failed", {
+          status: t.status,
+          code: t.code,
+          message: t.message
+        }), e({
+          authorizationError: (0, o.errorMessage)(t),
+          authorizationStatus: "blocked",
+          authorizationBlockedReason: t.code,
+          loading: !1
+        });
+        else {
+          let r = (0, s.terminalOutboxErrorCode)(t);
+          if (r) return console.error("[cloud-auth] localPreflight failed", {
+            status: null,
+            code: r,
+            message: r
+          }), e({
+            authorizationError: r,
+            authorizationStatus: "blocked",
+            authorizationBlockedReason: r,
+            loading: !1
+          }), null;
+          let a = (0, o.errorMessage)(t),
+            i = a === o.AUTH_SESSION_INVALID_ERROR || a === o.AUTH_REAUTHENTICATION_REQUIRED_ERROR ? a : "authorization_failed";
+          console.error("[cloud-auth] localPreflight failed", {
+            status: null,
+            code: i,
+            message: a
+          }), e({
+            authorizationError: a,
+            authorizationStatus: "blocked",
+            authorizationBlockedReason: i,
+            loading: !1
+          })
+        }
+        return null
+      }
+    },
+    requestOfflineLease: async r => {
+      e({
+        loading: !0,
+        error: null
+      });
+      try {
+        let a = await (0, u.withFreshAuthToken)(t, e, (e, t) => g.cloudApi.requestOfflineLease(e, t, r));
+        return e({
+          offlineLease: a,
+          offlineState: a.offline_state,
+          loading: !1
+        }), a
+      } catch (t) {
+        return e({
+          error: (0, o.errorMessage)(t),
+          offlineState: "authorization_unavailable",
+          loading: !1
+        }), null
+      }
+    },
+    queueOfflineJobUpdate: t => {
+      e(e => {
+        let r, a;
+        return {
+          offlineQueue: (r = {
+            ...t,
+            queuedAt: new Date().toISOString()
+          }, -1 === (a = e.offlineQueue.findIndex(e => (0, l.offlineQueuedUpdateKey)(e) === (0, l.offlineQueuedUpdateKey)(t))) ? [...e.offlineQueue, r] : e.offlineQueue.map((e, t) => t === a ? r : e))
+        }
+      })
+    },
+    flushOfflineJobUpdates: async () => {
+      let {
+        token: r,
+        offlineQueue: a
+      } = t();
+      if (r && 0 !== a.length && !v) {
+        v = !0;
+        try {
+          for (let r of a) {
+            let a = null;
+            if ((0, l.isOfflineMetricsQueuedUpdate)(r) ? a = (e, t) => g.cloudApi.uploadJobMetrics(e, t, r.jobId, r.payload) : (0, l.isOfflineDiagnosticQueuedUpdate)(r) && (a = (e, t) => g.cloudApi.uploadJobDiagnostic(e, t, r.jobId, r.payload)), a) try {
+              await (0, u.withFreshAuthToken)(t, e, a);
+              let i = (0, l.offlineQueuedUpdateKey)(r);
+              e(e => ({
+                offlineQueue: e.offlineQueue.filter(e => (0, l.offlineQueuedUpdateKey)(e) !== i)
+              }))
+            } catch (e) {
+              console.warn("[cloud-offline] Failed to replay queued job update", {
+                jobId: r.jobId,
+                kind: r.kind,
+                error: (0, o.errorMessage)(e)
+              });
+              break
+            }
+          }
+        } finally {
+          v = !1
+        }
+      }
+    },
+    clearOfflineQueue: () => e(e => ({
+      offlineQueue: e.offlineQueue.filter(l.isOfflineFinalStatusQueuedUpdate)
+    })),
+    flushTerminalReports: async (e = {}) => {
+      await (0, s.flushTerminalReportOutbox)(e)
+    },
+    migrateLegacyTerminalReports: async () => {
+      await (0, s.migrateLegacyFinalStatusEvidence)()
+    },
+    refreshPlans: async () => {
+      e({
+        loading: !0,
+        error: null
+      });
+      try {
+        let {
+          apiUrl: r
+        } = t(), a = await g.cloudApi.plans(r);
+        e({
+          plans: a,
+          loading: !1
+        })
+      } catch (t) {
+        e({
+          error: (0, o.errorMessage)(t),
+          loading: !1
+        })
+      }
+    },
+    fetchServerConfig: async (r = {}) => {
+      let {
+        apiUrl: a,
+        serverConfig: i,
+        serverConfigFetchedAt: n
+      } = t();
+      return !r.force && i && n && Date.now() - n < 3e5 ? i : !r.force && y ? y : (e({
+        loading: !0,
+        error: null
+      }), y = (async () => {
+        let r = null;
+        try {
+          for (let t = 1; t <= 3; t += 1) try {
+            let t = await g.cloudApi.serverConfig(a, {
+              requestTimeoutMs: 15e3
+            });
+            return e({
+              serverConfig: t,
+              serverConfigFetchedAt: Date.now(),
+              loading: !1
+            }), t
+          } catch (e) {
+            r = e, t < 3 && await
+            function(e) {
+              return new Promise(t => {
+                globalThis.setTimeout(t, e)
+              })
+            }(750 * t)
+          }
+          let {
+            serverConfig: i,
+            serverConfigFetchedAt: n
+          } = t();
+          if (i && n) return e({
+            error: null,
+            loading: !1
+          }), i;
+          return e({
+            error: (0, o.errorMessage)(r),
+            loading: !1
+          }), null
+        } finally {
+          y = null
+        }
+      })())
+    },
+    refreshDeviceSession: async r => {
+      let {
+        token: a
+      } = t();
+      if (!a) return null;
+      try {
+        let a = await (0, u.withFreshAuthToken)(t, e, (e, t) => g.cloudApi.deviceSession(e, t, r));
+        return e(e => ({
+          deviceSession: a,
+          devices: (0, u.upsertDevice)(e.devices, a.device)
+        })), a
+      } catch (e) {
+        return console.warn("[cloud-device-session] refresh failed", (0, o.errorMessage)(e)), null
+      }
+    },
+    createPaymentCheckout: async (r, a) => {
+      e({
+        loading: !0,
+        error: null
+      });
+      try {
+        let {
+          apiUrl: i,
+          token: n
+        } = t(), l = await g.cloudApi.createPaymentCheckout(i, (0, o.requireToken)(n), r, a);
+        return e(e => ({
+          paymentSessions: (0, u.upsertPaymentSession)(e.paymentSessions, l),
+          loading: !1
+        })), l
+      } catch (t) {
+        return e({
+          error: (0, o.errorMessage)(t),
+          loading: !1
+        }), null
+      }
+    },
+    refreshPaymentSession: async r => {
+      e({
+        loading: !0,
+        error: null
+      });
+      try {
+        let {
+          apiUrl: a,
+          token: i
+        } = t(), n = await g.cloudApi.paymentCheckout(a, (0, o.requireToken)(i), r);
+        return e(e => ({
+          paymentSessions: (0, u.upsertPaymentSession)(e.paymentSessions, n),
+          loading: !1
+        })), n
+      } catch (t) {
+        return e({
+          error: (0, o.errorMessage)(t),
+          loading: !1
+        }), null
+      }
+    },
+    markManualPaymentPaid: async r => {
+      e({
+        loading: !0,
+        error: null
+      });
+      try {
+        let {
+          apiUrl: a,
+          token: i
+        } = t(), n = await g.cloudApi.markManualPaymentPaid(a, (0, o.requireToken)(i), r);
+        return e(e => ({
+          paymentSessions: (0, u.upsertPaymentSession)(e.paymentSessions, n),
+          loading: !1
+        })), n
+      } catch (t) {
+        return e({
+          error: (0, o.errorMessage)(t),
+          loading: !1
+        }), null
+      }
+    },
+    activateDevice: async r => {
+      e({
+        loading: !0,
+        error: null
+      });
+      try {
+        let a = await (0, u.withFreshAuthToken)(t, e, (e, t) => g.cloudApi.activateDevice(e, t, r));
+        return e(e => ({
+          devices: (0, u.upsertDevice)(e.devices, a),
+          loading: !1
+        })), a
+      } catch (t) {
+        return e({
+          error: (0, o.errorMessage)(t),
+          loading: !1
+        }), null
+      }
+    },
+    heartbeatDevice: async r => {
+      try {
+        let {
+          apiUrl: a,
+          token: i
+        } = t(), n = await g.cloudApi.heartbeatDevice(a, (0, o.requireToken)(i), r);
+        return e(e => ({
+          devices: (0, u.upsertDevice)(e.devices, n)
+        })), n
+      } catch (t) {
+        return e({
+          error: (0, o.errorMessage)(t)
+        }), null
+      }
+    },
+    releaseDevice: async r => {
+      e({
+        loading: !0,
+        error: null
+      });
+      try {
+        let {
+          apiUrl: a,
+          token: i
+        } = t(), n = await g.cloudApi.releaseDevice(a, (0, o.requireToken)(i), r);
+        return e(e => ({
+          devices: e.devices.filter(e => e.id !== n.id),
+          loading: !1
+        })), n
+      } catch (t) {
+        return e({
+          error: (0, o.errorMessage)(t),
+          loading: !1
+        }), null
+      }
+    },
+    switchToCurrentDevice: async () => {
+      e({
+        loading: !0,
+        error: null
+      });
+      try {
+        if (!(0, u.isTauriRuntime)()) throw Error("Chỉ có thể đổi thiết bị trong app DichVideo.");
+        let [r, a] = await Promise.all([(0, _.getDeviceFingerprint)(), (0, c.getAppVersion)()]), i = {
+          hardware_fingerprint_hash: r.hardware_fingerprint_hash,
+          installation_id: r.installation_id,
+          app_version: a,
+          os: r.os,
+          runtime_hash: "account-device-switch",
+          anchor_count: r.anchor_count
+        }, {
+          device: n,
+          devices: o
+        } = await (0, u.withFreshAuthToken)(t, e, async (e, t) => {
+          let r = await g.cloudApi.switchDevice(e, t, i),
+            a = await g.cloudApi.currentDevices(e, t);
+          return {
+            device: r,
+            devices: a
+          }
+        });
+        return e({
+          devices: o,
+          loading: !1
+        }), n
+      } catch (t) {
+        return e({
+          error: (0, o.errorMessage)(t),
+          loading: !1
+        }), null
+      }
+    },
+    clearError: () => e({
+      error: null
+    })
+  }), {
+    name: "dichvideo-cloud",
+    storage: (0, a.createJSONStorage)(() => (0, i.createLegacyStorage)(() => localStorage, {
+      "dichvideo-cloud": ["video-glm-cloud"]
+    })),
+    partialize: e => ({
+      apiUrl: e.apiUrl,
+      token: e.token,
+      authTokenExpiresAt: e.authTokenExpiresAt,
+      user: e.user,
+      offlineQueue: e.offlineQueue
+    }),
+    merge: (e, t) => {
+      let r = e ?? {},
+        a = {
+          ...t,
+          ...r
+        },
+        i = (0, u.sanitizePersistedApiUrl)(r.apiUrl),
+        n = (0, l.normalizeOfflineQueue)(r.offlineQueue),
+        o = r.token ? "loading" : "logged_out";
+      return void 0 !== r.apiUrl && i !== r.apiUrl ? {
+        ...a,
+        apiUrl: i,
+        ...(0, u.clearedCloudSession)(),
+        offlineQueue: (0, l.retainOfflineFinalStatusEvidence)(n)
+      } : {
+        ...a,
+        apiUrl: i,
+        offlineQueue: n,
+        accountStatusState: o,
+        authSessionState: "loading",
+        accountDataState: r.token ? "loading" : "idle",
+        storageHealthState: "ready",
+        hasTrustedAccountData: !1
+      }
+    }
+  }));
+  (0, s.configureLocalJobTerminalDelivery)({
+    getState: () => z.getState(),
+    setState: e => z.setState(e),
+    removeLegacyUpdate: e => {
+      z.setState(t => ({
+        offlineQueue: t.offlineQueue.filter(t => "final_status" !== t.kind || t.jobId !== e.jobId || t.queuedAt !== e.queuedAt)
+      }))
+    }
+  });
+  {
+    d.isSupabaseConfigured && (0, n.observeAuthSession)(d.supabase.auth, z.getState, z.setState), (0, d.isDesktopAuthPersistenceDegraded)() && z.getState().token && z.setState({
+      storageHealthState: "degraded"
+    }), (0, d.subscribeDesktopAuthPersistence)(e => {
+      let t = z.getState();
+      if (t.token) {
+        if (e) return void z.setState({
+          storageHealthState: "degraded"
+        });
+        z.setState({
+          storageHealthState: "ready"
+        }), t.refreshCloudStatus({
+          force: !0,
+          background: !0,
+          suppressErrors: !0
+        })
+      }
+    });
+    let e = z.getState().token;
+    z.subscribe(t => {
+      let r = t.token;
+      r && r !== e && (0, s.initializeLocalJobTerminalDelivery)().catch(() => void 0), e = r
+    }), globalThis.queueMicrotask(() => {
+      (0, s.initializeLocalJobTerminalDelivery)().catch(() => void 0)
+    })
+  }
+  e.s(["useCloudStore", 0, z])
+}]);

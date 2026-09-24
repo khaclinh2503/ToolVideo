@@ -1,0 +1,2266 @@
+(globalThis.TURBOPACK || (globalThis.TURBOPACK = [])).push(["object" == typeof document ? document.currentScript : void 0, 63676, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("x", [
+    ["path", {
+      d: "M18 6 6 18",
+      key: "1bl5f8"
+    }],
+    ["path", {
+      d: "m6 6 12 12",
+      key: "d8bk6v"
+    }]
+  ]);
+  e.s(["X", 0, t], 63676)
+}, 51757, e => {
+  "use strict";
+  var t = e.i(16933);
+  e.s(["CheckCircle2", () => t.default])
+}, 8734, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("copy", [
+    ["rect", {
+      width: "14",
+      height: "14",
+      x: "8",
+      y: "8",
+      rx: "2",
+      ry: "2",
+      key: "17jyea"
+    }],
+    ["path", {
+      d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2",
+      key: "zix9uf"
+    }]
+  ]);
+  e.s(["Copy", 0, t], 8734)
+}, 68148, e => {
+  "use strict";
+  var t = e.i(43476),
+    r = e.i(71645),
+    n = e.i(30030),
+    a = e.i(48425),
+    i = "Progress",
+    [s, l] = (0, n.createContextScope)(i),
+    [o, d] = s(i),
+    c = r.forwardRef((e, r) => {
+      var n, i;
+      let {
+        __scopeProgress: s,
+        value: l = null,
+        max: d,
+        getValueLabel: c = h,
+        ...u
+      } = e;
+      (d || 0 === d) && !x(d) && console.error((n = `${d}`, `Invalid prop \`max\` of value \`${n}\` supplied to \`Progress\`. Only numbers greater than 0 are valid max values. Defaulting to \`100\`.`));
+      let p = x(d) ? d : 100;
+      null === l || g(l, p) || console.error((i = `${l}`, `Invalid prop \`value\` of value \`${i}\` supplied to \`Progress\`. The \`value\` prop must be:
+  - a positive number
+  - less than the value passed to \`max\` (or 100 if no \`max\` prop is set)
+  - \`null\` or \`undefined\` if the progress is indeterminate.
+
+Defaulting to \`null\`.`));
+      let b = g(l, p) ? l : null,
+        v = f(b) ? c(b, p) : void 0;
+      return (0, t.jsx)(o, {
+        scope: s,
+        value: b,
+        max: p,
+        children: (0, t.jsx)(a.Primitive.div, {
+          "aria-valuemax": p,
+          "aria-valuemin": 0,
+          "aria-valuenow": f(b) ? b : void 0,
+          "aria-valuetext": v,
+          role: "progressbar",
+          "data-state": m(b, p),
+          "data-value": b ?? void 0,
+          "data-max": p,
+          ...u,
+          ref: r
+        })
+      })
+    });
+  c.displayName = i;
+  var u = "ProgressIndicator",
+    p = r.forwardRef((e, r) => {
+      let {
+        __scopeProgress: n,
+        ...i
+      } = e, s = d(u, n);
+      return (0, t.jsx)(a.Primitive.div, {
+        "data-state": m(s.value, s.max),
+        "data-value": s.value ?? void 0,
+        "data-max": s.max,
+        ...i,
+        ref: r
+      })
+    });
+
+  function h(e, t) {
+    return `${Math.round(e/t*100)}%`
+  }
+
+  function m(e, t) {
+    return null == e ? "indeterminate" : e === t ? "complete" : "loading"
+  }
+
+  function f(e) {
+    return "number" == typeof e
+  }
+
+  function x(e) {
+    return f(e) && !isNaN(e) && e > 0
+  }
+
+  function g(e, t) {
+    return f(e) && !isNaN(e) && e <= t && e >= 0
+  }
+  p.displayName = u;
+  var b = e.i(75157);
+  let v = r.forwardRef(({
+    className: e,
+    value: r,
+    indicatorClassName: n,
+    ...a
+  }, i) => (0, t.jsx)(c, {
+    ref: i,
+    className: (0, b.cn)("relative h-2 w-full overflow-hidden rounded-full bg-secondary", e),
+    ...a,
+    children: (0, t.jsx)(p, {
+      className: (0, b.cn)("h-full w-full flex-1 bg-primary transition-all duration-300 ease-in-out", n),
+      style: {
+        transform: `translateX(-${100-(r||0)}%)`
+      }
+    })
+  }));
+  v.displayName = c.displayName, e.s(["Progress", 0, v], 68148)
+}, 87486, e => {
+  "use strict";
+  var t = e.i(43476),
+    r = e.i(25913),
+    n = e.i(86011),
+    a = e.i(75157);
+  let i = (0, r.cva)("group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!", {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        "primary-soft": "border-primary/20 bg-primary/10 text-primary [a]:hover:bg-primary/20",
+        secondary: "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
+        destructive: "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
+        success: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 [a]:hover:bg-emerald-500/20",
+        warning: "border-yellow-500/20 bg-yellow-500/10 text-yellow-600 [a]:hover:bg-yellow-500/20",
+        info: "border-blue-500/20 bg-blue-500/10 text-blue-600 [a]:hover:bg-blue-500/20",
+        outline: "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
+        ghost: "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
+        link: "text-primary underline-offset-4 hover:underline"
+      }
+    },
+    defaultVariants: {
+      variant: "default"
+    }
+  });
+  e.s(["Badge", 0, function({
+    className: e,
+    variant: r = "default",
+    asChild: s = !1,
+    ...l
+  }) {
+    let o = s ? n.Slot.Root : "span";
+    return (0, t.jsx)(o, {
+      "data-slot": "badge",
+      "data-variant": r,
+      className: (0, a.cn)(i({
+        variant: r
+      }), e),
+      ...l
+    })
+  }])
+}, 86318, e => {
+  "use strict";
+  var t = e.i(71645);
+  e.i(43476);
+  var r = t.createContext(void 0);
+  e.s(["useDirection", 0, function(e) {
+    let n = t.useContext(r);
+    return e || n || "ltr"
+  }])
+}, 93479, e => {
+  "use strict";
+  var t = e.i(43476),
+    r = e.i(75157);
+  e.s(["Input", 0, function({
+    className: e,
+    type: n,
+    ...a
+  }) {
+    return (0, t.jsx)("input", {
+      type: n,
+      "data-slot": "input",
+      className: (0, r.cn)("h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40", e),
+      ...a
+    })
+  }])
+}, 24687, e => {
+  "use strict";
+  var t = e.i(43476),
+    r = e.i(71645),
+    n = e.i(75157);
+  let a = r.forwardRef(({
+    className: e,
+    ...r
+  }, a) => (0, t.jsx)("textarea", {
+    className: (0, n.cn)("flex min-h-[60px] w-full rounded-lg border border-border bg-input px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none", e),
+    ref: a,
+    ...r
+  }));
+  a.displayName = "Textarea", e.s(["Textarea", 0, a])
+}, 28623, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("sparkles", [
+    ["path", {
+      d: "M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z",
+      key: "1s2grr"
+    }],
+    ["path", {
+      d: "M20 2v4",
+      key: "1rf3ol"
+    }],
+    ["path", {
+      d: "M22 4h-4",
+      key: "gwowj6"
+    }],
+    ["circle", {
+      cx: "4",
+      cy: "20",
+      r: "2",
+      key: "6kqj1y"
+    }]
+  ]);
+  e.s(["Sparkles", 0, t], 28623)
+}, 70152, e => {
+  "use strict";
+  e.s(["clamp", 0, function(e, [t, r]) {
+    return Math.min(r, Math.max(t, e))
+  }])
+}, 41120, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("refresh-cw", [
+    ["path", {
+      d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8",
+      key: "v9h5vc"
+    }],
+    ["path", {
+      d: "M21 3v5h-5",
+      key: "1q7to0"
+    }],
+    ["path", {
+      d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16",
+      key: "3uifl3"
+    }],
+    ["path", {
+      d: "M8 16H3v5",
+      key: "1cv678"
+    }]
+  ]);
+  e.s(["RefreshCw", 0, t], 41120)
+}, 73474, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("trash-2", [
+    ["path", {
+      d: "M10 11v6",
+      key: "nco0om"
+    }],
+    ["path", {
+      d: "M14 11v6",
+      key: "outv1u"
+    }],
+    ["path", {
+      d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6",
+      key: "miytrc"
+    }],
+    ["path", {
+      d: "M3 6h18",
+      key: "d0wm0j"
+    }],
+    ["path", {
+      d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2",
+      key: "e791ji"
+    }]
+  ]);
+  e.s(["Trash2", 0, t], 73474)
+}, 43957, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("check", [
+    ["path", {
+      d: "M20 6 9 17l-5-5",
+      key: "1gmf2c"
+    }]
+  ]);
+  e.s(["default", 0, t])
+}, 99682, e => {
+  "use strict";
+  var t = e.i(71645);
+  e.s(["usePrevious", 0, function(e) {
+    let r = t.useRef({
+      value: e,
+      previous: e
+    });
+    return t.useMemo(() => (r.current.value !== e && (r.current.previous = r.current.value, r.current.value = e), r.current.previous), [e])
+  }])
+}, 77071, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("plus", [
+    ["path", {
+      d: "M5 12h14",
+      key: "1ays0h"
+    }],
+    ["path", {
+      d: "M12 5v14",
+      key: "s699le"
+    }]
+  ]);
+  e.s(["Plus", 0, t], 77071)
+}, 32781, e => {
+  "use strict";
+  var t = e.i(58379);
+  e.s(["Loader2", () => t.default])
+}, 62368, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("download", [
+    ["path", {
+      d: "M12 15V3",
+      key: "m9g1x1"
+    }],
+    ["path", {
+      d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4",
+      key: "ih7n3h"
+    }],
+    ["path", {
+      d: "m7 10 5 5 5-5",
+      key: "brsn70"
+    }]
+  ]);
+  e.s(["Download", 0, t], 62368)
+}, 99847, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("circle-alert", [
+    ["circle", {
+      cx: "12",
+      cy: "12",
+      r: "10",
+      key: "1mglay"
+    }],
+    ["line", {
+      x1: "12",
+      x2: "12",
+      y1: "8",
+      y2: "12",
+      key: "1pkeuh"
+    }],
+    ["line", {
+      x1: "12",
+      x2: "12.01",
+      y1: "16",
+      y2: "16",
+      key: "4dfq90"
+    }]
+  ]);
+  e.s(["AlertCircle", 0, t], 99847)
+}, 89664, e => {
+  "use strict";
+  var t = e.i(43957);
+  e.s(["Check", () => t.default])
+}, 97142, 15281, e => {
+  "use strict";
+  var t = e.i(56420);
+  let r = (0, t.default)("cpu", [
+    ["path", {
+      d: "M12 20v2",
+      key: "1lh1kg"
+    }],
+    ["path", {
+      d: "M12 2v2",
+      key: "tus03m"
+    }],
+    ["path", {
+      d: "M17 20v2",
+      key: "1rnc9c"
+    }],
+    ["path", {
+      d: "M17 2v2",
+      key: "11trls"
+    }],
+    ["path", {
+      d: "M2 12h2",
+      key: "1t8f8n"
+    }],
+    ["path", {
+      d: "M2 17h2",
+      key: "7oei6x"
+    }],
+    ["path", {
+      d: "M2 7h2",
+      key: "asdhe0"
+    }],
+    ["path", {
+      d: "M20 12h2",
+      key: "1q8mjw"
+    }],
+    ["path", {
+      d: "M20 17h2",
+      key: "1fpfkl"
+    }],
+    ["path", {
+      d: "M20 7h2",
+      key: "1o8tra"
+    }],
+    ["path", {
+      d: "M7 20v2",
+      key: "4gnj0m"
+    }],
+    ["path", {
+      d: "M7 2v2",
+      key: "1i4yhu"
+    }],
+    ["rect", {
+      x: "4",
+      y: "4",
+      width: "16",
+      height: "16",
+      rx: "2",
+      key: "1vbyd7"
+    }],
+    ["rect", {
+      x: "8",
+      y: "8",
+      width: "8",
+      height: "8",
+      rx: "1",
+      key: "z9xiuo"
+    }]
+  ]);
+  e.s(["Cpu", 0, r], 97142);
+  let n = (0, t.default)("pencil", [
+    ["path", {
+      d: "M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z",
+      key: "1a8usu"
+    }],
+    ["path", {
+      d: "m15 5 4 4",
+      key: "1mk7zo"
+    }]
+  ]);
+  e.s(["Pencil", 0, n], 15281)
+}, 15288, e => {
+  "use strict";
+  var t = e.i(43476),
+    r = e.i(75157);
+  e.s(["Card", 0, function({
+    className: e,
+    size: n = "default",
+    ...a
+  }) {
+    return (0, t.jsx)("div", {
+      "data-slot": "card",
+      "data-size": n,
+      className: (0, r.cn)("group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-xl bg-card py-(--card-spacing) text-sm text-card-foreground ring-1 ring-foreground/10 [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl", e),
+      ...a
+    })
+  }, "CardContent", 0, function({
+    className: e,
+    ...n
+  }) {
+    return (0, t.jsx)("div", {
+      "data-slot": "card-content",
+      className: (0, r.cn)("px-(--card-spacing)", e),
+      ...n
+    })
+  }, "CardDescription", 0, function({
+    className: e,
+    ...n
+  }) {
+    return (0, t.jsx)("div", {
+      "data-slot": "card-description",
+      className: (0, r.cn)("text-sm text-muted-foreground", e),
+      ...n
+    })
+  }, "CardHeader", 0, function({
+    className: e,
+    ...n
+  }) {
+    return (0, t.jsx)("div", {
+      "data-slot": "card-header",
+      className: (0, r.cn)("group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-t-xl px-(--card-spacing) has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-(--card-spacing)", e),
+      ...n
+    })
+  }, "CardTitle", 0, function({
+    className: e,
+    ...n
+  }) {
+    return (0, t.jsx)("div", {
+      "data-slot": "card-title",
+      className: (0, r.cn)("font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm", e),
+      ...n
+    })
+  }])
+}, 62185, e => {
+  "use strict";
+  var t = e.i(68834);
+  e.i(89268);
+  var r = e.i(30797);
+  let n = null,
+    a = 0,
+    i = e => {
+      let t = e instanceof Error ? e.message : "string" == typeof e ? e : "",
+        r = t.toLowerCase();
+      return r.includes("desktop") ? "Cập nhật App chỉ dùng được trong bản desktop." : r.includes("not_available") || r.includes("no pending update") ? "Chưa có bản cập nhật App mới." : r.includes("signature") || r.includes("pubkey") ? "Không xác minh được gói cập nhật App. Hãy thử lại sau." : r.includes("network") || r.includes("fetch") || r.includes("endpoint") || r.includes("404") ? "Chưa kiểm tra được cập nhật App. Hãy thử lại sau." : t ? "Không thể kiểm tra/cài cập nhật App. Hãy thử lại sau." : "Không thể kiểm tra/cài cập nhật App."
+    },
+    s = (0, t.create)((e, t) => ({
+      appUpdate: null,
+      checkedAt: null,
+      progress: null,
+      loading: !1,
+      installing: !1,
+      error: null,
+      refreshAppUpdate: async (s = {}) => {
+        let l = s.staleMs ?? 0,
+          o = t().checkedAt;
+        if (!s.force && o && Date.now() - o < l || n && (await n, !s.force)) return;
+        let d = ++a;
+        n = (async () => {
+          s.silent || e({
+            loading: !0,
+            error: null
+          });
+          try {
+            let t = await (0, r.checkAppUpdate)({
+              timeoutMs: s.timeoutMs
+            });
+            if (d !== a) return;
+            e({
+              appUpdate: t,
+              checkedAt: Date.now(),
+              loading: !1,
+              error: null
+            })
+          } catch (t) {
+            if (d !== a) return;
+            e({
+              checkedAt: Date.now(),
+              loading: !1,
+              error: s.silent ? null : i(t)
+            })
+          }
+        })().finally(() => {
+          d === a && (n = null)
+        }), await n
+      },
+      installAppUpdate: async () => {
+        let s = t().appUpdate;
+        a += 1, n = null, e({
+          installing: !0,
+          loading: !1,
+          progress: null,
+          error: null
+        });
+        try {
+          await (0, r.installAppUpdate)(t => {
+            e({
+              progress: t
+            })
+          });
+          let n = t().appUpdate ?? s,
+            a = t().appUpdate?.latestVersion ?? s?.latestVersion ?? null ?? t().appUpdate?.currentVersion ?? s?.currentVersion ?? "0.1.0";
+          e({
+            appUpdate: {
+              available: !1,
+              currentVersion: a,
+              latestVersion: t().appUpdate?.latestVersion ?? s?.latestVersion ?? a,
+              date: n?.date ?? null,
+              body: n?.body ?? null,
+              appEnv: n?.appEnv ?? "production"
+            },
+            checkedAt: Date.now(),
+            installing: !1,
+            progress: null,
+            error: null
+          })
+        } catch (t) {
+          e({
+            installing: !1,
+            progress: null,
+            error: i(t)
+          })
+        }
+      },
+      clearError: () => e({
+        error: null
+      })
+    }));
+  e.s(["APP_UPDATE_CACHE_MS", 0, 3e5, "useAppUpdateStore", 0, s])
+}, 99375, e => {
+  "use strict";
+  var t = e.i(43476),
+    r = e.i(71645),
+    n = e.i(81140),
+    a = e.i(20783),
+    i = e.i(30030),
+    s = e.i(69340),
+    l = e.i(99682),
+    o = e.i(35804),
+    d = e.i(48425),
+    c = "Switch",
+    [u, p] = (0, i.createContextScope)(c),
+    [h, m] = u(c);
+
+  function f(e) {
+    let {
+      __scopeSwitch: n,
+      checked: a,
+      children: i,
+      defaultChecked: l,
+      disabled: o,
+      form: d,
+      name: u,
+      onCheckedChange: p,
+      required: m,
+      value: f = "on",
+      internal_do_not_use_render: x
+    } = e, [g, b] = (0, s.useControllableState)({
+      prop: a,
+      defaultProp: l ?? !1,
+      onChange: p,
+      caller: c
+    }), [v, y] = r.useState(null), [w, j] = r.useState(null), k = r.useRef(!1), C = !v || !!d || !!v.closest("form"), N = {
+      checked: g,
+      setChecked: b,
+      disabled: o,
+      control: v,
+      setControl: y,
+      name: u,
+      form: d,
+      value: f,
+      hasConsumerStoppedPropagationRef: k,
+      required: m,
+      defaultChecked: l,
+      isFormControl: C,
+      bubbleInput: w,
+      setBubbleInput: j
+    };
+    return (0, t.jsx)(h, {
+      scope: n,
+      ...N,
+      children: "function" == typeof x ? x(N) : i
+    })
+  }
+  var x = "SwitchTrigger",
+    g = r.forwardRef(({
+      __scopeSwitch: e,
+      onClick: r,
+      ...i
+    }, s) => {
+      let {
+        value: l,
+        disabled: o,
+        checked: c,
+        required: u,
+        setControl: p,
+        setChecked: h,
+        hasConsumerStoppedPropagationRef: f,
+        isFormControl: g,
+        bubbleInput: b
+      } = m(x, e), v = (0, a.useComposedRefs)(s, p);
+      return (0, t.jsx)(d.Primitive.button, {
+        type: "button",
+        role: "switch",
+        "aria-checked": c,
+        "aria-required": u,
+        "data-state": k(c),
+        "data-disabled": o ? "" : void 0,
+        disabled: o,
+        value: l,
+        ...i,
+        ref: v,
+        onClick: (0, n.composeEventHandlers)(r, e => {
+          h(e => !e), b && g && (f.current = e.isPropagationStopped(), f.current || e.stopPropagation())
+        })
+      })
+    });
+  g.displayName = x;
+  var b = r.forwardRef((e, r) => {
+    let {
+      __scopeSwitch: n,
+      name: a,
+      checked: i,
+      defaultChecked: s,
+      required: l,
+      disabled: o,
+      value: d,
+      onCheckedChange: c,
+      form: u,
+      ...p
+    } = e;
+    return (0, t.jsx)(f, {
+      __scopeSwitch: n,
+      checked: i,
+      defaultChecked: s,
+      disabled: o,
+      required: l,
+      onCheckedChange: c,
+      name: a,
+      form: u,
+      value: d,
+      internal_do_not_use_render: ({
+        isFormControl: e
+      }) => (0, t.jsxs)(t.Fragment, {
+        children: [(0, t.jsx)(g, {
+          ...p,
+          ref: r,
+          __scopeSwitch: n
+        }), e && (0, t.jsx)(j, {
+          __scopeSwitch: n
+        })]
+      })
+    })
+  });
+  b.displayName = c;
+  var v = "SwitchThumb",
+    y = r.forwardRef((e, r) => {
+      let {
+        __scopeSwitch: n,
+        ...a
+      } = e, i = m(v, n);
+      return (0, t.jsx)(d.Primitive.span, {
+        "data-state": k(i.checked),
+        "data-disabled": i.disabled ? "" : void 0,
+        ...a,
+        ref: r
+      })
+    });
+  y.displayName = v;
+  var w = "SwitchBubbleInput",
+    j = r.forwardRef(({
+      __scopeSwitch: e,
+      ...n
+    }, i) => {
+      let {
+        control: s,
+        hasConsumerStoppedPropagationRef: c,
+        checked: u,
+        defaultChecked: p,
+        required: h,
+        disabled: f,
+        name: x,
+        value: g,
+        form: b,
+        bubbleInput: v,
+        setBubbleInput: y
+      } = m(w, e), j = (0, a.useComposedRefs)(i, y), k = (0, l.usePrevious)(u), C = (0, o.useSize)(s);
+      r.useEffect(() => {
+        if (!v) return;
+        let e = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "checked").set,
+          t = !c.current;
+        if (k !== u && e) {
+          let r = new Event("click", {
+            bubbles: t
+          });
+          e.call(v, u), v.dispatchEvent(r)
+        }
+      }, [v, k, u, c]);
+      let N = r.useRef(u);
+      return (0, t.jsx)(d.Primitive.input, {
+        type: "checkbox",
+        "aria-hidden": !0,
+        defaultChecked: p ?? N.current,
+        required: h,
+        disabled: f,
+        name: x,
+        value: g,
+        form: b,
+        ...n,
+        tabIndex: -1,
+        ref: j,
+        style: {
+          ...n.style,
+          ...C,
+          position: "absolute",
+          pointerEvents: "none",
+          opacity: 0,
+          margin: 0,
+          transform: "translateX(-100%)"
+        }
+      })
+    });
+
+  function k(e) {
+    return e ? "checked" : "unchecked"
+  }
+  j.displayName = w;
+  var C = e.i(75157);
+  let N = r.forwardRef(({
+    className: e,
+    ...r
+  }, n) => (0, t.jsx)(b, {
+    className: (0, C.cn)("peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input", e),
+    ...r,
+    ref: n,
+    children: (0, t.jsx)(y, {
+      className: (0, C.cn)("pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-4 data-[state=unchecked]:translate-x-0")
+    })
+  }));
+  N.displayName = b.displayName, e.s(["Switch", 0, N], 99375)
+}, 59684, e => {
+  "use strict";
+  var t = e.i(43476),
+    r = e.i(71645),
+    n = e.i(48425),
+    a = e.i(96626),
+    i = e.i(30030),
+    s = e.i(20783),
+    l = e.i(30207),
+    o = e.i(86318),
+    d = e.i(34620),
+    c = e.i(70152),
+    u = e.i(81140),
+    p = "ScrollArea",
+    [h, m] = (0, i.createContextScope)(p),
+    [f, x] = h(p),
+    g = r.forwardRef((e, a) => {
+      let {
+        __scopeScrollArea: i,
+        type: l = "hover",
+        dir: d,
+        scrollHideDelay: c = 600,
+        ...u
+      } = e, [p, h] = r.useState(null), [m, x] = r.useState(null), [g, b] = r.useState(null), [v, y] = r.useState(null), [w, j] = r.useState(null), [k, C] = r.useState(0), [N, S] = r.useState(0), [_, R] = r.useState(!1), [T, P] = r.useState(!1), E = (0, s.useComposedRefs)(a, e => h(e)), M = (0, o.useDirection)(d);
+      return (0, t.jsx)(f, {
+        scope: i,
+        type: l,
+        dir: M,
+        scrollHideDelay: c,
+        scrollArea: p,
+        viewport: m,
+        onViewportChange: x,
+        content: g,
+        onContentChange: b,
+        scrollbarX: v,
+        onScrollbarXChange: y,
+        scrollbarXEnabled: _,
+        onScrollbarXEnabledChange: R,
+        scrollbarY: w,
+        onScrollbarYChange: j,
+        scrollbarYEnabled: T,
+        onScrollbarYEnabledChange: P,
+        onCornerWidthChange: C,
+        onCornerHeightChange: S,
+        children: (0, t.jsx)(n.Primitive.div, {
+          dir: M,
+          ...u,
+          ref: E,
+          style: {
+            position: "relative",
+            "--radix-scroll-area-corner-width": k + "px",
+            "--radix-scroll-area-corner-height": N + "px",
+            ...e.style
+          }
+        })
+      })
+    });
+  g.displayName = p;
+  var b = "ScrollAreaViewport",
+    v = r.forwardRef((e, a) => {
+      let {
+        __scopeScrollArea: i,
+        children: l,
+        nonce: o,
+        ...d
+      } = e, c = x(b, i), u = r.useRef(null), p = (0, s.useComposedRefs)(a, u, c.onViewportChange);
+      return (0, t.jsxs)(t.Fragment, {
+        children: [(0, t.jsx)(y, {
+          nonce: o
+        }), (0, t.jsx)(n.Primitive.div, {
+          "data-radix-scroll-area-viewport": "",
+          ...d,
+          ref: p,
+          style: {
+            overflowX: c.scrollbarXEnabled ? "scroll" : "hidden",
+            overflowY: c.scrollbarYEnabled ? "scroll" : "hidden",
+            ...e.style
+          },
+          children: (0, t.jsx)("div", {
+            ref: c.onContentChange,
+            style: {
+              minWidth: "100%",
+              display: "table"
+            },
+            children: l
+          })
+        })]
+      })
+    });
+  v.displayName = b;
+  var y = r.memo(({
+      nonce: e
+    }) => (0, t.jsx)("style", {
+      dangerouslySetInnerHTML: {
+        __html: "[data-radix-scroll-area-viewport]{scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}[data-radix-scroll-area-viewport]::-webkit-scrollbar{display:none}"
+      },
+      nonce: e
+    }), (e, t) => e.nonce === t.nonce),
+    w = "ScrollAreaScrollbar",
+    j = r.forwardRef((e, n) => {
+      let {
+        forceMount: a,
+        ...i
+      } = e, s = x(w, e.__scopeScrollArea), {
+        onScrollbarXEnabledChange: l,
+        onScrollbarYEnabledChange: o
+      } = s, d = "horizontal" === e.orientation;
+      return r.useEffect(() => (d ? l(!0) : o(!0), () => {
+        d ? l(!1) : o(!1)
+      }), [d, l, o]), "hover" === s.type ? (0, t.jsx)(k, {
+        ...i,
+        ref: n,
+        forceMount: a
+      }) : "scroll" === s.type ? (0, t.jsx)(C, {
+        ...i,
+        ref: n,
+        forceMount: a
+      }) : "auto" === s.type ? (0, t.jsx)(N, {
+        ...i,
+        ref: n,
+        forceMount: a
+      }) : "always" === s.type ? (0, t.jsx)(S, {
+        ...i,
+        ref: n,
+        "data-state": "visible"
+      }) : null
+    });
+  j.displayName = w;
+  var k = r.forwardRef((e, n) => {
+      let {
+        forceMount: i,
+        ...s
+      } = e, l = x(w, e.__scopeScrollArea), [o, d] = r.useState(!1);
+      return r.useEffect(() => {
+        let e = l.scrollArea,
+          t = 0;
+        if (e) {
+          let r = () => {
+              window.clearTimeout(t), d(!0)
+            },
+            n = () => {
+              t = window.setTimeout(() => d(!1), l.scrollHideDelay)
+            };
+          return e.addEventListener("pointerenter", r), e.addEventListener("pointerleave", n), () => {
+            window.clearTimeout(t), e.removeEventListener("pointerenter", r), e.removeEventListener("pointerleave", n)
+          }
+        }
+      }, [l.scrollArea, l.scrollHideDelay]), (0, t.jsx)(a.Presence, {
+        present: i || o,
+        children: (0, t.jsx)(N, {
+          "data-state": o ? "visible" : "hidden",
+          ...s,
+          ref: n
+        })
+      })
+    }),
+    C = r.forwardRef((e, n) => {
+      var i;
+      let {
+        forceMount: s,
+        ...l
+      } = e, o = x(w, e.__scopeScrollArea), d = "horizontal" === e.orientation, c = B(() => h("SCROLL_END"), 100), [p, h] = (i = {
+        hidden: {
+          SCROLL: "scrolling"
+        },
+        scrolling: {
+          SCROLL_END: "idle",
+          POINTER_ENTER: "interacting"
+        },
+        interacting: {
+          SCROLL: "interacting",
+          POINTER_LEAVE: "idle"
+        },
+        idle: {
+          HIDE: "hidden",
+          SCROLL: "scrolling",
+          POINTER_ENTER: "interacting"
+        }
+      }, r.useReducer((e, t) => i[e][t] ?? e, "hidden"));
+      return r.useEffect(() => {
+        if ("idle" === p) {
+          let e = window.setTimeout(() => h("HIDE"), o.scrollHideDelay);
+          return () => window.clearTimeout(e)
+        }
+      }, [p, o.scrollHideDelay, h]), r.useEffect(() => {
+        let e = o.viewport,
+          t = d ? "scrollLeft" : "scrollTop";
+        if (e) {
+          let r = e[t],
+            n = () => {
+              let n = e[t];
+              r !== n && (h("SCROLL"), c()), r = n
+            };
+          return e.addEventListener("scroll", n), () => e.removeEventListener("scroll", n)
+        }
+      }, [o.viewport, d, h, c]), (0, t.jsx)(a.Presence, {
+        present: s || "hidden" !== p,
+        children: (0, t.jsx)(S, {
+          "data-state": "hidden" === p ? "hidden" : "visible",
+          ...l,
+          ref: n,
+          onPointerEnter: (0, u.composeEventHandlers)(e.onPointerEnter, () => h("POINTER_ENTER")),
+          onPointerLeave: (0, u.composeEventHandlers)(e.onPointerLeave, () => h("POINTER_LEAVE"))
+        })
+      })
+    }),
+    N = r.forwardRef((e, n) => {
+      let i = x(w, e.__scopeScrollArea),
+        {
+          forceMount: s,
+          ...l
+        } = e,
+        [o, d] = r.useState(!1),
+        c = "horizontal" === e.orientation,
+        u = B(() => {
+          if (i.viewport) {
+            let e = i.viewport.offsetWidth < i.viewport.scrollWidth,
+              t = i.viewport.offsetHeight < i.viewport.scrollHeight;
+            d(c ? e : t)
+          }
+        }, 10);
+      return K(i.viewport, u), K(i.content, u), (0, t.jsx)(a.Presence, {
+        present: s || o,
+        children: (0, t.jsx)(S, {
+          "data-state": o ? "visible" : "hidden",
+          ...l,
+          ref: n
+        })
+      })
+    }),
+    S = r.forwardRef((e, n) => {
+      let {
+        orientation: a = "vertical",
+        ...i
+      } = e, s = x(w, e.__scopeScrollArea), l = r.useRef(null), o = r.useRef(0), [d, c] = r.useState({
+        content: 0,
+        viewport: 0,
+        scrollbar: {
+          size: 0,
+          paddingStart: 0,
+          paddingEnd: 0
+        }
+      }), u = V(d.viewport, d.content), p = {
+        ...i,
+        sizes: d,
+        onSizesChange: c,
+        hasThumb: !!(u > 0 && u < 1),
+        onThumbChange: e => l.current = e,
+        onThumbPointerUp: () => o.current = 0,
+        onThumbPointerDown: e => o.current = e
+      };
+
+      function h(e, t) {
+        return function(e, t, r, n = "ltr") {
+          let a = I(r),
+            i = t || a / 2,
+            s = r.scrollbar.paddingStart + i,
+            l = r.scrollbar.size - r.scrollbar.paddingEnd - (a - i),
+            o = r.content - r.viewport;
+          return O([s, l], "ltr" === n ? [0, o] : [-1 * o, 0])(e)
+        }(e, o.current, d, t)
+      }
+      return "horizontal" === a ? (0, t.jsx)(_, {
+        ...p,
+        ref: n,
+        onThumbPositionChange: () => {
+          if (s.viewport && l.current) {
+            let e = F(s.viewport.scrollLeft, d, s.dir);
+            l.current.style.transform = `translate3d(${e}px, 0, 0)`
+          }
+        },
+        onWheelScroll: e => {
+          s.viewport && (s.viewport.scrollLeft = e)
+        },
+        onDragScroll: e => {
+          s.viewport && (s.viewport.scrollLeft = h(e, s.dir))
+        }
+      }) : "vertical" === a ? (0, t.jsx)(R, {
+        ...p,
+        ref: n,
+        onThumbPositionChange: () => {
+          if (s.viewport && l.current) {
+            let e = F(s.viewport.scrollTop, d);
+            l.current.style.transform = `translate3d(0, ${e}px, 0)`
+          }
+        },
+        onWheelScroll: e => {
+          s.viewport && (s.viewport.scrollTop = e)
+        },
+        onDragScroll: e => {
+          s.viewport && (s.viewport.scrollTop = h(e))
+        }
+      }) : null
+    }),
+    _ = r.forwardRef((e, n) => {
+      let {
+        sizes: a,
+        onSizesChange: i,
+        ...l
+      } = e, o = x(w, e.__scopeScrollArea), [d, c] = r.useState(), u = r.useRef(null), p = (0, s.useComposedRefs)(n, u, o.onScrollbarXChange);
+      return r.useEffect(() => {
+        u.current && c(getComputedStyle(u.current))
+      }, [u]), (0, t.jsx)(E, {
+        "data-orientation": "horizontal",
+        ...l,
+        ref: p,
+        sizes: a,
+        style: {
+          bottom: 0,
+          left: "rtl" === o.dir ? "var(--radix-scroll-area-corner-width)" : 0,
+          right: "ltr" === o.dir ? "var(--radix-scroll-area-corner-width)" : 0,
+          "--radix-scroll-area-thumb-width": I(a) + "px",
+          ...e.style
+        },
+        onThumbPointerDown: t => e.onThumbPointerDown(t.x),
+        onDragScroll: t => e.onDragScroll(t.x),
+        onWheelScroll: (t, r) => {
+          if (o.viewport) {
+            var n, a;
+            let i = o.viewport.scrollLeft + t.deltaX;
+            e.onWheelScroll(i), n = i, a = r, n > 0 && n < a && t.preventDefault()
+          }
+        },
+        onResize: () => {
+          u.current && o.viewport && d && i({
+            content: o.viewport.scrollWidth,
+            viewport: o.viewport.offsetWidth,
+            scrollbar: {
+              size: u.current.clientWidth,
+              paddingStart: H(d.paddingLeft),
+              paddingEnd: H(d.paddingRight)
+            }
+          })
+        }
+      })
+    }),
+    R = r.forwardRef((e, n) => {
+      let {
+        sizes: a,
+        onSizesChange: i,
+        ...l
+      } = e, o = x(w, e.__scopeScrollArea), [d, c] = r.useState(), u = r.useRef(null), p = (0, s.useComposedRefs)(n, u, o.onScrollbarYChange);
+      return r.useEffect(() => {
+        u.current && c(getComputedStyle(u.current))
+      }, [u]), (0, t.jsx)(E, {
+        "data-orientation": "vertical",
+        ...l,
+        ref: p,
+        sizes: a,
+        style: {
+          top: 0,
+          right: "ltr" === o.dir ? 0 : void 0,
+          left: "rtl" === o.dir ? 0 : void 0,
+          bottom: "var(--radix-scroll-area-corner-height)",
+          "--radix-scroll-area-thumb-height": I(a) + "px",
+          ...e.style
+        },
+        onThumbPointerDown: t => e.onThumbPointerDown(t.y),
+        onDragScroll: t => e.onDragScroll(t.y),
+        onWheelScroll: (t, r) => {
+          if (o.viewport) {
+            var n, a;
+            let i = o.viewport.scrollTop + t.deltaY;
+            e.onWheelScroll(i), n = i, a = r, n > 0 && n < a && t.preventDefault()
+          }
+        },
+        onResize: () => {
+          u.current && o.viewport && d && i({
+            content: o.viewport.scrollHeight,
+            viewport: o.viewport.offsetHeight,
+            scrollbar: {
+              size: u.current.clientHeight,
+              paddingStart: H(d.paddingTop),
+              paddingEnd: H(d.paddingBottom)
+            }
+          })
+        }
+      })
+    }),
+    [T, P] = h(w),
+    E = r.forwardRef((e, a) => {
+      let {
+        __scopeScrollArea: i,
+        sizes: o,
+        hasThumb: d,
+        onThumbChange: c,
+        onThumbPointerUp: p,
+        onThumbPointerDown: h,
+        onThumbPositionChange: m,
+        onDragScroll: f,
+        onWheelScroll: g,
+        onResize: b,
+        ...v
+      } = e, y = x(w, i), [j, k] = r.useState(null), C = (0, s.useComposedRefs)(a, e => k(e)), N = r.useRef(null), S = r.useRef(""), _ = y.viewport, R = o.content - o.viewport, P = (0, l.useCallbackRef)(g), E = (0, l.useCallbackRef)(m), M = B(b, 10);
+
+      function A(e) {
+        N.current && f({
+          x: e.clientX - N.current.left,
+          y: e.clientY - N.current.top
+        })
+      }
+      return r.useEffect(() => {
+        let e = e => {
+          let t = e.target;
+          j?.contains(t) && P(e, R)
+        };
+        return document.addEventListener("wheel", e, {
+          passive: !1
+        }), () => document.removeEventListener("wheel", e, {
+          passive: !1
+        })
+      }, [_, j, R, P]), r.useEffect(E, [o, E]), K(j, M), K(y.content, M), (0, t.jsx)(T, {
+        scope: i,
+        scrollbar: j,
+        hasThumb: d,
+        onThumbChange: (0, l.useCallbackRef)(c),
+        onThumbPointerUp: (0, l.useCallbackRef)(p),
+        onThumbPositionChange: E,
+        onThumbPointerDown: (0, l.useCallbackRef)(h),
+        children: (0, t.jsx)(n.Primitive.div, {
+          ...v,
+          ref: C,
+          style: {
+            position: "absolute",
+            ...v.style
+          },
+          onPointerDown: (0, u.composeEventHandlers)(e.onPointerDown, e => {
+            0 === e.button && (e.target.setPointerCapture(e.pointerId), N.current = j.getBoundingClientRect(), S.current = document.body.style.webkitUserSelect, document.body.style.webkitUserSelect = "none", y.viewport && (y.viewport.style.scrollBehavior = "auto"), A(e))
+          }),
+          onPointerMove: (0, u.composeEventHandlers)(e.onPointerMove, A),
+          onPointerUp: (0, u.composeEventHandlers)(e.onPointerUp, e => {
+            let t = e.target;
+            t.hasPointerCapture(e.pointerId) && t.releasePointerCapture(e.pointerId), document.body.style.webkitUserSelect = S.current, y.viewport && (y.viewport.style.scrollBehavior = ""), N.current = null
+          })
+        })
+      })
+    }),
+    M = "ScrollAreaThumb",
+    A = r.forwardRef((e, r) => {
+      let {
+        forceMount: n,
+        ...i
+      } = e, s = P(M, e.__scopeScrollArea);
+      return (0, t.jsx)(a.Presence, {
+        present: n || s.hasThumb,
+        children: (0, t.jsx)(D, {
+          ref: r,
+          ...i
+        })
+      })
+    }),
+    D = r.forwardRef((e, a) => {
+      let {
+        __scopeScrollArea: i,
+        style: l,
+        ...o
+      } = e, d = x(M, i), c = P(M, i), {
+        onThumbPositionChange: p
+      } = c, h = (0, s.useComposedRefs)(a, e => c.onThumbChange(e)), m = r.useRef(void 0), f = B(() => {
+        m.current && (m.current(), m.current = void 0)
+      }, 100);
+      return r.useEffect(() => {
+        let e = d.viewport;
+        if (e) {
+          let t = () => {
+            f(), m.current || (m.current = W(e, p), p())
+          };
+          return p(), e.addEventListener("scroll", t), () => e.removeEventListener("scroll", t)
+        }
+      }, [d.viewport, f, p]), (0, t.jsx)(n.Primitive.div, {
+        "data-state": c.hasThumb ? "visible" : "hidden",
+        ...o,
+        ref: h,
+        style: {
+          width: "var(--radix-scroll-area-thumb-width)",
+          height: "var(--radix-scroll-area-thumb-height)",
+          ...l
+        },
+        onPointerDownCapture: (0, u.composeEventHandlers)(e.onPointerDownCapture, e => {
+          let t = e.target.getBoundingClientRect(),
+            r = e.clientX - t.left,
+            n = e.clientY - t.top;
+          c.onThumbPointerDown({
+            x: r,
+            y: n
+          })
+        }),
+        onPointerUp: (0, u.composeEventHandlers)(e.onPointerUp, c.onThumbPointerUp)
+      })
+    });
+  A.displayName = M;
+  var U = "ScrollAreaCorner",
+    L = r.forwardRef((e, r) => {
+      let n = x(U, e.__scopeScrollArea),
+        a = !!(n.scrollbarX && n.scrollbarY);
+      return "scroll" !== n.type && a ? (0, t.jsx)(z, {
+        ...e,
+        ref: r
+      }) : null
+    });
+  L.displayName = U;
+  var z = r.forwardRef((e, a) => {
+    let {
+      __scopeScrollArea: i,
+      ...s
+    } = e, l = x(U, i), [o, d] = r.useState(0), [c, u] = r.useState(0), p = !!(o && c);
+    return K(l.scrollbarX, () => {
+      let e = l.scrollbarX?.offsetHeight || 0;
+      l.onCornerHeightChange(e), u(e)
+    }), K(l.scrollbarY, () => {
+      let e = l.scrollbarY?.offsetWidth || 0;
+      l.onCornerWidthChange(e), d(e)
+    }), p ? (0, t.jsx)(n.Primitive.div, {
+      ...s,
+      ref: a,
+      style: {
+        width: o,
+        height: c,
+        position: "absolute",
+        right: "ltr" === l.dir ? 0 : void 0,
+        left: "rtl" === l.dir ? 0 : void 0,
+        bottom: 0,
+        ...e.style
+      }
+    }) : null
+  });
+
+  function H(e) {
+    return e ? parseInt(e, 10) : 0
+  }
+
+  function V(e, t) {
+    let r = e / t;
+    return isNaN(r) ? 0 : r
+  }
+
+  function I(e) {
+    let t = V(e.viewport, e.content),
+      r = e.scrollbar.paddingStart + e.scrollbar.paddingEnd;
+    return Math.max((e.scrollbar.size - r) * t, 18)
+  }
+
+  function F(e, t, r = "ltr") {
+    let n = I(t),
+      a = t.scrollbar.paddingStart + t.scrollbar.paddingEnd,
+      i = t.scrollbar.size - a,
+      s = t.content - t.viewport,
+      l = (0, c.clamp)(e, "ltr" === r ? [0, s] : [-1 * s, 0]);
+    return O([0, s], [0, i - n])(l)
+  }
+
+  function O(e, t) {
+    return r => {
+      if (e[0] === e[1] || t[0] === t[1]) return t[0];
+      let n = (t[1] - t[0]) / (e[1] - e[0]);
+      return t[0] + n * (r - e[0])
+    }
+  }
+  var W = (e, t = () => {}) => {
+    let r = {
+        left: e.scrollLeft,
+        top: e.scrollTop
+      },
+      n = 0;
+    return ! function a() {
+      let i = {
+          left: e.scrollLeft,
+          top: e.scrollTop
+        },
+        s = r.left !== i.left,
+        l = r.top !== i.top;
+      (s || l) && t(), r = i, n = window.requestAnimationFrame(a)
+    }(), () => window.cancelAnimationFrame(n)
+  };
+
+  function B(e, t) {
+    let n = (0, l.useCallbackRef)(e),
+      a = r.useRef(0);
+    return r.useEffect(() => () => window.clearTimeout(a.current), []), r.useCallback(() => {
+      window.clearTimeout(a.current), a.current = window.setTimeout(n, t)
+    }, [n, t])
+  }
+
+  function K(e, t) {
+    let r = (0, l.useCallbackRef)(t);
+    (0, d.useLayoutEffect)(() => {
+      let t = 0;
+      if (e) {
+        let n = new ResizeObserver(() => {
+          cancelAnimationFrame(t), t = window.requestAnimationFrame(r)
+        });
+        return n.observe(e), () => {
+          window.cancelAnimationFrame(t), n.unobserve(e)
+        }
+      }
+    }, [e, r])
+  }
+  var X = e.i(75157);
+  let $ = r.forwardRef(({
+    className: e,
+    children: r,
+    viewportRef: n,
+    onViewportScroll: a,
+    ...i
+  }, s) => (0, t.jsxs)(g, {
+    ref: s,
+    className: (0, X.cn)("relative overflow-hidden", e),
+    ...i,
+    children: [(0, t.jsx)(v, {
+      ref: n,
+      className: "h-full w-full rounded-[inherit]",
+      onScroll: a,
+      children: r
+    }), (0, t.jsx)(q, {}), (0, t.jsx)(L, {})]
+  }));
+  $.displayName = g.displayName;
+  let q = r.forwardRef(({
+    className: e,
+    orientation: r = "vertical",
+    ...n
+  }, a) => (0, t.jsx)(j, {
+    ref: a,
+    orientation: r,
+    className: (0, X.cn)("flex touch-none select-none transition-colors", "vertical" === r && "h-full w-2.5 border-l border-l-transparent p-[1px]", "horizontal" === r && "h-2.5 flex-col border-t border-t-transparent p-[1px]", e),
+    ...n,
+    children: (0, t.jsx)(A, {
+      className: "relative flex-1 rounded-full bg-border"
+    })
+  }));
+  q.displayName = j.displayName, e.s(["ScrollArea", 0, $], 59684)
+}, 29768, 93754, 15227, e => {
+  "use strict";
+  var t = e.i(56420);
+  let r = (0, t.default)("calendar-days", [
+    ["path", {
+      d: "M8 2v4",
+      key: "1cmpym"
+    }],
+    ["path", {
+      d: "M16 2v4",
+      key: "4m81vk"
+    }],
+    ["rect", {
+      width: "18",
+      height: "18",
+      x: "3",
+      y: "4",
+      rx: "2",
+      key: "1hopcy"
+    }],
+    ["path", {
+      d: "M3 10h18",
+      key: "8toen8"
+    }],
+    ["path", {
+      d: "M8 14h.01",
+      key: "6423bh"
+    }],
+    ["path", {
+      d: "M12 14h.01",
+      key: "1etili"
+    }],
+    ["path", {
+      d: "M16 14h.01",
+      key: "1gbofw"
+    }],
+    ["path", {
+      d: "M8 18h.01",
+      key: "lrp35t"
+    }],
+    ["path", {
+      d: "M12 18h.01",
+      key: "mhygvu"
+    }],
+    ["path", {
+      d: "M16 18h.01",
+      key: "kzsmim"
+    }]
+  ]);
+  e.s(["CalendarDays", 0, r], 29768);
+  let n = (0, t.default)("infinity", [
+    ["path", {
+      d: "M6 16c5 0 7-8 12-8a4 4 0 0 1 0 8c-5 0-7-8-12-8a4 4 0 1 0 0 8",
+      key: "18ogeb"
+    }]
+  ]);
+  e.s(["Infinity", 0, n], 93754);
+  let a = (0, t.default)("message-circle", [
+    ["path", {
+      d: "M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719",
+      key: "1sd12s"
+    }]
+  ]);
+  e.s(["MessageCircle", 0, a], 15227)
+}, 50203, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("refresh-ccw", [
+    ["path", {
+      d: "M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8",
+      key: "14sxne"
+    }],
+    ["path", {
+      d: "M3 3v5h5",
+      key: "1xhq8a"
+    }],
+    ["path", {
+      d: "M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16",
+      key: "1hlbsb"
+    }],
+    ["path", {
+      d: "M16 16h5v5",
+      key: "ccwih5"
+    }]
+  ]);
+  e.s(["RefreshCcw", 0, t], 50203)
+}, 12616, e => {
+  "use strict";
+  var t = e.i(43476),
+    r = e.i(71645),
+    n = e.i(99847),
+    a = e.i(29768),
+    i = e.i(89664),
+    s = e.i(51757),
+    l = e.i(8734),
+    o = e.i(70387),
+    d = e.i(93754),
+    c = e.i(32781),
+    u = e.i(15227),
+    p = e.i(50203),
+    h = e.i(28623),
+    m = e.i(76639),
+    f = e.i(68476),
+    x = e.i(21826),
+    g = e.i(14829);
+  let b = e => (e?.trim() ?? "") || null;
+  async function v(e, t, r) {
+    try {
+      return await t(e.idempotencyKey)
+    } catch (n) {
+      if (!r(n)) throw n;
+      return t(e.idempotencyKey)
+    }
+  }
+  var y = e.i(75157);
+  let w = [{
+      name: "Mini",
+      price: "20k",
+      amountVnd: 2e4,
+      description: "200 phút",
+      unitPrice: "100đ/phút",
+      productCode: "minute_mini",
+      productType: "credit_topup",
+      tone: "border-[#d7dce3]"
+    }, {
+      name: "Starter",
+      price: "50k",
+      amountVnd: 5e4,
+      description: "550 phút",
+      unitPrice: "91đ/phút",
+      productCode: "minute_starter",
+      productType: "credit_topup",
+      tone: "border-[#d7dce3]"
+    }, {
+      name: "Popular",
+      price: "100k",
+      amountVnd: 1e5,
+      description: "1.200 phút",
+      unitPrice: "83đ/phút",
+      productCode: "minute_popular",
+      productType: "credit_topup",
+      tone: "border-[#ff5530]",
+      featured: !0
+    }, {
+      name: "Pro",
+      price: "200k",
+      amountVnd: 2e5,
+      description: "2.800 phút",
+      unitPrice: "71đ/phút",
+      productCode: "minute_pro",
+      productType: "credit_topup",
+      tone: "border-[#0f766e]"
+    }, {
+      name: "Max",
+      price: "400k",
+      amountVnd: 4e5,
+      description: "6.500 phút",
+      unitPrice: "62đ/phút",
+      productCode: "minute_max",
+      productType: "credit_topup",
+      tone: "border-[#111111]"
+    }, {
+      name: "Agency",
+      price: "1.000k",
+      amountVnd: 1e6,
+      description: "18.000 phút",
+      unitPrice: "56đ/phút",
+      productCode: "minute_agency",
+      productType: "credit_topup",
+      tone: "border-[#7c3aed]"
+    }],
+    j = [{
+      name: "Unlimited Standard 1 tháng",
+      label: "1 tháng",
+      price: "399k",
+      amountVnd: 399e3,
+      monthly: "399k/tháng",
+      description: "Fair Use mỗi tháng",
+      note: "1 chu kỳ Fair Use",
+      productCode: "unlimited_standard_1m",
+      productType: "monthly_subscription"
+    }, {
+      name: "Unlimited Standard 3 tháng",
+      label: "3 tháng",
+      price: "1.099k",
+      amountVnd: 1099e3,
+      monthly: "~366k/tháng",
+      description: "Fair Use mỗi tháng",
+      note: "3 chu kỳ Fair Use",
+      productCode: "unlimited_standard_3m",
+      productType: "monthly_subscription"
+    }, {
+      name: "Unlimited Standard 6 tháng",
+      label: "6 tháng",
+      price: "1.999k",
+      amountVnd: 1999e3,
+      monthly: "~333k/tháng",
+      description: "Fair Use mỗi tháng",
+      note: "6 chu kỳ Fair Use",
+      productCode: "unlimited_standard_6m",
+      productType: "monthly_subscription"
+    }, {
+      name: "Unlimited Standard 12 tháng",
+      label: "12 tháng",
+      price: "3.999k",
+      amountVnd: 3999e3,
+      monthly: "~333k/tháng",
+      description: "Fair Use mỗi tháng",
+      note: "12 chu kỳ Fair Use",
+      productCode: "unlimited_standard_12m",
+      productType: "monthly_subscription",
+      featured: !0
+    }],
+    k = ["Model Standard", "Không watermark", "Ưu tiên xử lý", "Hết Fair Use: nạp phút để chạy tiếp"],
+    C = g.ZALO_CONTACT_HREF;
+
+  function N(e) {
+    return `${new Intl.NumberFormat("vi-VN").format(e)}đ`
+  }
+
+  function S(e) {
+    return e instanceof x.CloudApiError || e instanceof Error ? e.message : "Không tạo được mã thanh toán. Vui lòng thử lại."
+  }
+
+  function _(e, t) {
+    let r = t?.trim() ?? "";
+    return /^DV\d{6}$/i.test(r) ? r.toUpperCase() : e?.transfer_content ?? ""
+  }
+
+  function R({
+    plan: e,
+    onSelect: r
+  }) {
+    return (0, t.jsxs)("article", {
+      "data-pricing-plan": e.name.toLowerCase(),
+      className: (0, y.cn)("flex min-h-[190px] flex-col rounded-lg border border-t-4 bg-white p-4 shadow-[0_2px_0_rgba(10,10,10,0.03)]", e.tone),
+      children: [(0, t.jsx)(T, {
+        name: e.name,
+        price: e.price,
+        description: e.description
+      }), (0, t.jsx)("p", {
+        className: "mt-2 text-sm font-semibold text-[#0f766e]",
+        children: e.unitPrice
+      }), (0, t.jsxs)("button", {
+        type: "button",
+        onClick: () => void r(e),
+        className: (0, y.cn)("mt-5 inline-flex h-9 items-center justify-center gap-2 rounded-md border px-3 text-sm font-semibold transition", e.featured ? "border-[#ff5530] bg-[#ff5530] text-white hover:bg-[#e64a2a]" : "border-[#d7dce3] bg-white text-[#111111] hover:bg-[#f7f8fb]"),
+        children: [(0, t.jsx)(o.CreditCard, {
+          size: 15
+        }), "Mua gói"]
+      })]
+    })
+  }
+
+  function T({
+    name: e,
+    price: r,
+    description: n,
+    className: a,
+    mutedClassName: i
+  }) {
+    return (0, t.jsxs)("div", {
+      children: [(0, t.jsx)("h3", {
+        className: (0, y.cn)("text-base font-semibold text-[#111111]", a),
+        children: e
+      }), (0, t.jsx)("p", {
+        className: (0, y.cn)("mt-3 text-3xl font-semibold leading-none text-[#111111]", a),
+        children: r
+      }), (0, t.jsx)("p", {
+        className: (0, y.cn)("mt-2 text-sm font-medium text-[#4b5563]", i),
+        children: n
+      })]
+    })
+  }
+
+  function P({
+    children: e,
+    iconClassName: r
+  }) {
+    return (0, t.jsxs)("li", {
+      className: "flex items-start gap-2",
+      children: [(0, t.jsx)(i.Check, {
+        size: 15,
+        className: (0, y.cn)("mt-0.5 shrink-0 text-[#168a4a]", r)
+      }), (0, t.jsx)("span", {
+        children: e
+      })]
+    })
+  }
+
+  function E({
+    open: e,
+    onOpenChange: r,
+    onSelectPlan: n,
+    replacesActiveUnlimited: i
+  }) {
+    return (0, t.jsxs)(m.Dialog, {
+      open: e,
+      onOpenChange: r,
+      children: [(0, t.jsx)(m.DialogTrigger, {
+        asChild: !0,
+        children: (0, t.jsxs)("button", {
+          type: "button",
+          className: "mt-5 inline-flex h-9 items-center justify-center gap-2 rounded-md bg-white px-3 text-sm font-semibold text-[#111111] transition hover:bg-[#f3f4f6]",
+          children: [(0, t.jsx)(a.CalendarDays, {
+            size: 15
+          }), "Chọn thời hạn"]
+        })
+      }), (0, t.jsxs)(m.DialogContent, {
+        className: "max-w-2xl rounded-lg border-[#d7dce3] bg-white p-0",
+        children: [(0, t.jsxs)(m.DialogHeader, {
+          className: "border-b border-[#e5e7eb] px-5 py-4 text-left",
+          children: [(0, t.jsx)(m.DialogTitle, {
+            className: "text-xl text-[#111111]",
+            children: "Chọn thời hạn Unlimited Standard"
+          }), (0, t.jsx)(m.DialogDescription, {
+            className: "text-sm leading-6 text-[#4b5563]",
+            children: "Fair Use được cấp theo từng tháng trong thời hạn đã chọn. Dùng hết thì Unlimited tạm dừng đến chu kỳ kế tiếp; có thể nạp phút để tiếp tục ngay."
+          }), i ? (0, t.jsx)("p", {
+            "data-testid": "unlimited-replacement-warning",
+            className: "rounded-md bg-amber-50 p-3 text-sm text-amber-900",
+            children: "Gói mới sẽ thay thế gói Unlimited hiện tại. Thời hạn và số phút Fair Use còn lại của gói cũ không được cộng dồn. Ví phút đã nạp vẫn được giữ nguyên."
+          }) : null]
+        }), (0, t.jsx)("div", {
+          className: "grid gap-3 p-5 sm:grid-cols-2",
+          children: j.map(e => (0, t.jsxs)("button", {
+            type: "button",
+            onClick: () => n(e),
+            className: (0, y.cn)("rounded-lg border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md", e.featured ? "border-[#111111] bg-[#111111] text-white" : "border-[#d7dce3] bg-white text-[#111111] hover:bg-[#f8fafc]"),
+            children: [(0, t.jsxs)("span", {
+              className: "flex items-center justify-between gap-3",
+              children: [(0, t.jsx)("span", {
+                className: "font-semibold",
+                children: e.label
+              }), (0, t.jsx)(h.Sparkles, {
+                size: 15,
+                className: e.featured ? "text-[#f7a08a]" : "text-[#ff5530]"
+              })]
+            }), (0, t.jsx)("span", {
+              className: "mt-3 block text-2xl font-semibold",
+              children: e.price
+            }), (0, t.jsx)("span", {
+              className: (0, y.cn)("mt-1 block text-sm", e.featured ? "text-[#d1d5db]" : "text-[#4b5563]"),
+              children: e.monthly
+            }), (0, t.jsx)("span", {
+              className: (0, y.cn)("mt-2 block text-sm font-medium", e.featured ? "text-white" : "text-[#111111]"),
+              children: e.description
+            }), (0, t.jsx)("span", {
+              className: (0, y.cn)("mt-3 block text-xs font-semibold", e.featured ? "text-[#f7a08a]" : "text-[#0f766e]"),
+              children: e.note
+            })]
+          }, e.label))
+        })]
+      })]
+    })
+  }
+
+  function M({
+    checkout: e,
+    error: r,
+    isCheckingPayment: a,
+    isLoading: i,
+    onCheckPayment: s,
+    onClose: l,
+    plan: o
+  }) {
+    let d = e?.payment_instructions ?? null,
+      h = _(d, e?.order_code),
+      f = function(e, t) {
+        let r = e?.qr_url ?? null,
+          n = _(e, t);
+        if (!r || !n) return r;
+        try {
+          let e = new URL(r);
+          return e.searchParams.set("addInfo", n), e.toString()
+        } catch {
+          return r
+        }
+      }(d, e?.order_code),
+      x = d?.amount_vnd ?? e?.amount_vnd ?? o?.amountVnd ?? 0,
+      g = e?.status === "paid";
+    return (0, t.jsx)(m.Dialog, {
+      open: !!o,
+      onOpenChange: e => {
+        e || l()
+      },
+      children: (0, t.jsxs)(m.DialogContent, {
+        className: "max-w-3xl gap-0 overflow-hidden rounded-lg border-[#d7dce3] bg-white p-0",
+        children: [(0, t.jsxs)(m.DialogHeader, {
+          className: "border-b border-[#e5e7eb] px-4 py-3 pr-12 text-left",
+          children: [(0, t.jsx)(m.DialogTitle, {
+            className: "text-lg text-[#111111]",
+            children: g ? "Thanh toán thành công" : "QR thanh toán"
+          }), (0, t.jsx)(m.DialogDescription, {
+            className: "sr-only",
+            children: "Quét mã QR hoặc chuyển khoản theo thông tin hiển thị."
+          })]
+        }), (0, t.jsxs)("div", {
+          className: "grid lg:grid-cols-2",
+          children: [(0, t.jsxs)("div", {
+            className: "border-b border-[#e5e7eb] bg-[#f8fafc] p-4 lg:border-b-0 lg:border-r",
+            children: [(0, t.jsxs)("div", {
+              className: "flex items-start justify-between gap-3 rounded-lg border border-[#e5e7eb] bg-white p-3",
+              children: [(0, t.jsxs)("div", {
+                children: [(0, t.jsx)("p", {
+                  className: "text-xs font-semibold uppercase text-[#5f5f5f]",
+                  children: "Gói đã chọn"
+                }), (0, t.jsx)("h3", {
+                  className: "mt-1 text-lg font-semibold text-[#111111]",
+                  children: o?.name ?? "DichVideo"
+                }), (0, t.jsx)("p", {
+                  className: "mt-1 text-sm text-[#4b5563]",
+                  children: o?.description
+                }), (0, t.jsxs)("p", {
+                  className: "mt-1 text-xs leading-5 text-[#5f5f5f]",
+                  children: ["Mã đơn: ", (0, t.jsx)("span", {
+                    className: "font-semibold text-[#111111]",
+                    children: e?.order_code ?? "Đang tạo..."
+                  })]
+                })]
+              }), (0, t.jsx)("p", {
+                className: "shrink-0 text-right text-2xl font-semibold text-[#111111]",
+                children: N(x)
+              })]
+            }), (0, t.jsx)("div", {
+              className: "mx-auto mt-3 flex aspect-square w-full max-w-[320px] items-center justify-center rounded-md border border-dashed border-[#cbd5e1] bg-white",
+              children: g ? (0, t.jsx)(A, {
+                plan: o
+              }) : i ? (0, t.jsxs)("div", {
+                className: "flex flex-col items-center gap-2 text-sm font-semibold text-[#4b5563]",
+                children: [(0, t.jsx)(c.Loader2, {
+                  size: 22,
+                  className: "animate-spin text-[#ff5530]"
+                }), "Đang tạo QR"]
+              }) : f ? (0, t.jsx)("img", {
+                src: f,
+                alt: "Mã QR thanh toán DichVideo",
+                className: "h-full w-full rounded-md object-contain"
+              }) : (0, t.jsx)("div", {
+                className: "px-4 text-center text-sm leading-6 text-[#5f5f5f]",
+                children: "QR sẽ hiện ở đây sau khi tạo mã thanh toán."
+              })
+            })]
+          }), (0, t.jsx)("div", {
+            className: "space-y-2.5 p-4",
+            children: g ? (0, t.jsx)(D, {
+              plan: o,
+              amountVnd: x,
+              onClose: l
+            }) : (0, t.jsxs)(t.Fragment, {
+              children: [r ? (0, t.jsxs)("div", {
+                className: "flex items-start gap-2 rounded-lg border border-[#fecaca] bg-[#fef2f2] p-3 text-sm leading-6 text-[#b42318]",
+                children: [(0, t.jsx)(n.AlertCircle, {
+                  size: 16,
+                  className: "mt-1 shrink-0"
+                }), (0, t.jsx)("span", {
+                  children: r
+                })]
+              }) : null, (0, t.jsx)(U, {
+                amountVnd: x,
+                instructions: d,
+                status: e?.status ?? null,
+                transferContent: h
+              }), (0, t.jsxs)("div", {
+                className: "rounded-lg border border-[#e5e7eb] bg-[#f8fafc] p-3 text-sm leading-6 text-[#45515e]",
+                children: [(0, t.jsx)("p", {
+                  className: "text-xs font-semibold uppercase text-[#64748b]",
+                  children: "Trạng thái"
+                }), (0, t.jsx)("p", {
+                  className: "mt-1 font-medium text-[#111111]",
+                  children: "Đang tự kiểm tra thanh toán. Nếu đã chuyển khoản xong, có thể bấm kiểm tra ngay."
+                }), (0, t.jsxs)("div", {
+                  className: "mt-3 grid gap-2 sm:grid-cols-2",
+                  children: [(0, t.jsxs)("button", {
+                    type: "button",
+                    onClick: s,
+                    disabled: i || a || !e?.id,
+                    className: "inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[#d7dce3] bg-white px-3 text-sm font-semibold text-[#111111] hover:bg-[#f8fafc] disabled:opacity-55",
+                    children: [(0, t.jsx)(p.RefreshCcw, {
+                      size: 15,
+                      className: a ? "animate-spin" : ""
+                    }), a ? "Đang kiểm tra" : "Kiểm tra thanh toán"]
+                  }), (0, t.jsxs)("a", {
+                    href: C,
+                    target: "_blank",
+                    rel: "noreferrer",
+                    className: "inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[#d7dce3] bg-white px-3 text-sm font-semibold text-[#111111] hover:bg-[#f8fafc]",
+                    children: [(0, t.jsx)(u.MessageCircle, {
+                      size: 15
+                    }), "Zalo hỗ trợ"]
+                  })]
+                })]
+              })]
+            })
+          })]
+        })]
+      })
+    })
+  }
+
+  function A({
+    plan: e
+  }) {
+    return (0, t.jsxs)("div", {
+      className: "flex h-full w-full flex-col items-center justify-center rounded-md bg-[#ecfdf5] px-5 text-center",
+      children: [(0, t.jsx)("span", {
+        className: "inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#047857] text-white",
+        children: (0, t.jsx)(s.CheckCircle2, {
+          size: 30
+        })
+      }), (0, t.jsx)("h4", {
+        className: "mt-4 text-xl font-semibold text-[#064e3b]",
+        children: "Thanh toán thành công"
+      }), (0, t.jsxs)("p", {
+        className: "mt-2 text-sm leading-6 text-[#065f46]",
+        children: ["Đã cộng gói vào tài khoản", e?.name ? `: ${e.name}` : "", "."]
+      })]
+    })
+  }
+
+  function D({
+    plan: e,
+    amountVnd: r,
+    onClose: n
+  }) {
+    return (0, t.jsxs)("div", {
+      className: "flex h-full min-h-[320px] flex-col justify-center rounded-lg border border-[#bbf7d0] bg-[#ecfdf5] p-5 text-[#065f46]",
+      children: [(0, t.jsx)("p", {
+        className: "text-xs font-semibold uppercase text-[#047857]",
+        children: "Trạng thái"
+      }), (0, t.jsx)("h4", {
+        className: "mt-2 text-2xl font-semibold text-[#064e3b]",
+        children: "Thanh toán thành công"
+      }), (0, t.jsx)("p", {
+        className: "mt-2 text-sm leading-6",
+        children: "Đã cộng gói vào tài khoản. Bạn có thể bắt đầu dùng ngay."
+      }), (0, t.jsxs)("div", {
+        className: "mt-5 rounded-md border border-[#bbf7d0] bg-white/75 p-3 text-sm leading-6",
+        children: [(0, t.jsxs)("div", {
+          className: "flex items-center justify-between gap-3",
+          children: [(0, t.jsx)("span", {
+            children: "Gói"
+          }), (0, t.jsx)("span", {
+            className: "font-semibold text-[#064e3b]",
+            children: e?.name ?? "DichVideo"
+          })]
+        }), (0, t.jsxs)("div", {
+          className: "mt-1 flex items-center justify-between gap-3",
+          children: [(0, t.jsx)("span", {
+            children: "Số tiền"
+          }), (0, t.jsx)("span", {
+            className: "font-semibold text-[#064e3b]",
+            children: N(r)
+          })]
+        })]
+      }), (0, t.jsxs)("button", {
+        type: "button",
+        onClick: n,
+        className: "mt-5 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[#047857] px-4 text-sm font-semibold text-white hover:bg-[#065f46]",
+        children: [(0, t.jsx)(s.CheckCircle2, {
+          size: 16
+        }), "Đóng popup"]
+      })]
+    })
+  }
+
+  function U({
+    amountVnd: e,
+    instructions: r,
+    status: n,
+    transferContent: a
+  }) {
+    var i;
+    let s, l, o = r?.methods.bank_transfer;
+    return r && o ? (0, t.jsxs)("div", {
+      className: "rounded-lg border border-[#e5e7eb] bg-white p-2.5",
+      children: [(0, t.jsxs)("div", {
+        className: "flex items-start justify-between gap-2",
+        children: [(0, t.jsxs)("div", {
+          children: [(0, t.jsx)("p", {
+            className: "text-xs font-semibold uppercase text-[#5f5f5f]",
+            children: "Chuyển khoản ngân hàng"
+          }), (0, t.jsx)("h4", {
+            className: "mt-1 text-base font-semibold text-[#111111]",
+            children: (i = o, s = i.bank_bin?.trim() ?? "", (l = i.bank_name?.trim() ?? "") && s ? `${l} (${s})` : l || s || "Ngân hàng")
+          })]
+        }), (0, t.jsx)("span", {
+          className: "w-fit rounded-full bg-[#ecfdf5] px-2.5 py-1 text-xs font-semibold text-[#065f46]",
+          children: function(e) {
+            switch (e) {
+              case "paid":
+                return "Đã thanh toán";
+              case "awaiting_review":
+                return "Đang kiểm tra";
+              case "failed":
+              case "rejected":
+                return "Không thành công";
+              case "expired":
+                return "Hết hạn";
+              default:
+                return "Chờ chuyển khoản"
+            }
+          }(n)
+        })]
+      }), (0, t.jsxs)("dl", {
+        className: "mt-2 grid gap-1.5",
+        children: [(0, t.jsx)(L, {
+          label: "Số tài khoản",
+          value: o.account_number
+        }), (0, t.jsx)(L, {
+          label: "Chủ tài khoản",
+          value: o.account_name
+        }), (0, t.jsx)(L, {
+          label: "Số tiền",
+          value: N(e)
+        }), (0, t.jsx)(L, {
+          label: "Nội dung chuyển khoản",
+          value: a || r.transfer_content,
+          emphasize: !0
+        })]
+      })]
+    }) : (0, t.jsx)("div", {
+      className: "rounded-lg border border-[#e5e7eb] bg-white p-4 text-sm text-[#5f5f5f]",
+      children: "Đang chờ thông tin tài khoản thanh toán."
+    })
+  }
+
+  function L({
+    label: e,
+    value: n,
+    emphasize: a
+  }) {
+    let [i, s] = (0, r.useState)(!1), o = async () => {
+      try {
+        await navigator.clipboard.writeText(n), s(!0), window.setTimeout(() => s(!1), 1200)
+      } catch {
+        s(!1)
+      }
+    };
+    return (0, t.jsxs)("div", {
+      className: "rounded-md border border-[#eef2f7] bg-[#f8fafc] px-2.5 py-1.5",
+      children: [(0, t.jsx)("dt", {
+        className: "text-[11px] font-semibold uppercase text-[#64748b]",
+        children: e
+      }), (0, t.jsxs)("dd", {
+        className: "mt-0.5 flex items-center justify-between gap-3",
+        children: [(0, t.jsx)("span", {
+          className: (0, y.cn)("break-all text-sm font-semibold text-[#111111]", a && "text-base text-[#ff5530]"),
+          children: n
+        }), (0, t.jsxs)("button", {
+          type: "button",
+          onClick: () => void o(),
+          className: "inline-flex h-7 shrink-0 items-center justify-center gap-1 rounded-md border border-[#d7dce3] bg-white px-2 text-xs font-semibold text-[#111111] hover:bg-[#f8fafc]",
+          children: [(0, t.jsx)(l.Copy, {
+            size: 13
+          }), i ? "Đã copy" : "Copy"]
+        })]
+      })]
+    })
+  }
+  e.s(["AccountPricingPreview", 0, function({
+    onPaymentSettled: e,
+    subscription: n,
+    token: a
+  }) {
+    let [i, s] = (0, r.useState)(null), [l, o] = (0, r.useState)(null), [c, u] = (0, r.useState)(null), [p, h] = (0, r.useState)(!1), [m, g] = (0, r.useState)(!1), [y, j] = (0, r.useState)(!1), C = (0, r.useRef)(new Set), N = (0, r.useRef)(null), _ = n?.status === "active" && ["monthly_unlimited", "monthly_unlimited_legacy"].includes(n.plan_code ?? n.plan ?? ""), A = (0, r.useCallback)(t => {
+      "paid" !== t.status || C.current.has(t.id) || (C.current.add(t.id), e?.())
+    }, [e]), D = async e => {
+      let t = {
+          provider: "sepay",
+          product_code: e.productCode,
+          product_type: e.productType
+        },
+        r = function(e, t, r = function() {
+          if (!globalThis.crypto?.randomUUID) throw Error("payment_idempotency_key_unavailable");
+          return globalThis.crypto.randomUUID()
+        }) {
+          let n = JSON.stringify({
+            provider: t.provider.trim(),
+            product_code: b(t.product_code),
+            product_type: b(t.product_type),
+            credit_minutes: t.credit_minutes ?? null,
+            subscription_months: t.subscription_months ?? null,
+            customer_phone: b(t.customer_phone)
+          });
+          return e?.canonicalRequest === n ? e : {
+            canonicalRequest: n,
+            idempotencyKey: r()
+          }
+        }(N.current, t);
+      N.current = r, s(e), o(null), u(null), h(!0);
+      try {
+        let e = await v(r, () => f.cloudApi.createPaymentCheckout(x.DEFAULT_CLOUD_API_URL, a, t, r.idempotencyKey), e => e instanceof x.CloudApiError && ("request_timeout" === e.code || "server_unreachable" === e.code));
+        N.current = null, o(e), A(e)
+      } catch (e) {
+        u(S(e))
+      } finally {
+        h(!1)
+      }
+    }, U = (0, r.useCallback)(async ({
+      silent: e = !1
+    } = {}) => {
+      if (l?.id) {
+        e || (g(!0), u(null));
+        try {
+          let e = await f.cloudApi.paymentCheckout(x.DEFAULT_CLOUD_API_URL, a, l.id);
+          o(e), u(null), A(e)
+        } catch (t) {
+          e || u(S(t))
+        } finally {
+          e || g(!1)
+        }
+      }
+    }, [l?.id, A, a]);
+    (0, r.useEffect)(() => {
+      var e;
+      if (!l?.id || p || "pending" !== (e = l.status) && "awaiting_review" !== e) return;
+      let t = window.setInterval(() => {
+        U({
+          silent: !0
+        })
+      }, 5e3);
+      return () => window.clearInterval(t)
+    }, [l?.id, l?.status, p, U]);
+    let L = async () => {
+      l?.id && await U()
+    };
+    return (0, t.jsxs)("section", {
+      id: "pricing-preview",
+      "data-section": "account-pricing-preview",
+      children: [(0, t.jsx)("div", {
+        className: "mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between",
+        children: (0, t.jsxs)("div", {
+          children: [(0, t.jsx)("p", {
+            className: "text-sm font-semibold text-[#ff5530]",
+            children: "Bảng giá tài khoản"
+          }), (0, t.jsx)("h2", {
+            className: "mt-1 text-2xl font-semibold text-[#111111]",
+            children: "Nạp phút hoặc Unlimited Standard"
+          })]
+        })
+      }), (0, t.jsxs)("div", {
+        className: "grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(310px,360px)] xl:items-stretch",
+        children: [(0, t.jsxs)("div", {
+          className: "grid gap-3 sm:grid-cols-2 lg:grid-cols-3",
+          children: [w.slice(0, 3).map(e => (0, t.jsx)(R, {
+            plan: e,
+            onSelect: D
+          }, e.name)), (0, t.jsx)("div", {
+            "data-testid": "minute-benefits-divider",
+            className: "rounded-lg border border-[#d7dce3] bg-[#f8fafc] px-4 py-3 text-center text-sm font-semibold text-[#45515e] sm:col-span-2 lg:col-span-3",
+            children: "Không watermark · Ưu tiên xử lý · Phút không sử dụng hết hạn sau 90 ngày"
+          }), w.slice(3).map(e => (0, t.jsx)(R, {
+            plan: e,
+            onSelect: D
+          }, e.name))]
+        }), (0, t.jsxs)("article", {
+          "data-pricing-plan": "unlimited-standard",
+          className: "flex min-h-[360px] flex-col rounded-lg border border-[#111111] border-t-4 bg-[#111111] p-4 text-white shadow-[0_2px_0_rgba(10,10,10,0.03)] xl:min-h-full",
+          children: [(0, t.jsxs)("div", {
+            className: "inline-flex w-fit items-center gap-1.5 rounded-md bg-white/10 px-2 py-1 text-xs font-semibold text-white",
+            children: [(0, t.jsx)(d.Infinity, {
+              size: 13
+            }), "Standard"]
+          }), (0, t.jsx)(T, {
+            name: "Unlimited Standard",
+            price: "Từ 399k",
+            description: "9.999 phút Fair Use mỗi tháng",
+            className: "text-white",
+            mutedClassName: "text-[#d1d5db]"
+          }), (0, t.jsx)("p", {
+            className: "mt-2 text-sm font-semibold text-[#f7a08a]",
+            children: "Reset theo chu kỳ tháng"
+          }), (0, t.jsx)("ul", {
+            className: "mt-4 grow space-y-2 text-sm text-[#e5e7eb]",
+            children: k.map(e => (0, t.jsx)(P, {
+              iconClassName: "text-[#f7a08a]",
+              children: e
+            }, e))
+          }), (0, t.jsx)(E, {
+            open: y,
+            onOpenChange: j,
+            replacesActiveUnlimited: _,
+            onSelectPlan: e => {
+              j(!1), D(e)
+            }
+          })]
+        })]
+      }), (0, t.jsx)(M, {
+        checkout: l,
+        error: c,
+        isCheckingPayment: m,
+        isLoading: p,
+        onCheckPayment: () => void L(),
+        onClose: () => {
+          s(null), o(null), u(null), h(!1), g(!1)
+        },
+        plan: i
+      })]
+    })
+  }], 12616)
+}, 73602, e => {
+  "use strict";
+  var t = e.i(43476);
+  e.s(["GoogleLogo", 0, function(e) {
+    return (0, t.jsxs)("svg", {
+      "aria-hidden": "true",
+      focusable: "false",
+      viewBox: "0 0 18 18",
+      xmlns: "http://www.w3.org/2000/svg",
+      ...e,
+      children: [(0, t.jsx)("path", {
+        fill: "#4285F4",
+        d: "M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.12-.84 2.07-1.8 2.71v2.26h2.91c1.7-1.57 2.69-3.88 2.69-6.61z"
+      }), (0, t.jsx)("path", {
+        fill: "#34A853",
+        d: "M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.26c-.81.54-1.84.86-3.05.86-2.34 0-4.33-1.58-5.04-3.71H.96v2.33A9 9 0 0 0 9 18z"
+      }), (0, t.jsx)("path", {
+        fill: "#FBBC05",
+        d: "M3.96 10.71A5.41 5.41 0 0 1 3.68 9c0-.59.1-1.17.28-1.71V4.96H.96A9 9 0 0 0 0 9c0 1.45.35 2.82.96 4.04l3-2.33z"
+      }), (0, t.jsx)("path", {
+        fill: "#EA4335",
+        d: "M9 3.58c1.32 0 2.5.45 3.44 1.34l2.58-2.58C13.46.89 11.42 0 9 0A9 9 0 0 0 .96 4.96l3 2.33C4.67 5.16 6.66 3.58 9 3.58z"
+      })]
+    })
+  }])
+}]);

@@ -1,0 +1,98 @@
+﻿=== procmon start 2026-09-24T13:53:28.7921327+07:00 ===
+[13:53:58.610] PID=23808 python.exe
+    CMD: C:\Users\CPU60287-Local\AppData\Local\Programs\Python\Python314\python.exe C:/Users/CPU60287-Local/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.8/hooks/security_reminder_hook.py
+
+[13:57:24.244] PID=24428 python.exe
+    CMD: C:\Users\CPU60287-Local\AppData\Local\Programs\Python\Python314\python.exe -c "import sys; print(f\"{sys.version_info[0]}.{sys.version_info[1]}\")"
+
+[13:57:24.427] PID=16916 python.exe
+    CMD: C:\Users\CPU60287-Local\AppData\Local\Programs\Python\Python314\python.exe C:/Users/CPU60287-Local/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.8/hooks/security_reminder_hook.py
+
+[14:10:09.269] PID=22936 ffmpeg.exe
+    CMD: "C:\Users\CPU60287-Local\AppData\Local\DichVideo\bin\ffmpeg.exe" -version
+
+[14:10:09.435] PID=1512 ffprobe.exe
+    CMD: "C:\Users\CPU60287-Local\AppData\Local\DichVideo\bin\ffprobe.exe" -v quiet -print_format json -show_format -show_streams "C:\Users\CPU60287-Local\.dichvideo\downloads\bilibili\谁说中秋一定要吃月饼 月饼卖不动了 该怪谁-46edbcf5.mp4"
+
+[14:10:09.608] PID=8480 ffmpeg.exe
+    CMD: "C:\Users\CPU60287-Local\AppData\Local\DichVideo\bin\ffmpeg.exe" -i "C:\Users\CPU60287-Local\.dichvideo\downloads\bilibili\谁说中秋一定要吃月饼 月饼卖不动了 该怪谁-46edbcf5.mp4" -ss 5 -frames:v 1 -q:v 2 -vf scale=320:-1 -y C:\Users\CPU60287-Local\.dichvideo\projects\c3d7a3a1-46ac-41e2-bc02-2c90cf8127c3\media\thumbnail.jpg
+
+[14:10:16.575] PID=21568 ffprobe.exe
+    CMD: 
+
+[14:10:20.409] PID=23180 ffprobe.exe
+    CMD: "C:\Users\CPU60287-Local\AppData\Local\DichVideo\bin\ffprobe.exe" -version
+
+[14:10:29.469] PID=23920 ffprobe.exe
+    CMD: "C:\Users\CPU60287-Local\AppData\Local\DichVideo\bin\ffprobe.exe" -v error -select_streams a:0 -show_entries stream=codec_type,codec_name,channels,sample_rate,start_pts,duration_ts,time_base,start_time,duration -of json \\?\C:\Users\CPU60287-Local\.dichvideo\projects\b72955b9-cb67-45af-9f0c-68653f19ba77\source\source-a76723af7434.mp4
+
+[14:10:29.643] PID=8504 python.exe
+    CMD: 
+
+[14:10:29.816] PID=21812 python.exe
+    CMD: C:\Users\CPU60287-Local\AppData\Local\Programs\Python\Python314\python.exe C:/Users/CPU60287-Local/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.8/hooks/security_reminder_hook.py
+
+[14:10:33.493] PID=15888 ffprobe.exe
+    CMD: 
+
+[14:10:37.321] PID=19688 ffprobe.exe
+    CMD: "C:\Users\CPU60287-Local\AppData\Local\DichVideo\bin\ffprobe.exe" -v error -select_streams a:0 -show_entries stream=codec_type,codec_name,channels,sample_rate,start_pts,duration_ts,time_base,start_time,duration -of json \\?\C:\Users\CPU60287-Local\.dichvideo\projects\b72955b9-cb67-45af-9f0c-68653f19ba77\source\source-a76723af7434.mp4
+
+[14:10:40.992] PID=25324 ffmpeg.exe
+    CMD: "C:\Users\CPU60287-Local\AppData\Local\DichVideo\bin\ffmpeg.exe" -i C:\Users\CPU60287-Local\.dichvideo\projects\c3d7a3a1-46ac-41e2-bc02-2c90cf8127c3\source\source-a76723af7434.mp4 -map 0:a:0 -vn -af aresample=16000:async=1000:first_pts=0 -acodec pcm_s16le -ar 16000 -ac 1 -y C:\Users\CPU60287-Local\Videos\dichvideo\native-vnext\62d2acf0-a1d1-43c3-bf67-4e348da17c2f\audio\source.wav
+
+[14:10:43.380] PID=9368 media-segmenter.exe
+    CMD: "C:\Users\CPU60287-Local\AppData\Local\DichVideo\runtimes\dichvideo-engine-vnext\versions\0.1.0-alpha.10-engine\bin\media-segmenter.exe" --silero-vad-model=vad-model.onnx --silero-vad-threshold=0.25 --silero-vad-min-silence-duration=0.20 --silero-vad-min-speech-duration=0.10 --silero-vad-max-speech-duration=5 --tokens=tokens.txt --sense-voice-model=sense-model.onnx --sense-voice-language=zh --sense-voice-use-itn=1 --provider=cpu --num-threads=4 input.wav
+
+[14:10:59.335] PID=25204 python.exe
+    CMD: C:\Users\CPU60287-Local\AppData\Local\Programs\Python\Python314\python.exe C:/Users/CPU60287-Local/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.8/hooks/security_reminder_hook.py
+
+[14:11:28.631] PID=24688 python.exe
+    CMD: "C:\Users\CPU60287-Local\AppData\Local\DichVideo\components\piper-native\installed\vieneu-turbo-runtime-windows-x64\1.1.0\payload/python/python.exe" -I -B C:\Users\CPU60287-Local\AppData\Local\DichVideo\components\piper-native\installed\vieneu-turbo-runtime-windows-x64\1.1.0\payload/worker/worker.py --runtime-root C:\Users\CPU60287-Local\AppData\Local\DichVideo\components\piper-native\installed\vieneu-turbo-runtime-windows-x64\1.1.0 --profile-root C:\Users\CPU60287-Local\AppData\Local\DichVideo\vieneu-turbo\profiles --workspace-root C:\Users\CPU60287-Local\AppData\Local\DichVideo\vieneu-turbo\work
+
+[14:11:33.769] PID=24764 python.exe
+    CMD: C:\Users\CPU60287-Local\AppData\Local\Programs\Python\Python314\python.exe C:/Users/CPU60287-Local/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.8/hooks/security_reminder_hook.py
+
+[14:13:21.302] PID=23696 ffprobe.exe
+    CMD: 
+
+[14:13:21.495] PID=19596 ffmpeg.exe
+    CMD: 
+
+[14:13:21.703] PID=24580 ffmpeg.exe
+    CMD: "C:\Users\CPU60287-Local\AppData\Local\DichVideo\bin\ffmpeg.exe" -i "C:\Users\CPU60287-Local\.dichvideo\downloads\bilibili\兄弟说摸了十多斤田螺请吃饭 结果我们还得重新摸-4cd3b6cd.mp4" -ss 5 -frames:v 1 -q:v 2 -vf scale=320:-1 -y C:\Users\CPU60287-Local\.dichvideo\projects\a6fb73d1-24f1-4ae3-900f-138050d02b36\media\thumbnail.jpg
+
+[14:16:27.124] PID=25448 python.exe
+    CMD: C:\Users\CPU60287-Local\AppData\Local\Programs\Python\Python314\python.exe C:/Users/CPU60287-Local/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.8/hooks/security_reminder_hook.py
+
+[14:17:24.292] PID=12840 python.exe
+    CMD: C:\Users\CPU60287-Local\AppData\Local\Programs\Python\Python314\python.exe C:/Users/CPU60287-Local/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.8/hooks/security_reminder_hook.py
+
+[14:17:58.133] PID=10200 ffprobe.exe
+    CMD: "C:\Users\CPU60287-Local\AppData\Local\DichVideo\bin\ffprobe.exe" -version
+
+[14:17:58.178] PID=25192 ffprobe.exe
+    CMD: "C:\Users\CPU60287-Local\AppData\Local\DichVideo\bin\ffprobe.exe" -v error -select_streams a:0 -show_entries stream=codec_type,codec_name,channels,sample_rate,start_pts,duration_ts,time_base,start_time,duration -of json \\?\C:\Users\CPU60287-Local\.dichvideo\projects\b72955b9-cb67-45af-9f0c-68653f19ba77\source\source-a76723af7434.mp4
+
+[14:18:02.229] PID=15432 ffprobe.exe
+    CMD: "C:\Users\CPU60287-Local\AppData\Local\DichVideo\bin\ffprobe.exe" -v error -select_streams a:0 -show_entries stream=codec_type,codec_name,channels,sample_rate,start_pts,duration_ts,time_base,start_time,duration -of json \\?\C:\Users\CPU60287-Local\.dichvideo\projects\c3d7a3a1-46ac-41e2-bc02-2c90cf8127c3\source\source-a76723af7434.mp4
+
+[14:19:12.934] PID=25440 ffprobe.exe
+    CMD: "C:\Users\CPU60287-Local\AppData\Local\DichVideo\bin\ffprobe.exe" -v error -select_streams a:0 -show_entries stream=codec_type,codec_name,channels,sample_rate,start_pts,duration_ts,time_base,start_time,duration -of json \\?\C:\Users\CPU60287-Local\.dichvideo\projects\c3d7a3a1-46ac-41e2-bc02-2c90cf8127c3\source\source-a76723af7434.mp4
+
+[14:19:15.848] PID=7792 ffprobe.exe
+    CMD: "C:\Users\CPU60287-Local\AppData\Local\DichVideo\bin\ffprobe.exe" -v error -select_streams a:0 -show_entries stream=codec_type,codec_name,channels,sample_rate,start_pts,duration_ts,time_base,start_time,duration -of json \\?\C:\Users\CPU60287-Local\.dichvideo\projects\b72955b9-cb67-45af-9f0c-68653f19ba77\source\source-a76723af7434.mp4
+
+[14:19:18.837] PID=12388 ffprobe.exe
+    CMD: "C:\Users\CPU60287-Local\AppData\Local\DichVideo\bin\ffprobe.exe" -v error -select_streams a:0 -show_entries stream=codec_type,codec_name,channels,sample_rate,start_pts,duration_ts,time_base,start_time,duration -of json \\?\C:\Users\CPU60287-Local\.dichvideo\projects\c3d7a3a1-46ac-41e2-bc02-2c90cf8127c3\source\source-a76723af7434.mp4
+
+[14:19:18.864] PID=12388 ffprobe.exe
+    CMD: "C:\Users\CPU60287-Local\AppData\Local\DichVideo\bin\ffprobe.exe" -v error -select_streams a:0 -show_entries stream=codec_type,codec_name,channels,sample_rate,start_pts,duration_ts,time_base,start_time,duration -of json \\?\C:\Users\CPU60287-Local\.dichvideo\projects\c3d7a3a1-46ac-41e2-bc02-2c90cf8127c3\source\source-a76723af7434.mp4
+
+[14:19:22.970] PID=25064 python.exe
+    CMD: C:\Users\CPU60287-Local\AppData\Local\Programs\Python\Python314\python.exe C:/Users/CPU60287-Local/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.8/hooks/security_reminder_hook.py
+
+[14:22:13.123] PID=25136 python.exe
+    CMD: C:\Users\CPU60287-Local\AppData\Local\Programs\Python\Python314\python.exe C:/Users/CPU60287-Local/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.8/hooks/security_reminder_hook.py
+
+=== end, captured 29 ===

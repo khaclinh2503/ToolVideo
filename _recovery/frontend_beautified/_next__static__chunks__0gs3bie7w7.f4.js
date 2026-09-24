@@ -1,0 +1,2414 @@
+(globalThis.TURBOPACK || (globalThis.TURBOPACK = [])).push(["object" == typeof document ? document.currentScript : void 0, 33525, (e, t, r) => {
+  "use strict";
+  Object.defineProperty(r, "__esModule", {
+    value: !0
+  }), Object.defineProperty(r, "warnOnce", {
+    enumerable: !0,
+    get: function() {
+      return n
+    }
+  });
+  let n = e => {}
+}, 63676, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("x", [
+    ["path", {
+      d: "M18 6 6 18",
+      key: "1bl5f8"
+    }],
+    ["path", {
+      d: "m6 6 12 12",
+      key: "d8bk6v"
+    }]
+  ]);
+  e.s(["X", 0, t], 63676)
+}, 51757, e => {
+  "use strict";
+  var t = e.i(16933);
+  e.s(["CheckCircle2", () => t.default])
+}, 67423, (e, t, r) => {
+  "use strict";
+
+  function n({
+    widthInt: e,
+    heightInt: t,
+    blurWidth: r,
+    blurHeight: a,
+    blurDataURL: i,
+    objectFit: l
+  }) {
+    let o = r ? 40 * r : e,
+      s = a ? 40 * a : t,
+      u = o && s ? `viewBox='0 0 ${o} ${s}'` : "";
+    return `%3Csvg xmlns='http://www.w3.org/2000/svg' ${u}%3E%3Cfilter id='b' color-interpolation-filters='sRGB'%3E%3CfeGaussianBlur stdDeviation='20'/%3E%3CfeColorMatrix values='1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 100 -1' result='s'/%3E%3CfeFlood x='0' y='0' width='100%25' height='100%25'/%3E%3CfeComposite operator='out' in='s'/%3E%3CfeComposite in2='SourceGraphic'/%3E%3CfeGaussianBlur stdDeviation='20'/%3E%3C/filter%3E%3Cimage width='100%25' height='100%25' x='0' y='0' preserveAspectRatio='${u?"none":"contain"===l?"xMidYMid":"cover"===l?"xMidYMid slice":"none"}' style='filter: url(%23b);' href='${i}'/%3E%3C/svg%3E`
+  }
+  Object.defineProperty(r, "__esModule", {
+    value: !0
+  }), Object.defineProperty(r, "getImageBlurSvg", {
+    enumerable: !0,
+    get: function() {
+      return n
+    }
+  })
+}, 87690, (e, t, r) => {
+  "use strict";
+  Object.defineProperty(r, "__esModule", {
+    value: !0
+  });
+  var n = {
+    VALID_LOADERS: function() {
+      return i
+    },
+    imageConfigDefault: function() {
+      return l
+    }
+  };
+  for (var a in n) Object.defineProperty(r, a, {
+    enumerable: !0,
+    get: n[a]
+  });
+  let i = ["default", "imgix", "cloudinary", "akamai", "custom"],
+    l = {
+      deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+      imageSizes: [32, 48, 64, 96, 128, 256, 384],
+      path: "/_next/image",
+      loader: "default",
+      loaderFile: "",
+      domains: [],
+      disableStaticImages: !1,
+      minimumCacheTTL: 14400,
+      formats: ["image/webp"],
+      maximumDiskCacheSize: void 0,
+      maximumRedirects: 3,
+      maximumResponseBody: 5e7,
+      dangerouslyAllowLocalIP: !1,
+      dangerouslyAllowSVG: !1,
+      contentSecurityPolicy: "script-src 'none'; frame-src 'none'; sandbox;",
+      contentDispositionType: "attachment",
+      localPatterns: void 0,
+      remotePatterns: [],
+      qualities: [75],
+      unoptimized: !1,
+      customCacheHandler: !1
+    }
+}, 8927, (e, t, r) => {
+  "use strict";
+  Object.defineProperty(r, "__esModule", {
+    value: !0
+  }), Object.defineProperty(r, "getImgProps", {
+    enumerable: !0,
+    get: function() {
+      return u
+    }
+  }), e.r(33525);
+  let n = e.r(43369),
+    a = e.r(67423),
+    i = e.r(87690),
+    l = ["-moz-initial", "fill", "none", "scale-down", void 0];
+
+  function o(e) {
+    return void 0 !== e.default
+  }
+
+  function s(e) {
+    return void 0 === e ? e : "number" == typeof e ? Number.isFinite(e) ? e : NaN : "string" == typeof e && /^[0-9]+$/.test(e) ? parseInt(e, 10) : NaN
+  }
+
+  function u({
+    src: e,
+    sizes: t,
+    unoptimized: r = !1,
+    priority: d = !1,
+    preload: c = !1,
+    loading: f,
+    className: h,
+    quality: p,
+    width: m,
+    height: g,
+    fill: v = !1,
+    style: y,
+    overrideSrc: b,
+    onLoad: w,
+    onLoadingComplete: x,
+    placeholder: k = "empty",
+    blurDataURL: _,
+    fetchPriority: P,
+    decoding: S = "async",
+    layout: j,
+    objectFit: R,
+    objectPosition: C,
+    lazyBoundary: E,
+    lazyRoot: I,
+    ...M
+  }, O) {
+    var B;
+    let D, T, N, {
+        imgConf: L,
+        showAltText: z,
+        blurComplete: V,
+        defaultLoader: q
+      } = O,
+      $ = L || i.imageConfigDefault;
+    if ("allSizes" in $) D = $;
+    else {
+      let e = [...$.deviceSizes, ...$.imageSizes].sort((e, t) => e - t),
+        t = $.deviceSizes.sort((e, t) => e - t),
+        r = $.qualities?.sort((e, t) => e - t);
+      D = {
+        ...$,
+        allSizes: e,
+        deviceSizes: t,
+        qualities: r
+      }
+    }
+    if (void 0 === q) throw Object.defineProperty(Error("images.loaderFile detected but the file is missing default export.\nRead more: https://nextjs.org/docs/messages/invalid-images-config"), "__NEXT_ERROR_CODE", {
+      value: "E163",
+      enumerable: !1,
+      configurable: !0
+    });
+    let A = M.loader || q;
+    delete M.loader, delete M.srcSet;
+    let F = "__next_img_default" in A;
+    if (F) {
+      if ("custom" === D.loader) throw Object.defineProperty(Error(`Image with src "${e}" is missing "loader" prop.
+Read more: https://nextjs.org/docs/messages/next-image-missing-loader`), "__NEXT_ERROR_CODE", {
+        value: "E252",
+        enumerable: !1,
+        configurable: !0
+      })
+    } else {
+      let e = A;
+      A = t => {
+        let {
+          config: r,
+          ...n
+        } = t;
+        return e(n)
+      }
+    }
+    if (j) {
+      "fill" === j && (v = !0);
+      let e = {
+        intrinsic: {
+          maxWidth: "100%",
+          height: "auto"
+        },
+        responsive: {
+          width: "100%",
+          height: "auto"
+        }
+      } [j];
+      e && (y = {
+        ...y,
+        ...e
+      });
+      let r = {
+        responsive: "100vw",
+        fill: "100vw"
+      } [j];
+      r && !t && (t = r)
+    }
+    let H = "",
+      U = s(m),
+      X = s(g);
+    if ((B = e) && "object" == typeof B && (o(B) || void 0 !== B.src)) {
+      let t = o(e) ? e.default : e;
+      if (!t.src) throw Object.defineProperty(Error(`An object should only be passed to the image component src parameter if it comes from a static image import. It must include src. Received ${JSON.stringify(t)}`), "__NEXT_ERROR_CODE", {
+        value: "E460",
+        enumerable: !1,
+        configurable: !0
+      });
+      if (!t.height || !t.width) throw Object.defineProperty(Error(`An object should only be passed to the image component src parameter if it comes from a static image import. It must include height and width. Received ${JSON.stringify(t)}`), "__NEXT_ERROR_CODE", {
+        value: "E48",
+        enumerable: !1,
+        configurable: !0
+      });
+      if (T = t.blurWidth, N = t.blurHeight, _ = _ || t.blurDataURL, H = t.src, !v)
+        if (U || X) {
+          if (U && !X) {
+            let e = U / t.width;
+            X = Math.round(t.height * e)
+          } else if (!U && X) {
+            let e = X / t.height;
+            U = Math.round(t.width * e)
+          }
+        } else U = t.width, X = t.height
+    }
+    let W = !d && !c && ("lazy" === f || void 0 === f);
+    (!(e = "string" == typeof e ? e : H) || e.startsWith("data:") || e.startsWith("blob:")) && (r = !0, W = !1), D.unoptimized && (r = !0), F && !D.dangerouslyAllowSVG && e.split("?", 1)[0].endsWith(".svg") && (r = !0);
+    let K = s(p),
+      G = Object.assign(v ? {
+        position: "absolute",
+        height: "100%",
+        width: "100%",
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+        objectFit: R,
+        objectPosition: C
+      } : {}, z ? {} : {
+        color: "transparent"
+      }, y),
+      Q = V || "empty" === k ? null : "blur" === k ? `url("data:image/svg+xml;charset=utf-8,${(0,a.getImageBlurSvg)({widthInt:U,heightInt:X,blurWidth:T,blurHeight:N,blurDataURL:_||"",objectFit:G.objectFit})}")` : `url("${k}")`,
+      Y = l.includes(G.objectFit) ? "fill" === G.objectFit ? "100% 100%" : "cover" : G.objectFit,
+      J = Q ? {
+        backgroundSize: Y,
+        backgroundPosition: G.objectPosition || "50% 50%",
+        backgroundRepeat: "no-repeat",
+        backgroundImage: Q
+      } : {},
+      Z = function({
+        config: e,
+        src: t,
+        unoptimized: r,
+        width: a,
+        quality: i,
+        sizes: l,
+        loader: o
+      }) {
+        if (r) {
+          if (t.startsWith("/") && !t.startsWith("//")) {
+            let e = (0, n.getDeploymentId)();
+            if (e) {
+              let r = t.indexOf("?");
+              if (-1 !== r) {
+                let n = new URLSearchParams(t.slice(r + 1));
+                n.get("dpl") || (n.append("dpl", e), t = t.slice(0, r) + "?" + n.toString())
+              } else t += `?dpl=${e}`
+            }
+          }
+          return {
+            src: t,
+            srcSet: void 0,
+            sizes: void 0
+          }
+        }
+        let {
+          widths: s,
+          kind: u
+        } = function({
+          deviceSizes: e,
+          allSizes: t
+        }, r, n) {
+          if (n) {
+            let r = /(^|\s)(1?\d?\d)vw/g,
+              a = [];
+            for (let e; e = r.exec(n);) a.push(parseInt(e[2]));
+            if (a.length) {
+              let r = .01 * Math.min(...a);
+              return {
+                widths: t.filter(t => t >= e[0] * r),
+                kind: "w"
+              }
+            }
+            return {
+              widths: t,
+              kind: "w"
+            }
+          }
+          return "number" != typeof r ? {
+            widths: e,
+            kind: "w"
+          } : {
+            widths: [...new Set([r, 2 * r].map(e => t.find(t => t >= e) || t[t.length - 1]))],
+            kind: "x"
+          }
+        }(e, a, l), d = s.length - 1;
+        return {
+          sizes: l || "w" !== u ? l : "100vw",
+          srcSet: s.map((r, n) => `${o({config:e,src:t,quality:i,width:r})} ${"w"===u?r:n+1}${u}`).join(", "),
+          src: o({
+            config: e,
+            src: t,
+            quality: i,
+            width: s[d]
+          })
+        }
+      }({
+        config: D,
+        src: e,
+        unoptimized: r,
+        width: U,
+        quality: K,
+        sizes: t,
+        loader: A
+      }),
+      ee = W ? "lazy" : f;
+    return {
+      props: {
+        ...M,
+        loading: ee,
+        fetchPriority: P,
+        width: U,
+        height: X,
+        decoding: S,
+        className: h,
+        style: {
+          ...G,
+          ...J
+        },
+        sizes: Z.sizes,
+        srcSet: Z.srcSet,
+        src: b || Z.src
+      },
+      meta: {
+        unoptimized: r,
+        preload: c || d,
+        placeholder: k,
+        fill: v
+      }
+    }
+  }
+}, 98879, (e, t, r) => {
+  "use strict";
+  Object.defineProperty(r, "__esModule", {
+    value: !0
+  }), Object.defineProperty(r, "default", {
+    enumerable: !0,
+    get: function() {
+      return o
+    }
+  });
+  let n = e.r(71645),
+    a = "u" < typeof window,
+    i = a ? () => {} : n.useLayoutEffect,
+    l = a ? () => {} : n.useEffect;
+
+  function o(e) {
+    let {
+      headManager: t,
+      reduceComponentsToState: r
+    } = e;
+
+    function o() {
+      if (t && t.mountedInstances) {
+        let e = n.Children.toArray(Array.from(t.mountedInstances).filter(Boolean));
+        t.updateHead(r(e))
+      }
+    }
+    return a && (t?.mountedInstances?.add(e.children), o()), i(() => (t?.mountedInstances?.add(e.children), () => {
+      t?.mountedInstances?.delete(e.children)
+    })), i(() => (t && (t._pendingUpdate = o), () => {
+      t && (t._pendingUpdate = o)
+    })), l(() => (t && t._pendingUpdate && (t._pendingUpdate(), t._pendingUpdate = null), () => {
+      t && t._pendingUpdate && (t._pendingUpdate(), t._pendingUpdate = null)
+    })), null
+  }
+}, 25633, (e, t, r) => {
+  "use strict";
+  Object.defineProperty(r, "__esModule", {
+    value: !0
+  });
+  var n = {
+    default: function() {
+      return m
+    },
+    defaultHead: function() {
+      return c
+    }
+  };
+  for (var a in n) Object.defineProperty(r, a, {
+    enumerable: !0,
+    get: n[a]
+  });
+  let i = e.r(55682),
+    l = e.r(90809),
+    o = e.r(43476),
+    s = l._(e.r(71645)),
+    u = i._(e.r(98879)),
+    d = e.r(42732);
+
+  function c() {
+    return [(0, o.jsx)("meta", {
+      charSet: "utf-8"
+    }, "charset"), (0, o.jsx)("meta", {
+      name: "viewport",
+      content: "width=device-width"
+    }, "viewport")]
+  }
+
+  function f(e, t) {
+    return "string" == typeof t || "number" == typeof t ? e : t.type === s.default.Fragment ? e.concat(s.default.Children.toArray(t.props.children).reduce((e, t) => "string" == typeof t || "number" == typeof t ? e : e.concat(t), [])) : e.concat(t)
+  }
+  e.r(33525);
+  let h = ["name", "httpEquiv", "charSet", "itemProp"];
+
+  function p(e) {
+    let t, r, n, a;
+    return e.reduce(f, []).reverse().concat(c().reverse()).filter((t = new Set, r = new Set, n = new Set, a = {}, e => {
+      let i = !0,
+        l = !1;
+      if (e.key && "number" != typeof e.key && e.key.indexOf("$") > 0) {
+        l = !0;
+        let r = e.key.slice(e.key.indexOf("$") + 1);
+        t.has(r) ? i = !1 : t.add(r)
+      }
+      switch (e.type) {
+        case "title":
+        case "base":
+          r.has(e.type) ? i = !1 : r.add(e.type);
+          break;
+        case "meta":
+          for (let t = 0, r = h.length; t < r; t++) {
+            let r = h[t];
+            if (e.props.hasOwnProperty(r))
+              if ("charSet" === r) n.has(r) ? i = !1 : n.add(r);
+              else {
+                let t = e.props[r],
+                  n = a[r] || new Set;
+                ("name" !== r || !l) && n.has(t) ? i = !1 : (n.add(t), a[r] = n)
+              }
+          }
+      }
+      return i
+    })).reverse().map((e, t) => {
+      let r = e.key || t;
+      return s.default.cloneElement(e, {
+        key: r
+      })
+    })
+  }
+  let m = function({
+    children: e
+  }) {
+    let t = (0, s.useContext)(d.HeadManagerContext);
+    return (0, o.jsx)(u.default, {
+      reduceComponentsToState: p,
+      headManager: t,
+      children: e
+    })
+  };
+  ("function" == typeof r.default || "object" == typeof r.default && null !== r.default) && void 0 === r.default.__esModule && (Object.defineProperty(r.default, "__esModule", {
+    value: !0
+  }), Object.assign(r.default, r), t.exports = r.default)
+}, 18556, (e, t, r) => {
+  "use strict";
+  Object.defineProperty(r, "__esModule", {
+    value: !0
+  }), Object.defineProperty(r, "ImageConfigContext", {
+    enumerable: !0,
+    get: function() {
+      return i
+    }
+  });
+  let n = e.r(55682)._(e.r(71645)),
+    a = e.r(87690),
+    i = n.default.createContext(a.imageConfigDefault)
+}, 65856, (e, t, r) => {
+  "use strict";
+  Object.defineProperty(r, "__esModule", {
+    value: !0
+  }), Object.defineProperty(r, "RouterContext", {
+    enumerable: !0,
+    get: function() {
+      return n
+    }
+  });
+  let n = e.r(55682)._(e.r(71645)).default.createContext(null)
+}, 70965, (e, t, r) => {
+  "use strict";
+
+  function n(e, t) {
+    let r = e || 75;
+    return t?.qualities?.length ? t.qualities.reduce((e, t) => Math.abs(t - r) < Math.abs(e - r) ? t : e, t.qualities[0]) : r
+  }
+  Object.defineProperty(r, "__esModule", {
+    value: !0
+  }), Object.defineProperty(r, "findClosestQuality", {
+    enumerable: !0,
+    get: function() {
+      return n
+    }
+  })
+}, 1948, (e, t, r) => {
+  "use strict";
+  Object.defineProperty(r, "__esModule", {
+    value: !0
+  }), Object.defineProperty(r, "default", {
+    enumerable: !0,
+    get: function() {
+      return l
+    }
+  });
+  let n = e.r(70965),
+    a = e.r(43369);
+
+  function i({
+    config: e,
+    src: t,
+    width: r,
+    quality: l
+  }) {
+    let o = (0, a.getDeploymentId)();
+    if (t.startsWith("/") && !t.startsWith("//")) {
+      let e = t.indexOf("?");
+      if (-1 !== e) {
+        let r = new URLSearchParams(t.slice(e + 1)),
+          n = r.get("dpl");
+        if (n) {
+          o = n, r.delete("dpl");
+          let a = r.toString();
+          t = t.slice(0, e) + (a ? "?" + a : "")
+        }
+      }
+    }
+    if (t.startsWith("/") && t.includes("?") && e.localPatterns?.length === 1 && "**" === e.localPatterns[0].pathname && "" === e.localPatterns[0].search) throw Object.defineProperty(Error(`Image with src "${t}" is using a query string which is not configured in images.localPatterns.
+Read more: https://nextjs.org/docs/messages/next-image-unconfigured-localpatterns`), "__NEXT_ERROR_CODE", {
+      value: "E871",
+      enumerable: !1,
+      configurable: !0
+    });
+    let s = (0, n.findClosestQuality)(l, e);
+    return `${e.path}?url=${encodeURIComponent(t)}&w=${r}&q=${s}${t.startsWith("/")&&o?`&dpl=${o}`:""}`
+  }
+  i.__next_img_default = !0;
+  let l = i
+}, 18581, (e, t, r) => {
+  "use strict";
+  Object.defineProperty(r, "__esModule", {
+    value: !0
+  }), Object.defineProperty(r, "useMergedRef", {
+    enumerable: !0,
+    get: function() {
+      return a
+    }
+  });
+  let n = e.r(71645);
+
+  function a(e, t) {
+    let r = (0, n.useRef)(null),
+      a = (0, n.useRef)(null);
+    return (0, n.useCallback)(n => {
+      if (null === n) {
+        let e = r.current;
+        e && (r.current = null, e());
+        let t = a.current;
+        t && (a.current = null, t())
+      } else e && (r.current = i(e, n)), t && (a.current = i(t, n))
+    }, [e, t])
+  }
+
+  function i(e, t) {
+    if ("function" != typeof e) return e.current = t, () => {
+      e.current = null
+    };
+    {
+      let r = e(t);
+      return "function" == typeof r ? r : () => e(null)
+    }
+  }("function" == typeof r.default || "object" == typeof r.default && null !== r.default) && void 0 === r.default.__esModule && (Object.defineProperty(r.default, "__esModule", {
+    value: !0
+  }), Object.assign(r.default, r), t.exports = r.default)
+}, 5500, (e, t, r) => {
+  "use strict";
+  Object.defineProperty(r, "__esModule", {
+    value: !0
+  }), Object.defineProperty(r, "Image", {
+    enumerable: !0,
+    get: function() {
+      return w
+    }
+  });
+  let n = e.r(55682),
+    a = e.r(90809),
+    i = e.r(43476),
+    l = a._(e.r(71645)),
+    o = n._(e.r(74080)),
+    s = n._(e.r(25633)),
+    u = e.r(8927),
+    d = e.r(87690),
+    c = e.r(18556);
+  e.r(33525);
+  let f = e.r(65856),
+    h = n._(e.r(1948)),
+    p = e.r(18581),
+    m = {
+      deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+      imageSizes: [32, 48, 64, 96, 128, 256, 384],
+      qualities: [75],
+      path: "/_next/image",
+      loader: "default",
+      dangerouslyAllowSVG: !1,
+      unoptimized: !0
+    };
+
+  function g(e, t, r, n, a, i, l) {
+    let o = e?.src;
+    e && e["data-loaded-src"] !== o && (e["data-loaded-src"] = o, ("decode" in e ? e.decode() : Promise.resolve()).catch(() => {}).then(() => {
+      if (e.parentElement && e.isConnected) {
+        if ("empty" !== t && a(!0), r?.current) {
+          let t = new Event("load");
+          Object.defineProperty(t, "target", {
+            writable: !1,
+            value: e
+          });
+          let n = !1,
+            a = !1;
+          r.current({
+            ...t,
+            nativeEvent: t,
+            currentTarget: e,
+            target: e,
+            isDefaultPrevented: () => n,
+            isPropagationStopped: () => a,
+            persist: () => {},
+            preventDefault: () => {
+              n = !0, t.preventDefault()
+            },
+            stopPropagation: () => {
+              a = !0, t.stopPropagation()
+            }
+          })
+        }
+        n?.current && n.current(e)
+      }
+    }))
+  }
+
+  function v(e) {
+    return l.use ? {
+      fetchPriority: e
+    } : {
+      fetchpriority: e
+    }
+  }
+  "u" < typeof window && (globalThis.__NEXT_IMAGE_IMPORTED = !0);
+  let y = (0, l.forwardRef)(({
+    src: e,
+    srcSet: t,
+    sizes: r,
+    height: n,
+    width: a,
+    decoding: o,
+    className: s,
+    style: u,
+    fetchPriority: d,
+    placeholder: c,
+    loading: f,
+    unoptimized: h,
+    fill: m,
+    onLoadRef: y,
+    onLoadingCompleteRef: b,
+    setBlurComplete: w,
+    setShowAltText: x,
+    sizesInput: k,
+    onLoad: _,
+    onError: P,
+    ...S
+  }, j) => {
+    let R = (0, l.useCallback)(e => {
+        e && (P && (e.src = e.src), e.complete && g(e, c, y, b, w, h, k))
+      }, [e, c, y, b, w, P, h, k]),
+      C = (0, p.useMergedRef)(j, R);
+    return (0, i.jsx)("img", {
+      ...S,
+      ...v(d),
+      loading: f,
+      width: a,
+      height: n,
+      decoding: o,
+      "data-nimg": m ? "fill" : "1",
+      className: s,
+      style: u,
+      sizes: r,
+      srcSet: t,
+      src: e,
+      ref: C,
+      onLoad: e => {
+        g(e.currentTarget, c, y, b, w, h, k)
+      },
+      onError: e => {
+        x(!0), "empty" !== c && w(!0), P && P(e)
+      }
+    })
+  });
+
+  function b({
+    isAppRouter: e,
+    imgAttributes: t
+  }) {
+    let r = {
+      as: "image",
+      imageSrcSet: t.srcSet,
+      imageSizes: t.sizes,
+      crossOrigin: t.crossOrigin,
+      referrerPolicy: t.referrerPolicy,
+      ...v(t.fetchPriority)
+    };
+    return e && o.default.preload ? (o.default.preload(t.src, r), null) : (0, i.jsx)(s.default, {
+      children: (0, i.jsx)("link", {
+        rel: "preload",
+        href: t.srcSet ? void 0 : t.src,
+        ...r
+      }, "__nimg-" + t.src + t.srcSet + t.sizes)
+    })
+  }
+  let w = (0, l.forwardRef)((e, t) => {
+    let r = (0, l.useContext)(f.RouterContext),
+      n = (0, l.useContext)(c.ImageConfigContext),
+      a = (0, l.useMemo)(() => {
+        let e = m || n || d.imageConfigDefault,
+          t = [...e.deviceSizes, ...e.imageSizes].sort((e, t) => e - t),
+          r = e.deviceSizes.sort((e, t) => e - t),
+          a = e.qualities?.sort((e, t) => e - t);
+        return {
+          ...e,
+          allSizes: t,
+          deviceSizes: r,
+          qualities: a,
+          localPatterns: "u" < typeof window ? n?.localPatterns : e.localPatterns
+        }
+      }, [n]),
+      {
+        onLoad: o,
+        onLoadingComplete: s
+      } = e,
+      p = (0, l.useRef)(o);
+    (0, l.useEffect)(() => {
+      p.current = o
+    }, [o]);
+    let g = (0, l.useRef)(s);
+    (0, l.useEffect)(() => {
+      g.current = s
+    }, [s]);
+    let [v, w] = (0, l.useState)(!1), [x, k] = (0, l.useState)(!1), {
+      props: _,
+      meta: P
+    } = (0, u.getImgProps)(e, {
+      defaultLoader: h.default,
+      imgConf: a,
+      blurComplete: v,
+      showAltText: x
+    });
+    return (0, i.jsxs)(i.Fragment, {
+      children: [(0, i.jsx)(y, {
+        ..._,
+        unoptimized: P.unoptimized,
+        placeholder: P.placeholder,
+        fill: P.fill,
+        onLoadRef: p,
+        onLoadingCompleteRef: g,
+        setBlurComplete: w,
+        setShowAltText: k,
+        sizesInput: e.sizes,
+        ref: t
+      }), P.preload ? (0, i.jsx)(b, {
+        isAppRouter: !r,
+        imgAttributes: _
+      }) : null]
+    })
+  });
+  ("function" == typeof r.default || "object" == typeof r.default && null !== r.default) && void 0 === r.default.__esModule && (Object.defineProperty(r.default, "__esModule", {
+    value: !0
+  }), Object.assign(r.default, r), t.exports = r.default)
+}, 94909, (e, t, r) => {
+  "use strict";
+  Object.defineProperty(r, "__esModule", {
+    value: !0
+  });
+  var n = {
+    default: function() {
+      return d
+    },
+    getImageProps: function() {
+      return u
+    }
+  };
+  for (var a in n) Object.defineProperty(r, a, {
+    enumerable: !0,
+    get: n[a]
+  });
+  let i = e.r(55682),
+    l = e.r(8927),
+    o = e.r(5500),
+    s = i._(e.r(1948));
+
+  function u(e) {
+    let {
+      props: t
+    } = (0, l.getImgProps)(e, {
+      defaultLoader: s.default,
+      imgConf: {
+        deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+        imageSizes: [32, 48, 64, 96, 128, 256, 384],
+        qualities: [75],
+        path: "/_next/image",
+        loader: "default",
+        dangerouslyAllowSVG: !1,
+        unoptimized: !0
+      }
+    });
+    for (let [e, r] of Object.entries(t)) void 0 === r && delete t[e];
+    return {
+      props: t
+    }
+  }
+  let d = o.Image
+}, 57688, (e, t, r) => {
+  t.exports = e.r(94909)
+}, 80345, 81469, 78422, 38465, 88991, 1975, 71040, e => {
+  "use strict";
+  var t = e.i(68834),
+    r = e.i(79473),
+    n = e.i(48868),
+    a = e.i(75157);
+  let i = /(\d{3,4})\s*p/i,
+    l = {
+      youtube: "YouTube",
+      tiktok: "TikTok",
+      facebook: "Facebook",
+      instagram: "Instagram",
+      douyin: "Douyin",
+      bilibili: "Bilibili",
+      twitter: "Twitter/X",
+      x: "Twitter/X",
+      threads: "Threads",
+      vimeo: "Vimeo",
+      dailymotion: "Dailymotion",
+      pinterest: "Pinterest",
+      reddit: "Reddit",
+      twitch: "Twitch",
+      snapchat: "Snapchat",
+      linkedin: "LinkedIn",
+      tumblr: "Tumblr"
+    };
+
+  function o(e) {
+    let t = e.trim();
+    if (!t) return !1;
+    try {
+      let e = new URL(t);
+      return "http:" === e.protocol || "https:" === e.protocol
+    } catch {
+      return !1
+    }
+  }
+
+  function s(e) {
+    let t = e.filter(e => "video" === e.kind);
+    if (0 === t.length) return null;
+    let r = t.filter(e => "number" == typeof e.filesize && e.filesize > 0);
+    if (r.length > 0) return r.reduce((e, t) => t.filesize > e.filesize ? t : e);
+    let n = t.map(e => {
+      let t;
+      return {
+        format: e,
+        resolution: (t = e.label.match(i)) ? Number.parseInt(t[1], 10) : null
+      }
+    }).filter(e => null !== e.resolution).sort((e, t) => t.resolution - e.resolution);
+    return n.length > 0 ? n[0].format : t[0]
+  }
+
+  function u(e) {
+    return new Date(e.getFullYear(), e.getMonth(), e.getDate()).getTime()
+  }
+
+  function d(e) {
+    if ("string" == typeof e) return e;
+    if (e && "object" == typeof e) {
+      for (let t of ["code", "message", "error"]) {
+        let r = e[t];
+        if ("string" == typeof r && r.trim()) return r.trim()
+      }
+      return String(e)
+    }
+    return ""
+  }
+  e.s(["SUPPORTED_PLATFORM_NAMES", 0, ["YouTube", "TikTok", "Instagram", "Facebook", "Douyin", "Bilibili", "Twitter/X", "Threads"], "isSupportedPlatformUrl", 0, o, "pickBestPlatformFormat", 0, s, "platformSourceLabel", 0, function(e) {
+    let t = e.trim().toLowerCase();
+    return t ? l[t] ?? `${t[0].toUpperCase()}${t.slice(1)}` : ""
+  }], 81469);
+  let c = "Tính năng này chỉ khả dụng trong ứng dụng DichVideo trên máy tính.";
+
+  function f(e) {
+    let t = d(e);
+    return t.includes("platform_download_canceled") ? "Đã hủy tải." : t.includes("tauri_environment_required") ? c : t.includes("platform_download_url_forbidden") ? "Nền tảng từ chối địa chỉ tải của định dạng này. Hãy chọn chất lượng khác." : t.includes("platform_download_write_failed") ? "Không ghi được file tải về. Kiểm tra dung lượng đĩa và quyền ghi." : "Tải video thất bại. Thử lại sau."
+  }
+  e.s(["formatDownloadedAtLabel", 0, function(e, t = new Date) {
+    let r = new Date(e);
+    if (Number.isNaN(r.getTime())) return "";
+    let n = String(r.getHours()).padStart(2, "0"),
+      a = String(r.getMinutes()).padStart(2, "0"),
+      i = `${n}:${a}`,
+      l = Math.round((u(t) - u(r)) / 864e5);
+    if (0 === l) return `H\xf4m nay ${i}`;
+    if (1 === l) return `H\xf4m qua ${i}`;
+    let o = r.getFullYear(),
+      s = String(r.getMonth() + 1).padStart(2, "0"),
+      d = String(r.getDate()).padStart(2, "0");
+    return `${d}/${s}/${o} ${i}`
+  }, "platformChannelErrorMessage", 0, function(e) {
+    let t = d(e);
+    return t.includes("tauri_environment_required") ? c : t.includes("platform_url_invalid") ? "Đường dẫn không hợp lệ. Hãy dán đầy đủ địa chỉ kênh hoặc playlist." : "Không lấy được danh sách video. Kiểm tra lại đường dẫn hoặc thử lại."
+  }, "platformDownloadErrorMessage", 0, f, "platformDownloadProgressPercent", 0, function(e, t) {
+    return !t || t <= 0 ? null : Math.min(100, Math.round(e / t * 100))
+  }, "platformExtractErrorMessage", 0, function(e) {
+    let t = d(e);
+    return t.includes("tauri_environment_required") ? c : t.includes("platform_url_invalid") ? "Đường dẫn không hợp lệ. Hãy dán đầy đủ địa chỉ video." : "Không lấy được thông tin video. Kiểm tra lại đường dẫn hoặc thử lại."
+  }], 78422);
+  var h = e.i(65991),
+    p = e.i(44077);
+  e.i(89268);
+  var m = e.i(81341);
+
+  function g(e) {
+    let t = e?.trim();
+    return t ? (/^[a-zA-Z]:[\\/]/.test(t) || t.includes("\\") ? t.replace(/[\\/]+/g, "\\") : t).toLowerCase() : ""
+  }
+
+  function v(e) {
+    let t = new Set,
+      r = [];
+    for (let n of e) {
+      let e = g(n.filePath);
+      !e || t.has(e) || (t.add(e), r.push(n))
+    }
+    return r
+  }
+
+  function y(e) {
+    let t = Date.parse(e.downloadedAt);
+    return Number.isNaN(t) ? null : t
+  }
+
+  function b(e) {
+    return e.title.trim() || function(e) {
+      let t = e?.trim();
+      if (!t) return "";
+      let r = t.split(/[\\/]+/).filter(Boolean);
+      return r[r.length - 1] ?? ""
+    }(e.filePath) || "video"
+  }
+
+  function w(e, t) {
+    let r = new Set(t.queueVideoIds);
+    return e.map(e => {
+      let n = t.videos.find(t => {
+        var r, n;
+        let a, i;
+        return r = t.path, n = e.filePath, a = g(r), i = g(n), "" !== a && a === i
+      });
+      return n ? r.has(n.id) ? {
+        entry: e,
+        videoId: n.id,
+        action: "unavailable",
+        reason: "already_queued"
+      } : "idle" !== n.status || n.translatedVideoPath ? {
+        entry: e,
+        videoId: n.id,
+        action: "unavailable",
+        reason: "already_processed"
+      } : {
+        entry: e,
+        videoId: n.id,
+        action: "reuse"
+      } : {
+        entry: e,
+        videoId: null,
+        action: "import"
+      }
+    })
+  }
+
+  function x(e, t) {
+    return e.filter(e => e.action === t)
+  }
+  async function k(e) {
+    let t = (0, m.isTauri)(),
+      r = h.useVideoStore.getState(),
+      n = p.useQueueStore.getState(),
+      a = w(v(e), {
+        videos: r.videos,
+        queueVideoIds: (0, p.inFlightQueueVideoIds)(n.items)
+      }),
+      i = {
+        activeVideoId: null,
+        missingEntryIds: [],
+        failed: []
+      },
+      l = null,
+      o = [];
+    for (let e of x(a, "import")) {
+      let {
+        entry: r
+      } = e;
+      if (t && !await (0, m.fileExists)(r.filePath)) {
+        i.missingEntryIds.push(r.id);
+        continue
+      }
+      try {
+        let e = (0, p.inFlightQueueVideoIds)(p.useQueueStore.getState().items),
+          t = await h.useVideoStore.getState().addVideoFromFile(r.filePath, {
+            queueVideoIds: e
+          });
+        l = t, p.useQueueStore.getState().isVideoQueued(t) || o.push(t)
+      } catch (e) {
+        i.failed.push({
+          entryId: r.id,
+          filePath: r.filePath,
+          message: e instanceof Error ? e.message : String(e)
+        })
+      }
+    }
+    for (let e of x(a, "reuse")) {
+      let {
+        entry: r,
+        videoId: n
+      } = e;
+      if (n) {
+        if (t && !await (0, m.fileExists)(r.filePath)) {
+          i.missingEntryIds.push(r.id);
+          continue
+        }
+        l = n, h.useVideoStore.getState().dashboardDraftVideoIds.includes(n) || o.push(n)
+      }
+    }
+    return o.length > 0 && h.useVideoStore.getState().addDashboardDraftVideoIds(o), l && h.useVideoStore.getState().setActiveVideo(l), i.activeVideoId = l, i
+  }
+  e.s(["buildDownloadedImportPlan", 0, w, "downloadedImportPlanEntries", 0, x, "entryDisplayTitle", 0, b, "normalizeDownloadedVideoEntries", 0, v, "sortDownloadedVideoEntries", 0, function(e) {
+    return [...e].sort((e, t) => {
+      let r = y(e),
+        n = y(t);
+      return null === r && null === n ? b(e).localeCompare(b(t)) : null === r ? 1 : null === n ? -1 : n !== r ? n - r : b(e).localeCompare(b(t))
+    })
+  }, "unavailableReasonLabel", 0, function(e) {
+    switch (e) {
+      case "already_queued":
+        return "Đang xử lý";
+      case "already_processed":
+        return "Đã xử lý";
+      default:
+        return null
+    }
+  }], 38465), e.s(["importDownloadedVideos", 0, k], 88991);
+  var _ = e.i(86682);
+  async function P(e) {
+    if (!(0, m.isTauri)()) throw Error("tauri_environment_required");
+    return (0, _.invoke)("extract_platform_media", {
+      url: e
+    })
+  }
+  async function S(e, t) {
+    if (!(0, m.isTauri)()) throw Error("tauri_environment_required");
+    return (0, _.invoke)("list_platform_channel", {
+      url: e,
+      limit: t ?? null
+    })
+  }
+  async function j(e) {
+    if (!(0, m.isTauri)()) throw Error("tauri_environment_required");
+    return (0, _.invoke)("download_platform_media", {
+      ...e
+    })
+  }
+  let R = !1;
+  async function C(e) {
+    (0, m.isTauri)() && await (0, _.invoke)("cancel_platform_download", {
+      downloadId: e
+    })
+  }
+  async function E(e) {
+    if (!(0, m.isTauri)()) throw Error("tauri_environment_required");
+    await (0, _.invoke)("delete_platform_download_file", {
+      path: e
+    })
+  }
+  async function I(t) {
+    if (!(0, m.isTauri)()) return () => {};
+    let {
+      listen: r
+    } = await e.A(23982);
+    return r("platform-download-progress", e => {
+      t(e.payload)
+    })
+  }
+  e.s(["cancelPlatformDownload", 0, C, "deletePlatformDownloadFile", 0, E, "downloadPlatformMedia", 0, j, "extractPlatformMedia", 0, P, "listPlatformChannel", 0, S, "onPlatformDownloadProgress", 0, I, "warmPlatformConnection", 0, function() {
+    (0, m.isTauri)() && !R && (R = !0, (0, _.invoke)("warm_platform_connection").catch(() => void 0))
+  }], 1975);
+  let M = null;
+
+  function O(e, t) {
+    let r = {
+      ...e
+    };
+    return delete r[t], r
+  }
+  let B = null;
+
+  function D(e) {
+    if ("string" == typeof e) return e;
+    if (e && "object" == typeof e)
+      for (let t of ["code", "message", "error"]) {
+        let r = e[t];
+        if ("string" == typeof r && r.trim()) return r.trim()
+      }
+    return ""
+  }
+  let T = (0, t.create)()((0, r.persist)((e, t) => ({
+    history: [],
+    active: {},
+    channel: null,
+    channelLoading: !1,
+    channelItemStatus: {},
+    channelBatchRunning: !1,
+    channelBatchSummary: null,
+    linksBatch: [],
+    linksBatchRunning: !1,
+    linksBatchSummary: null,
+    extract: async e => P(e),
+    download: async ({
+      info: r,
+      format: n,
+      sourceUrl: i,
+      downloadId: l
+    }) => {
+      M ??= I(e => {
+        T.setState(t => {
+          let r = t.active[e.downloadId];
+          return r ? {
+            active: {
+              ...t.active,
+              [e.downloadId]: {
+                ...r,
+                downloadedBytes: e.downloadedBytes,
+                totalBytes: e.totalBytes
+              }
+            }
+          } : t
+        })
+      });
+      let o = l ?? (0, a.generateId)(),
+        s = new Date().toISOString();
+      e(e => ({
+        active: {
+          ...e.active,
+          [o]: {
+            title: r.title,
+            downloadedBytes: 0,
+            totalBytes: null
+          }
+        }
+      }));
+      try {
+        let a = await j({
+            downloadId: o,
+            formatUrl: n.url,
+            source: r.source,
+            title: r.title,
+            ext: n.ext
+          }),
+          l = {
+            id: o,
+            sourceUrl: i,
+            source: r.source,
+            title: r.title,
+            thumbnail: r.thumbnail,
+            author: r.author,
+            durationSeconds: r.duration,
+            formatLabel: n.label,
+            filePath: a,
+            fileSizeBytes: t().active[o]?.totalBytes ?? n.filesize,
+            downloadedAt: new Date().toISOString(),
+            rightsConfirmedAt: s
+          };
+        return e(e => ({
+          active: O(e.active, o),
+          history: [l, ...e.history]
+        })), k([l]).catch(e => {
+          console.warn("Auto-staging downloaded video failed:", e)
+        }), l
+      } catch (t) {
+        throw e(e => ({
+          active: O(e.active, o)
+        })), t
+      }
+    },
+    cancel: async e => {
+      await C(e)
+    },
+    removeFromHistory: t => {
+      e(e => ({
+        history: e.history.filter(e => e.id !== t)
+      }))
+    },
+    deleteDownloadedFile: async r => {
+      let n = t().history.find(e => e.id === r);
+      if (n) {
+        try {
+          await E(n.filePath)
+        } catch (t) {
+          if (String(t).includes("platform_download_file_missing")) return void e(e => ({
+            history: e.history.filter(e => e.id !== r)
+          }));
+          throw t
+        }
+        e(e => ({
+          history: e.history.filter(e => e.id !== r)
+        }))
+      }
+    },
+    listChannel: async r => {
+      if (t().channelBatchRunning) return;
+      let n = r.trim();
+      e({
+        channelLoading: !0,
+        channelBatchSummary: null
+      });
+      try {
+        let t = await S(n),
+          r = new Set,
+          a = t.items.map(e => ({
+            ...e,
+            url: e.url.trim()
+          })).filter(e => !(!o(e.url) || r.has(e.url)) && (r.add(e.url), !0));
+        e({
+          channel: {
+            sourceUrl: n,
+            source: t.source,
+            items: a
+          },
+          channelLoading: !1,
+          channelItemStatus: {}
+        })
+      } catch (t) {
+        throw e({
+          channel: null,
+          channelLoading: !1,
+          channelItemStatus: {}
+        }), t
+      }
+    },
+    clearChannel: () => {
+      t().channelBatchRunning || e({
+        channel: null,
+        channelItemStatus: {},
+        channelBatchSummary: null
+      })
+    },
+    downloadChannelItems: async ({
+      items: r
+    }) => {
+      if (t().channelBatchRunning || t().linksBatchRunning || 0 === r.length) return {
+        total: r.length,
+        completed: 0,
+        failed: 0,
+        canceled: !1
+      };
+      let n = {
+        cancelRequested: !1,
+        currentDownloadId: null
+      };
+      B = n;
+      let i = (t, r) => {
+        e(e => ({
+          channelItemStatus: {
+            ...e.channelItemStatus,
+            [t]: r
+          }
+        }))
+      };
+      for (let t of (e({
+          channelBatchRunning: !0,
+          channelBatchSummary: null
+        }), r)) i(t.url, {
+        status: "pending",
+        error: null
+      });
+      let l = 0,
+        o = 0;
+      for (let e of r) {
+        if (n.cancelRequested) break;
+        i(e.url, {
+          status: "downloading",
+          error: null
+        });
+        try {
+          let r = await t().extract(e.url);
+          if (n.cancelRequested) {
+            i(e.url, {
+              status: "pending",
+              error: null
+            });
+            break
+          }
+          let o = s(r.formats);
+          if (!o) throw Error("platform_download_failed");
+          let u = (0, a.generateId)();
+          n.currentDownloadId = u, await t().download({
+            info: r,
+            format: o,
+            sourceUrl: e.url,
+            downloadId: u
+          }), l += 1, i(e.url, {
+            status: "done",
+            error: null
+          })
+        } catch (r) {
+          let t = D(r);
+          if (n.cancelRequested || t.includes("platform_download_canceled")) {
+            i(e.url, {
+              status: "pending",
+              error: null
+            }), n.cancelRequested = !0;
+            break
+          }
+          o += 1, i(e.url, {
+            status: "error",
+            error: f(r)
+          })
+        } finally {
+          n.currentDownloadId = null
+        }
+      }
+      let u = {
+        total: r.length,
+        completed: l,
+        failed: o,
+        canceled: n.cancelRequested
+      };
+      return B = null, e({
+        channelBatchRunning: !1,
+        channelBatchSummary: u
+      }), u
+    },
+    cancelChannelBatch: () => {
+      let e = B;
+      if (!e || !t().channelBatchRunning) return;
+      e.cancelRequested = !0;
+      let r = e.currentDownloadId;
+      r && t().cancel(r)
+    },
+    downloadLinks: async ({
+      items: r
+    }) => {
+      if (t().channelBatchRunning || t().linksBatchRunning || 0 === r.length) return {
+        total: r.length,
+        completed: 0,
+        failed: 0,
+        canceled: !1
+      };
+      let n = {
+        cancelRequested: !1,
+        currentDownloadId: null
+      };
+      B = n;
+      let i = r.map(e => ({
+          url: e.url,
+          info: e.info,
+          status: "pending",
+          error: null
+        })),
+        l = new Set(i.map(e => e.url)),
+        o = (t, r, n = null) => {
+          e(e => ({
+            linksBatch: e.linksBatch.map(e => e.url === t ? {
+              ...e,
+              status: r,
+              error: n
+            } : e)
+          }))
+        };
+      e(e => ({
+        linksBatchRunning: !0,
+        linksBatchSummary: null,
+        linksBatch: [...i, ...e.linksBatch.filter(e => !l.has(e.url))]
+      }));
+      let u = 0,
+        d = 0;
+      for (let e of i) {
+        if (n.cancelRequested) {
+          o(e.url, "cancelled");
+          continue
+        }
+        o(e.url, "downloading");
+        try {
+          let r = s(e.info.formats);
+          if (!r) throw Error("platform_download_failed");
+          let i = (0, a.generateId)();
+          n.currentDownloadId = i, await t().download({
+            info: e.info,
+            format: r,
+            sourceUrl: e.url,
+            downloadId: i
+          }), u += 1, o(e.url, "done")
+        } catch (r) {
+          let t = D(r);
+          if (n.cancelRequested || t.includes("platform_download_canceled")) {
+            o(e.url, "cancelled"), n.cancelRequested = !0;
+            continue
+          }
+          d += 1, o(e.url, "error", f(r))
+        } finally {
+          n.currentDownloadId = null
+        }
+      }
+      let c = {
+        total: i.length,
+        completed: u,
+        failed: d,
+        canceled: n.cancelRequested
+      };
+      return B = null, e({
+        linksBatchRunning: !1,
+        linksBatchSummary: c
+      }), c
+    },
+    retryLinksItem: async e => {
+      let r = t().linksBatch.find(t => t.url === e && ("error" === t.status || "cancelled" === t.status));
+      r && await t().downloadLinks({
+        items: [{
+          url: r.url,
+          info: r.info
+        }]
+      })
+    },
+    cancelLinksBatch: () => {
+      let e = B;
+      if (!e || !t().linksBatchRunning) return;
+      e.cancelRequested = !0;
+      let r = e.currentDownloadId;
+      r && t().cancel(r)
+    },
+    clearLinksBatch: () => {
+      t().linksBatchRunning || e({
+        linksBatch: [],
+        linksBatchSummary: null
+      })
+    }
+  }), {
+    name: "dichvideo-platform-downloads",
+    storage: (0, r.createJSONStorage)(() => (0, n.createLegacyStorage)(() => localStorage, {})),
+    partialize: e => ({
+      history: e.history
+    })
+  }));
+  e.s(["usePlatformDownloadStore", 0, T], 80345);
+  var N = e.i(71645);
+  e.s(["useMissingPlatformFiles", 0, function(e) {
+    let [t, r] = (0, N.useState)(new Set);
+    return (0, N.useEffect)(() => {
+      let t = !0;
+      return (async () => {
+        let n = new Set;
+        await Promise.all(e.map(async e => {
+          await (0, m.fileExists)(e.filePath) || n.add(e.id)
+        })), t && r(n)
+      })(), () => {
+        t = !1
+      }
+    }, [e]), t
+  }], 71040)
+}, 68148, e => {
+  "use strict";
+  var t = e.i(43476),
+    r = e.i(71645),
+    n = e.i(30030),
+    a = e.i(48425),
+    i = "Progress",
+    [l, o] = (0, n.createContextScope)(i),
+    [s, u] = l(i),
+    d = r.forwardRef((e, r) => {
+      var n, i;
+      let {
+        __scopeProgress: l,
+        value: o = null,
+        max: u,
+        getValueLabel: d = h,
+        ...c
+      } = e;
+      (u || 0 === u) && !g(u) && console.error((n = `${u}`, `Invalid prop \`max\` of value \`${n}\` supplied to \`Progress\`. Only numbers greater than 0 are valid max values. Defaulting to \`100\`.`));
+      let f = g(u) ? u : 100;
+      null === o || v(o, f) || console.error((i = `${o}`, `Invalid prop \`value\` of value \`${i}\` supplied to \`Progress\`. The \`value\` prop must be:
+  - a positive number
+  - less than the value passed to \`max\` (or 100 if no \`max\` prop is set)
+  - \`null\` or \`undefined\` if the progress is indeterminate.
+
+Defaulting to \`null\`.`));
+      let y = v(o, f) ? o : null,
+        b = m(y) ? d(y, f) : void 0;
+      return (0, t.jsx)(s, {
+        scope: l,
+        value: y,
+        max: f,
+        children: (0, t.jsx)(a.Primitive.div, {
+          "aria-valuemax": f,
+          "aria-valuemin": 0,
+          "aria-valuenow": m(y) ? y : void 0,
+          "aria-valuetext": b,
+          role: "progressbar",
+          "data-state": p(y, f),
+          "data-value": y ?? void 0,
+          "data-max": f,
+          ...c,
+          ref: r
+        })
+      })
+    });
+  d.displayName = i;
+  var c = "ProgressIndicator",
+    f = r.forwardRef((e, r) => {
+      let {
+        __scopeProgress: n,
+        ...i
+      } = e, l = u(c, n);
+      return (0, t.jsx)(a.Primitive.div, {
+        "data-state": p(l.value, l.max),
+        "data-value": l.value ?? void 0,
+        "data-max": l.max,
+        ...i,
+        ref: r
+      })
+    });
+
+  function h(e, t) {
+    return `${Math.round(e/t*100)}%`
+  }
+
+  function p(e, t) {
+    return null == e ? "indeterminate" : e === t ? "complete" : "loading"
+  }
+
+  function m(e) {
+    return "number" == typeof e
+  }
+
+  function g(e) {
+    return m(e) && !isNaN(e) && e > 0
+  }
+
+  function v(e, t) {
+    return m(e) && !isNaN(e) && e <= t && e >= 0
+  }
+  f.displayName = c;
+  var y = e.i(75157);
+  let b = r.forwardRef(({
+    className: e,
+    value: r,
+    indicatorClassName: n,
+    ...a
+  }, i) => (0, t.jsx)(d, {
+    ref: i,
+    className: (0, y.cn)("relative h-2 w-full overflow-hidden rounded-full bg-secondary", e),
+    ...a,
+    children: (0, t.jsx)(f, {
+      className: (0, y.cn)("h-full w-full flex-1 bg-primary transition-all duration-300 ease-in-out", n),
+      style: {
+        transform: `translateX(-${100-(r||0)}%)`
+      }
+    })
+  }));
+  b.displayName = d.displayName, e.s(["Progress", 0, b], 68148)
+}, 32781, e => {
+  "use strict";
+  var t = e.i(58379);
+  e.s(["Loader2", () => t.default])
+}, 87486, e => {
+  "use strict";
+  var t = e.i(43476),
+    r = e.i(25913),
+    n = e.i(86011),
+    a = e.i(75157);
+  let i = (0, r.cva)("group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!", {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        "primary-soft": "border-primary/20 bg-primary/10 text-primary [a]:hover:bg-primary/20",
+        secondary: "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
+        destructive: "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
+        success: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 [a]:hover:bg-emerald-500/20",
+        warning: "border-yellow-500/20 bg-yellow-500/10 text-yellow-600 [a]:hover:bg-yellow-500/20",
+        info: "border-blue-500/20 bg-blue-500/10 text-blue-600 [a]:hover:bg-blue-500/20",
+        outline: "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
+        ghost: "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
+        link: "text-primary underline-offset-4 hover:underline"
+      }
+    },
+    defaultVariants: {
+      variant: "default"
+    }
+  });
+  e.s(["Badge", 0, function({
+    className: e,
+    variant: r = "default",
+    asChild: l = !1,
+    ...o
+  }) {
+    let s = l ? n.Slot.Root : "span";
+    return (0, t.jsx)(s, {
+      "data-slot": "badge",
+      "data-variant": r,
+      className: (0, a.cn)(i({
+        variant: r
+      }), e),
+      ...o
+    })
+  }])
+}, 95925, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("rotate-ccw", [
+    ["path", {
+      d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8",
+      key: "1357e3"
+    }],
+    ["path", {
+      d: "M3 3v5h5",
+      key: "1xhq8a"
+    }]
+  ]);
+  e.s(["RotateCcw", 0, t], 95925)
+}, 93698, e => {
+  "use strict";
+  var t = e.i(43957);
+  e.s(["CheckIcon", () => t.default])
+}, 69644, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("folder-open", [
+    ["path", {
+      d: "m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2",
+      key: "usdka0"
+    }]
+  ]);
+  e.s(["FolderOpen", 0, t], 69644)
+}, 21357, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("play", [
+    ["path", {
+      d: "M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z",
+      key: "10ikf1"
+    }]
+  ]);
+  e.s(["Play", 0, t], 21357)
+}, 57428, e => {
+  "use strict";
+  var t = e.i(43476),
+    r = e.i(71645),
+    n = e.i(20783),
+    a = e.i(30030),
+    i = e.i(81140),
+    l = e.i(69340),
+    o = e.i(99682),
+    s = e.i(35804),
+    u = e.i(96626),
+    d = e.i(48425),
+    c = "Checkbox",
+    [f, h] = (0, a.createContextScope)(c),
+    [p, m] = f(c);
+
+  function g(e) {
+    let {
+      __scopeCheckbox: n,
+      checked: a,
+      children: i,
+      defaultChecked: o,
+      disabled: s,
+      form: u,
+      name: d,
+      onCheckedChange: f,
+      required: h,
+      value: m = "on",
+      internal_do_not_use_render: g
+    } = e, [v, y] = (0, l.useControllableState)({
+      prop: a,
+      defaultProp: o ?? !1,
+      onChange: f,
+      caller: c
+    }), [b, w] = r.useState(null), [x, k] = r.useState(null), _ = r.useRef(!1), S = !b || !!u || !!b.closest("form"), j = {
+      checked: v,
+      disabled: s,
+      setChecked: y,
+      control: b,
+      setControl: w,
+      name: d,
+      form: u,
+      value: m,
+      hasConsumerStoppedPropagationRef: _,
+      required: h,
+      defaultChecked: !P(o) && o,
+      isFormControl: S,
+      bubbleInput: x,
+      setBubbleInput: k
+    };
+    return (0, t.jsx)(p, {
+      scope: n,
+      ...j,
+      children: "function" == typeof g ? g(j) : i
+    })
+  }
+  var v = "CheckboxTrigger",
+    y = r.forwardRef(({
+      __scopeCheckbox: e,
+      onKeyDown: a,
+      onClick: l,
+      ...o
+    }, s) => {
+      let {
+        control: u,
+        value: c,
+        disabled: f,
+        checked: h,
+        required: p,
+        setControl: g,
+        setChecked: y,
+        hasConsumerStoppedPropagationRef: b,
+        isFormControl: w,
+        bubbleInput: x
+      } = m(v, e), k = (0, n.useComposedRefs)(s, g), _ = r.useRef(h);
+      return r.useEffect(() => {
+        let e = u?.form;
+        if (e) {
+          let t = () => y(_.current);
+          return e.addEventListener("reset", t), () => e.removeEventListener("reset", t)
+        }
+      }, [u, y]), (0, t.jsx)(d.Primitive.button, {
+        type: "button",
+        role: "checkbox",
+        "aria-checked": P(h) ? "mixed" : h,
+        "aria-required": p,
+        "data-state": S(h),
+        "data-disabled": f ? "" : void 0,
+        disabled: f,
+        value: c,
+        ...o,
+        ref: k,
+        onKeyDown: (0, i.composeEventHandlers)(a, e => {
+          "Enter" === e.key && e.preventDefault()
+        }),
+        onClick: (0, i.composeEventHandlers)(l, e => {
+          y(e => !!P(e) || !e), x && w && (b.current = e.isPropagationStopped(), b.current || e.stopPropagation())
+        })
+      })
+    });
+  y.displayName = v;
+  var b = r.forwardRef((e, r) => {
+    let {
+      __scopeCheckbox: n,
+      name: a,
+      checked: i,
+      defaultChecked: l,
+      required: o,
+      disabled: s,
+      value: u,
+      onCheckedChange: d,
+      form: c,
+      ...f
+    } = e;
+    return (0, t.jsx)(g, {
+      __scopeCheckbox: n,
+      checked: i,
+      defaultChecked: l,
+      disabled: s,
+      required: o,
+      onCheckedChange: d,
+      name: a,
+      form: c,
+      value: u,
+      internal_do_not_use_render: ({
+        isFormControl: e
+      }) => (0, t.jsxs)(t.Fragment, {
+        children: [(0, t.jsx)(y, {
+          ...f,
+          ref: r,
+          __scopeCheckbox: n
+        }), e && (0, t.jsx)(_, {
+          __scopeCheckbox: n
+        })]
+      })
+    })
+  });
+  b.displayName = c;
+  var w = "CheckboxIndicator",
+    x = r.forwardRef((e, r) => {
+      let {
+        __scopeCheckbox: n,
+        forceMount: a,
+        ...i
+      } = e, l = m(w, n);
+      return (0, t.jsx)(u.Presence, {
+        present: a || P(l.checked) || !0 === l.checked,
+        children: (0, t.jsx)(d.Primitive.span, {
+          "data-state": S(l.checked),
+          "data-disabled": l.disabled ? "" : void 0,
+          ...i,
+          ref: r,
+          style: {
+            pointerEvents: "none",
+            ...e.style
+          }
+        })
+      })
+    });
+  x.displayName = w;
+  var k = "CheckboxBubbleInput",
+    _ = r.forwardRef(({
+      __scopeCheckbox: e,
+      ...a
+    }, i) => {
+      let {
+        control: l,
+        hasConsumerStoppedPropagationRef: u,
+        checked: c,
+        defaultChecked: f,
+        required: h,
+        disabled: p,
+        name: g,
+        value: v,
+        form: y,
+        bubbleInput: b,
+        setBubbleInput: w
+      } = m(k, e), x = (0, n.useComposedRefs)(i, w), _ = (0, o.usePrevious)(c), S = (0, s.useSize)(l);
+      r.useEffect(() => {
+        if (!b) return;
+        let e = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "checked").set,
+          t = !u.current;
+        if (_ !== c && e) {
+          let r = new Event("click", {
+            bubbles: t
+          });
+          b.indeterminate = P(c), e.call(b, !P(c) && c), b.dispatchEvent(r)
+        }
+      }, [b, _, c, u]);
+      let j = r.useRef(!P(c) && c);
+      return (0, t.jsx)(d.Primitive.input, {
+        type: "checkbox",
+        "aria-hidden": !0,
+        defaultChecked: f ?? j.current,
+        required: h,
+        disabled: p,
+        name: g,
+        value: v,
+        form: y,
+        ...a,
+        tabIndex: -1,
+        ref: x,
+        style: {
+          ...a.style,
+          ...S,
+          position: "absolute",
+          pointerEvents: "none",
+          opacity: 0,
+          margin: 0,
+          transform: "translateX(-100%)"
+        }
+      })
+    });
+
+  function P(e) {
+    return "indeterminate" === e
+  }
+
+  function S(e) {
+    return P(e) ? "indeterminate" : e ? "checked" : "unchecked"
+  }
+  _.displayName = k, e.s(["Checkbox", 0, b, "CheckboxIndicator", 0, x, "Indicator", 0, x, "Root", 0, b, "createCheckboxScope", 0, h, "unstable_BubbleInput", 0, _, "unstable_CheckboxBubbleInput", 0, _, "unstable_CheckboxProvider", 0, g, "unstable_CheckboxTrigger", 0, y, "unstable_Provider", 0, g, "unstable_Trigger", 0, y], 88474);
+  var j = e.i(88474),
+    j = j,
+    R = e.i(75157),
+    C = e.i(93698);
+  e.s(["Checkbox", 0, function({
+    className: e,
+    ...r
+  }) {
+    return (0, t.jsx)(j.Root, {
+      "data-slot": "checkbox",
+      className: (0, R.cn)("peer relative flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-input transition-colors outline-none group-has-disabled/field:opacity-50 after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 aria-invalid:aria-checked:border-primary dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground dark:data-checked:bg-primary", e),
+      ...r,
+      children: (0, t.jsx)(j.Indicator, {
+        "data-slot": "checkbox-indicator",
+        className: "grid place-content-center text-current transition-none [&>svg]:size-3.5",
+        children: (0, t.jsx)(C.CheckIcon, {})
+      })
+    })
+  }], 57428)
+}, 33658, 28523, e => {
+  "use strict";
+  var t = e.i(56420);
+  let r = (0, t.default)("file-headphone", [
+    ["path", {
+      d: "M4 6.835V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-.343",
+      key: "1vfytu"
+    }],
+    ["path", {
+      d: "M14 2v5a1 1 0 0 0 1 1h5",
+      key: "wfsgrz"
+    }],
+    ["path", {
+      d: "M2 19a2 2 0 0 1 4 0v1a2 2 0 0 1-4 0v-4a6 6 0 0 1 12 0v4a2 2 0 0 1-4 0v-1a2 2 0 0 1 4 0",
+      key: "1etmh7"
+    }]
+  ]);
+  e.s(["FileAudio", 0, r], 33658);
+  let n = (0, t.default)("pause", [
+    ["rect", {
+      x: "14",
+      y: "3",
+      width: "5",
+      height: "18",
+      rx: "1",
+      key: "kaeet6"
+    }],
+    ["rect", {
+      x: "5",
+      y: "3",
+      width: "5",
+      height: "18",
+      rx: "1",
+      key: "1wsw3u"
+    }]
+  ]);
+  e.s(["Pause", 0, n], 28523)
+}, 53138, e => {
+  "use strict";
+  var t = e.i(55566);
+  e.s(["AlertTriangle", () => t.default])
+}, 73474, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("trash-2", [
+    ["path", {
+      d: "M10 11v6",
+      key: "nco0om"
+    }],
+    ["path", {
+      d: "M14 11v6",
+      key: "outv1u"
+    }],
+    ["path", {
+      d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6",
+      key: "miytrc"
+    }],
+    ["path", {
+      d: "M3 6h18",
+      key: "d0wm0j"
+    }],
+    ["path", {
+      d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2",
+      key: "e791ji"
+    }]
+  ]);
+  e.s(["Trash2", 0, t], 73474)
+}, 43957, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("check", [
+    ["path", {
+      d: "M20 6 9 17l-5-5",
+      key: "1gmf2c"
+    }]
+  ]);
+  e.s(["default", 0, t])
+}, 99682, e => {
+  "use strict";
+  var t = e.i(71645);
+  e.s(["usePrevious", 0, function(e) {
+    let r = t.useRef({
+      value: e,
+      previous: e
+    });
+    return t.useMemo(() => (r.current.value !== e && (r.current.previous = r.current.value, r.current.value = e), r.current.previous), [e])
+  }])
+}, 77071, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("plus", [
+    ["path", {
+      d: "M5 12h14",
+      key: "1ays0h"
+    }],
+    ["path", {
+      d: "M12 5v14",
+      key: "s699le"
+    }]
+  ]);
+  e.s(["Plus", 0, t], 77071)
+}, 99375, e => {
+  "use strict";
+  var t = e.i(43476),
+    r = e.i(71645),
+    n = e.i(81140),
+    a = e.i(20783),
+    i = e.i(30030),
+    l = e.i(69340),
+    o = e.i(99682),
+    s = e.i(35804),
+    u = e.i(48425),
+    d = "Switch",
+    [c, f] = (0, i.createContextScope)(d),
+    [h, p] = c(d);
+
+  function m(e) {
+    let {
+      __scopeSwitch: n,
+      checked: a,
+      children: i,
+      defaultChecked: o,
+      disabled: s,
+      form: u,
+      name: c,
+      onCheckedChange: f,
+      required: p,
+      value: m = "on",
+      internal_do_not_use_render: g
+    } = e, [v, y] = (0, l.useControllableState)({
+      prop: a,
+      defaultProp: o ?? !1,
+      onChange: f,
+      caller: d
+    }), [b, w] = r.useState(null), [x, k] = r.useState(null), _ = r.useRef(!1), P = !b || !!u || !!b.closest("form"), S = {
+      checked: v,
+      setChecked: y,
+      disabled: s,
+      control: b,
+      setControl: w,
+      name: c,
+      form: u,
+      value: m,
+      hasConsumerStoppedPropagationRef: _,
+      required: p,
+      defaultChecked: o,
+      isFormControl: P,
+      bubbleInput: x,
+      setBubbleInput: k
+    };
+    return (0, t.jsx)(h, {
+      scope: n,
+      ...S,
+      children: "function" == typeof g ? g(S) : i
+    })
+  }
+  var g = "SwitchTrigger",
+    v = r.forwardRef(({
+      __scopeSwitch: e,
+      onClick: r,
+      ...i
+    }, l) => {
+      let {
+        value: o,
+        disabled: s,
+        checked: d,
+        required: c,
+        setControl: f,
+        setChecked: h,
+        hasConsumerStoppedPropagationRef: m,
+        isFormControl: v,
+        bubbleInput: y
+      } = p(g, e), b = (0, a.useComposedRefs)(l, f);
+      return (0, t.jsx)(u.Primitive.button, {
+        type: "button",
+        role: "switch",
+        "aria-checked": d,
+        "aria-required": c,
+        "data-state": _(d),
+        "data-disabled": s ? "" : void 0,
+        disabled: s,
+        value: o,
+        ...i,
+        ref: b,
+        onClick: (0, n.composeEventHandlers)(r, e => {
+          h(e => !e), y && v && (m.current = e.isPropagationStopped(), m.current || e.stopPropagation())
+        })
+      })
+    });
+  v.displayName = g;
+  var y = r.forwardRef((e, r) => {
+    let {
+      __scopeSwitch: n,
+      name: a,
+      checked: i,
+      defaultChecked: l,
+      required: o,
+      disabled: s,
+      value: u,
+      onCheckedChange: d,
+      form: c,
+      ...f
+    } = e;
+    return (0, t.jsx)(m, {
+      __scopeSwitch: n,
+      checked: i,
+      defaultChecked: l,
+      disabled: s,
+      required: o,
+      onCheckedChange: d,
+      name: a,
+      form: c,
+      value: u,
+      internal_do_not_use_render: ({
+        isFormControl: e
+      }) => (0, t.jsxs)(t.Fragment, {
+        children: [(0, t.jsx)(v, {
+          ...f,
+          ref: r,
+          __scopeSwitch: n
+        }), e && (0, t.jsx)(k, {
+          __scopeSwitch: n
+        })]
+      })
+    })
+  });
+  y.displayName = d;
+  var b = "SwitchThumb",
+    w = r.forwardRef((e, r) => {
+      let {
+        __scopeSwitch: n,
+        ...a
+      } = e, i = p(b, n);
+      return (0, t.jsx)(u.Primitive.span, {
+        "data-state": _(i.checked),
+        "data-disabled": i.disabled ? "" : void 0,
+        ...a,
+        ref: r
+      })
+    });
+  w.displayName = b;
+  var x = "SwitchBubbleInput",
+    k = r.forwardRef(({
+      __scopeSwitch: e,
+      ...n
+    }, i) => {
+      let {
+        control: l,
+        hasConsumerStoppedPropagationRef: d,
+        checked: c,
+        defaultChecked: f,
+        required: h,
+        disabled: m,
+        name: g,
+        value: v,
+        form: y,
+        bubbleInput: b,
+        setBubbleInput: w
+      } = p(x, e), k = (0, a.useComposedRefs)(i, w), _ = (0, o.usePrevious)(c), P = (0, s.useSize)(l);
+      r.useEffect(() => {
+        if (!b) return;
+        let e = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "checked").set,
+          t = !d.current;
+        if (_ !== c && e) {
+          let r = new Event("click", {
+            bubbles: t
+          });
+          e.call(b, c), b.dispatchEvent(r)
+        }
+      }, [b, _, c, d]);
+      let S = r.useRef(c);
+      return (0, t.jsx)(u.Primitive.input, {
+        type: "checkbox",
+        "aria-hidden": !0,
+        defaultChecked: f ?? S.current,
+        required: h,
+        disabled: m,
+        name: g,
+        value: v,
+        form: y,
+        ...n,
+        tabIndex: -1,
+        ref: k,
+        style: {
+          ...n.style,
+          ...P,
+          position: "absolute",
+          pointerEvents: "none",
+          opacity: 0,
+          margin: 0,
+          transform: "translateX(-100%)"
+        }
+      })
+    });
+
+  function _(e) {
+    return e ? "checked" : "unchecked"
+  }
+  k.displayName = x;
+  var P = e.i(75157);
+  let S = r.forwardRef(({
+    className: e,
+    ...r
+  }, n) => (0, t.jsx)(y, {
+    className: (0, P.cn)("peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input", e),
+    ...r,
+    ref: n,
+    children: (0, t.jsx)(w, {
+      className: (0, P.cn)("pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-4 data-[state=unchecked]:translate-x-0")
+    })
+  }));
+  S.displayName = y.displayName, e.s(["Switch", 0, S], 99375)
+}, 78001, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("copy-check", [
+    ["path", {
+      d: "m12 15 2 2 4-4",
+      key: "2c609p"
+    }],
+    ["rect", {
+      width: "14",
+      height: "14",
+      x: "8",
+      y: "8",
+      rx: "2",
+      ry: "2",
+      key: "17jyea"
+    }],
+    ["path", {
+      d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2",
+      key: "zix9uf"
+    }]
+  ]);
+  e.s(["CopyCheck", 0, t], 78001)
+}, 3091, e => {
+  "use strict";
+  var t = e.i(1046);
+  let r = new Set(["importing", "extracting_audio", "transcribing", "translating", "generating_tts", "exporting"]);
+
+  function n(e) {
+    return e ? e.split(/[\\/]/).filter(Boolean).pop() ?? e : ""
+  }
+
+  function a(e) {
+    if (!e) return 0;
+    let t = e instanceof Date ? e.getTime() : Date.parse(e);
+    return Number.isFinite(t) ? t : 0
+  }
+
+  function i(e) {
+    let t = a(e.processingCompletedAt);
+    return t > 0 ? t : a(e.addedAt) || l(e)
+  }
+
+  function l(e) {
+    return a(e.projectManifestUpdatedAt)
+  }
+  e.s(["compareHistoryActivityDesc", 0, function(e, t) {
+    let r = i(t) - i(e);
+    return 0 !== r ? r : l(t) - l(e)
+  }, "getCompactVideoTitle", 0, function(e, t = 34) {
+    let r = (n(e) || e).replace(/\.[^.]+$/, "");
+    return r.length <= t ? r : `${r.slice(0,t)}...`
+  }, "getHistoryOutputState", 0, function(e) {
+    if ("error" === e.status) {
+      let r = (0, t.getProcessingErrorDisplay)(e.processingError, e.processingErrorCode);
+      return {
+        kind: "error",
+        label: r.badgeLabel,
+        detail: r.detail,
+        variant: "destructive",
+        actionLabel: "start_fresh" === r.action ? "Bắt đầu lại" : "Mở project",
+        action: "start_fresh" === r.action ? "start_fresh" : void 0
+      }
+    }
+    if (r.has(e.status)) return {
+      kind: "processing",
+      label: "Đang xử lý",
+      detail: "Đang chạy trong hàng đợi",
+      variant: "warning",
+      actionLabel: "Mở project"
+    };
+    if (e.srtAudioOutputPath) return {
+      kind: "final",
+      label: "Audio hoàn chỉnh",
+      detail: n(e.srtAudioOutputPath),
+      path: e.srtAudioOutputPath,
+      variant: "success",
+      actionLabel: "Hiện file"
+    };
+    if (e.finalExportPath) return {
+      kind: "final",
+      label: "Video hoàn chỉnh",
+      detail: n(e.finalExportPath),
+      path: e.finalExportPath,
+      variant: "primary-soft",
+      actionLabel: "Mở kết quả"
+    };
+    if (e.cuePreviewPlanPath) return {
+      kind: "needs_export",
+      label: "Đã xử lý",
+      detail: "Bản hoàn chỉnh được ghép khi Xuất video.",
+      variant: "success",
+      actionLabel: "Mở project"
+    };
+    let a = e.draftVideoPath ?? e.translatedVideoPath;
+    if (a && e.subtitlesBurnedIntoVideo) return {
+      kind: "final",
+      label: "Video hoàn chỉnh",
+      detail: n(a),
+      path: a,
+      variant: "primary-soft",
+      actionLabel: "Mở kết quả"
+    };
+    let i = !!(e.displaySubtitlePath || e.translatedSubtitlePath);
+    return a && i ? {
+      kind: "needs_export",
+      label: "",
+      detail: "",
+      path: a,
+      variant: "secondary",
+      actionLabel: "Mở project"
+    } : i ? {
+      kind: "needs_export",
+      label: "Phụ đề sẵn sàng",
+      detail: "Video gốc + phụ đề",
+      variant: "success",
+      actionLabel: "Mở project"
+    } : a ? {
+      kind: "draft",
+      label: "",
+      detail: "",
+      path: a,
+      variant: "secondary",
+      actionLabel: "Mở project"
+    } : {
+      kind: "empty",
+      label: "Đã xử lý",
+      detail: "srt_audio" === e.projectType ? "Chưa có file audio" : "Chưa có file video",
+      variant: e.finalExportHasSubtitles ? "warning" : "outline",
+      actionLabel: "Mở project"
+    }
+  }, "hasHistoryResult", 0, function(e) {
+    return !!(e.srtAudioOutputPath || e.finalExportPath || e.draftVideoPath || e.translatedVideoPath || e.cuePreviewPlanPath || "completed" === e.status || "error" === e.status)
+  }])
+}, 59416, e => {
+  "use strict";
+  var t = e.i(43476),
+    r = e.i(71645),
+    n = e.i(69644),
+    a = e.i(32781),
+    i = e.i(19455);
+  e.i(89268);
+  var l = e.i(63126),
+    o = e.i(81341),
+    s = e.i(75157),
+    u = e.i(65991);
+  e.s(["ErrorSupportLogButton", 0, function({
+    videoId: e,
+    videoName: d,
+    compact: c = !1,
+    className: f
+  }) {
+    let h = (0, u.useVideoStore)(e => e.exportSupportBundle),
+      [p, m] = r.default.useState(!1),
+      g = async () => {
+        if (!p) {
+          m(!0);
+          try {
+            let t = await h(e);
+            await (0, l.openProjectSupportBundleFolder)(t.path)
+          } catch (e) {
+            await (0, o.showMessage)("Không tạo được log", e instanceof Error ? e.message : "Vui lòng thử lại sau.", "error")
+          } finally {
+            m(!1)
+          }
+        }
+      };
+    return (0, t.jsxs)(i.Button, {
+      type: "button",
+      variant: "outline",
+      size: c ? "icon" : "sm",
+      "aria-label": `Mở log ${d}`,
+      title: "Mở log hỗ trợ",
+      disabled: p,
+      onClick: () => void g(),
+      className: (0, s.cn)(c && "h-8 w-8", f),
+      children: [p ? (0, t.jsx)(a.Loader2, {
+        className: "h-3.5 w-3.5 animate-spin"
+      }) : (0, t.jsx)(n.FolderOpen, {
+        className: "h-3.5 w-3.5"
+      }), c ? null : "Mở log"]
+    })
+  }])
+}]);

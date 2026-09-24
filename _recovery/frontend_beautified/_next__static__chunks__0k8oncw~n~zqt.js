@@ -1,0 +1,1900 @@
+(globalThis.TURBOPACK || (globalThis.TURBOPACK = [])).push(["object" == typeof document ? document.currentScript : void 0, 87486, e => {
+  "use strict";
+  var t = e.i(43476),
+    r = e.i(25913),
+    n = e.i(86011),
+    o = e.i(75157);
+  let a = (0, r.cva)("group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!", {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        "primary-soft": "border-primary/20 bg-primary/10 text-primary [a]:hover:bg-primary/20",
+        secondary: "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
+        destructive: "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
+        success: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 [a]:hover:bg-emerald-500/20",
+        warning: "border-yellow-500/20 bg-yellow-500/10 text-yellow-600 [a]:hover:bg-yellow-500/20",
+        info: "border-blue-500/20 bg-blue-500/10 text-blue-600 [a]:hover:bg-blue-500/20",
+        outline: "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
+        ghost: "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
+        link: "text-primary underline-offset-4 hover:underline"
+      }
+    },
+    defaultVariants: {
+      variant: "default"
+    }
+  });
+  e.s(["Badge", 0, function({
+    className: e,
+    variant: r = "default",
+    asChild: i = !1,
+    ...l
+  }) {
+    let s = i ? n.Slot.Root : "span";
+    return (0, t.jsx)(s, {
+      "data-slot": "badge",
+      "data-variant": r,
+      className: (0, o.cn)(a({
+        variant: r
+      }), e),
+      ...l
+    })
+  }])
+}, 86318, e => {
+  "use strict";
+  var t = e.i(71645);
+  e.i(43476);
+  var r = t.createContext(void 0);
+  e.s(["useDirection", 0, function(e) {
+    let n = t.useContext(r);
+    return e || n || "ltr"
+  }])
+}, 3536, e => {
+  "use strict";
+  var t = e.i(71645),
+    r = 0,
+    n = null;
+
+  function o() {
+    let e = document.createElement("span");
+    return e.setAttribute("data-radix-focus-guard", ""), e.tabIndex = 0, e.style.outline = "none", e.style.opacity = "0", e.style.position = "fixed", e.style.pointerEvents = "none", e
+  }
+  e.s(["useFocusGuards", 0, function() {
+    t.useEffect(() => {
+      n || (n = {
+        start: o(),
+        end: o()
+      });
+      let {
+        start: e,
+        end: t
+      } = n;
+      return document.body.firstElementChild !== e && document.body.insertAdjacentElement("afterbegin", e), document.body.lastElementChild !== t && document.body.insertAdjacentElement("beforeend", t), r++, () => {
+        1 === r && (n?.start.remove(), n?.end.remove(), n = null), r = Math.max(0, r - 1)
+      }
+    }, [])
+  }])
+}, 65491, e => {
+  "use strict";
+  let t;
+  var r = e.i(71645),
+    n = e.i(20783),
+    o = e.i(48425),
+    a = e.i(30207),
+    i = e.i(43476),
+    l = "focusScope.autoFocusOnMount",
+    s = "focusScope.autoFocusOnUnmount",
+    c = {
+      bubbles: !1,
+      cancelable: !0
+    },
+    u = r.forwardRef((e, t) => {
+      let {
+        loop: u = !1,
+        trapped: h = !1,
+        onMountAutoFocus: m,
+        onUnmountAutoFocus: g,
+        ...b
+      } = e, [w, x] = r.useState(null), y = (0, a.useCallbackRef)(m), E = (0, a.useCallbackRef)(g), C = r.useRef(null), S = (0, n.useComposedRefs)(t, e => x(e)), R = r.useRef({
+        paused: !1,
+        pause() {
+          this.paused = !0
+        },
+        resume() {
+          this.paused = !1
+        }
+      }).current;
+      r.useEffect(() => {
+        if (h) {
+          let e = function(e) {
+              if (R.paused || !w) return;
+              let t = e.target;
+              w.contains(t) ? C.current = t : p(C.current, {
+                select: !0
+              })
+            },
+            t = function(e) {
+              if (R.paused || !w) return;
+              let t = e.relatedTarget;
+              null !== t && (w.contains(t) || p(C.current, {
+                select: !0
+              }))
+            };
+          document.addEventListener("focusin", e), document.addEventListener("focusout", t);
+          let r = new MutationObserver(function(e) {
+            if (document.activeElement === document.body)
+              for (let t of e) t.removedNodes.length > 0 && p(w)
+          });
+          return w && r.observe(w, {
+            childList: !0,
+            subtree: !0
+          }), () => {
+            document.removeEventListener("focusin", e), document.removeEventListener("focusout", t), r.disconnect()
+          }
+        }
+      }, [h, w, R.paused]), r.useEffect(() => {
+        if (w) {
+          v.add(R);
+          let e = document.activeElement;
+          if (!w.contains(e)) {
+            let t = new CustomEvent(l, c);
+            w.addEventListener(l, y), w.dispatchEvent(t), t.defaultPrevented || (function(e, {
+              select: t = !1
+            } = {}) {
+              let r = document.activeElement;
+              for (let n of e)
+                if (p(n, {
+                    select: t
+                  }), document.activeElement !== r) return
+            }(d(w).filter(e => "A" !== e.tagName), {
+              select: !0
+            }), document.activeElement === e && p(w))
+          }
+          return () => {
+            w.removeEventListener(l, y), setTimeout(() => {
+              let t = new CustomEvent(s, c);
+              w.addEventListener(s, E), w.dispatchEvent(t), t.defaultPrevented || p(e ?? document.body, {
+                select: !0
+              }), w.removeEventListener(s, E), v.remove(R)
+            }, 0)
+          }
+        }
+      }, [w, y, E, R]);
+      let N = r.useCallback(e => {
+        if (!u && !h || R.paused) return;
+        let t = "Tab" === e.key && !e.altKey && !e.ctrlKey && !e.metaKey,
+          r = document.activeElement;
+        if (t && r) {
+          var n;
+          let t, o = e.currentTarget,
+            [a, i] = [f(t = d(n = o), n), f(t.reverse(), n)];
+          a && i ? e.shiftKey || r !== i ? e.shiftKey && r === a && (e.preventDefault(), u && p(i, {
+            select: !0
+          })) : (e.preventDefault(), u && p(a, {
+            select: !0
+          })) : r === o && e.preventDefault()
+        }
+      }, [u, h, R.paused]);
+      return (0, i.jsx)(o.Primitive.div, {
+        tabIndex: -1,
+        ...b,
+        ref: S,
+        onKeyDown: N
+      })
+    });
+
+  function d(e) {
+    let t = [],
+      r = document.createTreeWalker(e, NodeFilter.SHOW_ELEMENT, {
+        acceptNode: e => {
+          let t = "INPUT" === e.tagName && "hidden" === e.type;
+          return e.disabled || e.hidden || t ? NodeFilter.FILTER_SKIP : e.tabIndex >= 0 ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP
+        }
+      });
+    for (; r.nextNode();) t.push(r.currentNode);
+    return t
+  }
+
+  function f(e, t) {
+    for (let r of e)
+      if (! function(e, {
+          upTo: t
+        }) {
+          if ("hidden" === getComputedStyle(e).visibility) return !0;
+          for (; e && (void 0 === t || e !== t);) {
+            if ("none" === getComputedStyle(e).display) return !0;
+            e = e.parentElement
+          }
+          return !1
+        }(r, {
+          upTo: t
+        })) return r
+  }
+
+  function p(e, {
+    select: t = !1
+  } = {}) {
+    if (e && e.focus) {
+      var r;
+      let n = document.activeElement;
+      e.focus({
+        preventScroll: !0
+      }), e !== n && (r = e) instanceof HTMLInputElement && "select" in r && t && e.select()
+    }
+  }
+  u.displayName = "FocusScope";
+  var v = (t = [], {
+    add(e) {
+      let r = t[0];
+      e !== r && r?.pause(), (t = h(t, e)).unshift(e)
+    },
+    remove(e) {
+      t = h(t, e), t[0]?.resume()
+    }
+  });
+
+  function h(e, t) {
+    let r = [...e],
+      n = r.indexOf(t);
+    return -1 !== n && r.splice(n, 1), r
+  }
+  e.s(["FocusScope", 0, u])
+}, 86312, e => {
+  "use strict";
+  var t = new WeakMap,
+    r = new WeakMap,
+    n = {},
+    o = 0,
+    a = function(e) {
+      return e && (e.host || a(e.parentNode))
+    },
+    i = function(e, i, l, s) {
+      var c = (Array.isArray(e) ? e : [e]).map(function(e) {
+        if (i.contains(e)) return e;
+        var t = a(e);
+        return t && i.contains(t) ? t : (console.error("aria-hidden", e, "in not contained inside", i, ". Doing nothing"), null)
+      }).filter(function(e) {
+        return !!e
+      });
+      n[l] || (n[l] = new WeakMap);
+      var u = n[l],
+        d = [],
+        f = new Set,
+        p = new Set(c),
+        v = function(e) {
+          !e || f.has(e) || (f.add(e), v(e.parentNode))
+        };
+      c.forEach(v);
+      var h = function(e) {
+        !e || p.has(e) || Array.prototype.forEach.call(e.children, function(e) {
+          if (f.has(e)) h(e);
+          else try {
+            var n = e.getAttribute(s),
+              o = null !== n && "false" !== n,
+              a = (t.get(e) || 0) + 1,
+              i = (u.get(e) || 0) + 1;
+            t.set(e, a), u.set(e, i), d.push(e), 1 === a && o && r.set(e, !0), 1 === i && e.setAttribute(l, "true"), o || e.setAttribute(s, "true")
+          } catch (t) {
+            console.error("aria-hidden: cannot operate on ", e, t)
+          }
+        })
+      };
+      return h(i), f.clear(), o++,
+        function() {
+          d.forEach(function(e) {
+            var n = t.get(e) - 1,
+              o = u.get(e) - 1;
+            t.set(e, n), u.set(e, o), n || (r.has(e) || e.removeAttribute(s), r.delete(e)), o || e.removeAttribute(l)
+          }), --o || (t = new WeakMap, t = new WeakMap, r = new WeakMap, n = {})
+        }
+    };
+  e.s(["hideOthers", 0, function(e, t, r) {
+    void 0 === r && (r = "data-aria-hidden");
+    var n = Array.from(Array.isArray(e) ? e : [e]),
+      o = t || ("u" < typeof document ? null : (Array.isArray(e) ? e[0] : e).ownerDocument.body);
+    return o ? (n.push.apply(n, Array.from(o.querySelectorAll("[aria-live], script"))), i(n, o, r, "aria-hidden")) : function() {
+      return null
+    }
+  }])
+}, 85369, e => {
+  "use strict";
+  var t, r, n, o, a, i, l, s = e.i(90571),
+    c = e.i(71645),
+    u = "right-scroll-bar-position",
+    d = "width-before-scroll-bar";
+
+  function f(e, t) {
+    return "function" == typeof e ? e(t) : e && (e.current = t), e
+  }
+  var p = "u" > typeof window ? c.useLayoutEffect : c.useEffect,
+    v = new WeakMap,
+    h = (void 0 === t && (t = {}), (void 0 === r && (r = function(e) {
+      return e
+    }), n = [], o = !1, a = {
+      read: function() {
+        if (o) throw Error("Sidecar: could not `read` from an `assigned` medium. `read` could be used only with `useMedium`.");
+        return n.length ? n[n.length - 1] : null
+      },
+      useMedium: function(e) {
+        var t = r(e, o);
+        return n.push(t),
+          function() {
+            n = n.filter(function(e) {
+              return e !== t
+            })
+          }
+      },
+      assignSyncMedium: function(e) {
+        for (o = !0; n.length;) {
+          var t = n;
+          n = [], t.forEach(e)
+        }
+        n = {
+          push: function(t) {
+            return e(t)
+          },
+          filter: function() {
+            return n
+          }
+        }
+      },
+      assignMedium: function(e) {
+        o = !0;
+        var t = [];
+        if (n.length) {
+          var r = n;
+          n = [], r.forEach(e), t = n
+        }
+        var a = function() {
+            var r = t;
+            t = [], r.forEach(e)
+          },
+          i = function() {
+            return Promise.resolve().then(a)
+          };
+        i(), n = {
+          push: function(e) {
+            t.push(e), i()
+          },
+          filter: function(e) {
+            return t = t.filter(e), n
+          }
+        }
+      }
+    }).options = (0, s.__assign)({
+      async: !0,
+      ssr: !1
+    }, t), a),
+    m = function() {},
+    g = c.forwardRef(function(e, t) {
+      var r, n, o, a, i = c.useRef(null),
+        l = c.useState({
+          onScrollCapture: m,
+          onWheelCapture: m,
+          onTouchMoveCapture: m
+        }),
+        u = l[0],
+        d = l[1],
+        g = e.forwardProps,
+        b = e.children,
+        w = e.className,
+        x = e.removeScrollBar,
+        y = e.enabled,
+        E = e.shards,
+        C = e.sideCar,
+        S = e.noRelative,
+        R = e.noIsolation,
+        N = e.inert,
+        P = e.allowPinchZoom,
+        j = e.as,
+        k = e.gapMode,
+        T = (0, s.__rest)(e, ["forwardProps", "children", "className", "removeScrollBar", "enabled", "shards", "sideCar", "noRelative", "noIsolation", "inert", "allowPinchZoom", "as", "gapMode"]),
+        A = (r = [i, t], n = function(e) {
+          return r.forEach(function(t) {
+            return f(t, e)
+          })
+        }, (o = (0, c.useState)(function() {
+          return {
+            value: null,
+            callback: n,
+            facade: {
+              get current() {
+                return o.value
+              },
+              set current(value) {
+                var e = o.value;
+                e !== value && (o.value = value, o.callback(value, e))
+              }
+            }
+          }
+        })[0]).callback = n, a = o.facade, p(function() {
+          var e = v.get(a);
+          if (e) {
+            var t = new Set(e),
+              n = new Set(r),
+              o = a.current;
+            t.forEach(function(e) {
+              n.has(e) || f(e, null)
+            }), n.forEach(function(e) {
+              t.has(e) || f(e, o)
+            })
+          }
+          v.set(a, r)
+        }, [r]), a),
+        _ = (0, s.__assign)((0, s.__assign)({}, T), u);
+      return c.createElement(c.Fragment, null, y && c.createElement(C, {
+        sideCar: h,
+        removeScrollBar: x,
+        shards: E,
+        noRelative: S,
+        noIsolation: R,
+        inert: N,
+        setCallbacks: d,
+        allowPinchZoom: !!P,
+        lockRef: i,
+        gapMode: k
+      }), g ? c.cloneElement(c.Children.only(b), (0, s.__assign)((0, s.__assign)({}, _), {
+        ref: A
+      })) : c.createElement(void 0 === j ? "div" : j, (0, s.__assign)({}, _, {
+        className: w,
+        ref: A
+      }), b))
+    });
+  g.defaultProps = {
+    enabled: !0,
+    removeScrollBar: !0,
+    inert: !1
+  }, g.classNames = {
+    fullWidth: d,
+    zeroRight: u
+  };
+  var b = function(e) {
+    var t = e.sideCar,
+      r = (0, s.__rest)(e, ["sideCar"]);
+    if (!t) throw Error("Sidecar: please provide `sideCar` property to import the right car");
+    var n = t.read();
+    if (!n) throw Error("Sidecar medium not found");
+    return c.createElement(n, (0, s.__assign)({}, r))
+  };
+  b.isSideCarExport = !0;
+  var w = function() {
+      var e = 0,
+        t = null;
+      return {
+        add: function(r) {
+          if (0 == e && (t = function() {
+              if (!document) return null;
+              var e = document.createElement("style");
+              e.type = "text/css";
+              var t = l || ("u" > typeof __webpack_nonce__ ? __webpack_nonce__ : void 0);
+              return t && e.setAttribute("nonce", t), e
+            }())) {
+            var n, o;
+            (n = t).styleSheet ? n.styleSheet.cssText = r : n.appendChild(document.createTextNode(r)), o = t, (document.head || document.getElementsByTagName("head")[0]).appendChild(o)
+          }
+          e++
+        },
+        remove: function() {
+          --e || !t || (t.parentNode && t.parentNode.removeChild(t), t = null)
+        }
+      }
+    },
+    x = function() {
+      var e = w();
+      return function(t, r) {
+        c.useEffect(function() {
+          return e.add(t),
+            function() {
+              e.remove()
+            }
+        }, [t && r])
+      }
+    },
+    y = function() {
+      var e = x();
+      return function(t) {
+        return e(t.styles, t.dynamic), null
+      }
+    },
+    E = {
+      left: 0,
+      top: 0,
+      right: 0,
+      gap: 0
+    },
+    C = function(e) {
+      return parseInt(e || "", 10) || 0
+    },
+    S = function(e) {
+      var t = window.getComputedStyle(document.body),
+        r = t["padding" === e ? "paddingLeft" : "marginLeft"],
+        n = t["padding" === e ? "paddingTop" : "marginTop"],
+        o = t["padding" === e ? "paddingRight" : "marginRight"];
+      return [C(r), C(n), C(o)]
+    },
+    R = function(e) {
+      if (void 0 === e && (e = "margin"), "u" < typeof window) return E;
+      var t = S(e),
+        r = document.documentElement.clientWidth,
+        n = window.innerWidth;
+      return {
+        left: t[0],
+        top: t[1],
+        right: t[2],
+        gap: Math.max(0, n - r + t[2] - t[0])
+      }
+    },
+    N = y(),
+    P = "data-scroll-locked",
+    j = function(e, t, r, n) {
+      var o = e.left,
+        a = e.top,
+        i = e.right,
+        l = e.gap;
+      return void 0 === r && (r = "margin"), "\n  .".concat("with-scroll-bars-hidden", " {\n   overflow: hidden ").concat(n, ";\n   padding-right: ").concat(l, "px ").concat(n, ";\n  }\n  body[").concat(P, "] {\n    overflow: hidden ").concat(n, ";\n    overscroll-behavior: contain;\n    ").concat([t && "position: relative ".concat(n, ";"), "margin" === r && "\n    padding-left: ".concat(o, "px;\n    padding-top: ").concat(a, "px;\n    padding-right: ").concat(i, "px;\n    margin-left:0;\n    margin-top:0;\n    margin-right: ").concat(l, "px ").concat(n, ";\n    "), "padding" === r && "padding-right: ".concat(l, "px ").concat(n, ";")].filter(Boolean).join(""), "\n  }\n  \n  .").concat(u, " {\n    right: ").concat(l, "px ").concat(n, ";\n  }\n  \n  .").concat(d, " {\n    margin-right: ").concat(l, "px ").concat(n, ";\n  }\n  \n  .").concat(u, " .").concat(u, " {\n    right: 0 ").concat(n, ";\n  }\n  \n  .").concat(d, " .").concat(d, " {\n    margin-right: 0 ").concat(n, ";\n  }\n  \n  body[").concat(P, "] {\n    ").concat("--removed-body-scroll-bar-size", ": ").concat(l, "px;\n  }\n")
+    },
+    k = function() {
+      var e = parseInt(document.body.getAttribute(P) || "0", 10);
+      return isFinite(e) ? e : 0
+    },
+    T = function() {
+      c.useEffect(function() {
+        return document.body.setAttribute(P, (k() + 1).toString()),
+          function() {
+            var e = k() - 1;
+            e <= 0 ? document.body.removeAttribute(P) : document.body.setAttribute(P, e.toString())
+          }
+      }, [])
+    },
+    A = function(e) {
+      var t = e.noRelative,
+        r = e.noImportant,
+        n = e.gapMode,
+        o = void 0 === n ? "margin" : n;
+      T();
+      var a = c.useMemo(function() {
+        return R(o)
+      }, [o]);
+      return c.createElement(N, {
+        styles: j(a, !t, o, r ? "" : "!important")
+      })
+    },
+    _ = !1;
+  if ("u" > typeof window) try {
+    var L = Object.defineProperty({}, "passive", {
+      get: function() {
+        return _ = !0, !0
+      }
+    });
+    window.addEventListener("test", L, L), window.removeEventListener("test", L, L)
+  } catch (e) {
+    _ = !1
+  }
+  var D = !!_ && {
+      passive: !1
+    },
+    M = function(e, t) {
+      if (!(e instanceof Element)) return !1;
+      var r = window.getComputedStyle(e);
+      return "hidden" !== r[t] && (r.overflowY !== r.overflowX || "TEXTAREA" === e.tagName || "visible" !== r[t])
+    },
+    I = function(e, t) {
+      var r = t.ownerDocument,
+        n = t;
+      do {
+        if ("u" > typeof ShadowRoot && n instanceof ShadowRoot && (n = n.host), O(e, n)) {
+          var o = F(e, n);
+          if (o[1] > o[2]) return !0
+        }
+        n = n.parentNode
+      } while (n && n !== r.body) return !1
+    },
+    O = function(e, t) {
+      return "v" === e ? M(t, "overflowY") : M(t, "overflowX")
+    },
+    F = function(e, t) {
+      return "v" === e ? [t.scrollTop, t.scrollHeight, t.clientHeight] : [t.scrollLeft, t.scrollWidth, t.clientWidth]
+    },
+    H = function(e, t, r, n, o) {
+      var a, i = (a = window.getComputedStyle(t).direction, "h" === e && "rtl" === a ? -1 : 1),
+        l = i * n,
+        s = r.target,
+        c = t.contains(s),
+        u = !1,
+        d = l > 0,
+        f = 0,
+        p = 0;
+      do {
+        if (!s) break;
+        var v = F(e, s),
+          h = v[0],
+          m = v[1] - v[2] - i * h;
+        (h || m) && O(e, s) && (f += m, p += h);
+        var g = s.parentNode;
+        s = g && g.nodeType === Node.DOCUMENT_FRAGMENT_NODE ? g.host : g
+      } while (!c && s !== document.body || c && (t.contains(s) || t === s)) return d && (o && 1 > Math.abs(f) || !o && l > f) ? u = !0 : !d && (o && 1 > Math.abs(p) || !o && -l > p) && (u = !0), u
+    },
+    W = function(e) {
+      return "changedTouches" in e ? [e.changedTouches[0].clientX, e.changedTouches[0].clientY] : [0, 0]
+    },
+    z = function(e) {
+      return [e.deltaX, e.deltaY]
+    },
+    B = function(e) {
+      return e && "current" in e ? e.current : e
+    },
+    U = 0,
+    X = [];
+  let Y = (i = function(e) {
+    var t = c.useRef([]),
+      r = c.useRef([0, 0]),
+      n = c.useRef(),
+      o = c.useState(U++)[0],
+      a = c.useState(y)[0],
+      i = c.useRef(e);
+    c.useEffect(function() {
+      i.current = e
+    }, [e]), c.useEffect(function() {
+      if (e.inert) {
+        document.body.classList.add("block-interactivity-".concat(o));
+        var t = (0, s.__spreadArray)([e.lockRef.current], (e.shards || []).map(B), !0).filter(Boolean);
+        return t.forEach(function(e) {
+            return e.classList.add("allow-interactivity-".concat(o))
+          }),
+          function() {
+            document.body.classList.remove("block-interactivity-".concat(o)), t.forEach(function(e) {
+              return e.classList.remove("allow-interactivity-".concat(o))
+            })
+          }
+      }
+    }, [e.inert, e.lockRef.current, e.shards]);
+    var l = c.useCallback(function(e, t) {
+        if ("touches" in e && 2 === e.touches.length || "wheel" === e.type && e.ctrlKey) return !i.current.allowPinchZoom;
+        var o, a = W(e),
+          l = r.current,
+          s = "deltaX" in e ? e.deltaX : l[0] - a[0],
+          c = "deltaY" in e ? e.deltaY : l[1] - a[1],
+          u = e.target,
+          d = Math.abs(s) > Math.abs(c) ? "h" : "v";
+        if ("touches" in e && "h" === d && "range" === u.type) return !1;
+        var f = window.getSelection(),
+          p = f && f.anchorNode;
+        if (p && (p === u || p.contains(u))) return !1;
+        var v = I(d, u);
+        if (!v) return !0;
+        if (v ? o = d : (o = "v" === d ? "h" : "v", v = I(d, u)), !v) return !1;
+        if (!n.current && "changedTouches" in e && (s || c) && (n.current = o), !o) return !0;
+        var h = n.current || o;
+        return H(h, t, e, "h" === h ? s : c, !0)
+      }, []),
+      u = c.useCallback(function(e) {
+        if (X.length && X[X.length - 1] === a) {
+          var r = "deltaY" in e ? z(e) : W(e),
+            n = t.current.filter(function(t) {
+              var n;
+              return t.name === e.type && (t.target === e.target || e.target === t.shadowParent) && (n = t.delta, n[0] === r[0] && n[1] === r[1])
+            })[0];
+          if (n && n.should) {
+            e.cancelable && e.preventDefault();
+            return
+          }
+          if (!n) {
+            var o = (i.current.shards || []).map(B).filter(Boolean).filter(function(t) {
+              return t.contains(e.target)
+            });
+            (o.length > 0 ? l(e, o[0]) : !i.current.noIsolation) && e.cancelable && e.preventDefault()
+          }
+        }
+      }, []),
+      d = c.useCallback(function(e, r, n, o) {
+        var a = {
+          name: e,
+          delta: r,
+          target: n,
+          should: o,
+          shadowParent: function(e) {
+            for (var t = null; null !== e;) e instanceof ShadowRoot && (t = e.host, e = e.host), e = e.parentNode;
+            return t
+          }(n)
+        };
+        t.current.push(a), setTimeout(function() {
+          t.current = t.current.filter(function(e) {
+            return e !== a
+          })
+        }, 1)
+      }, []),
+      f = c.useCallback(function(e) {
+        r.current = W(e), n.current = void 0
+      }, []),
+      p = c.useCallback(function(t) {
+        d(t.type, z(t), t.target, l(t, e.lockRef.current))
+      }, []),
+      v = c.useCallback(function(t) {
+        d(t.type, W(t), t.target, l(t, e.lockRef.current))
+      }, []);
+    c.useEffect(function() {
+      return X.push(a), e.setCallbacks({
+          onScrollCapture: p,
+          onWheelCapture: p,
+          onTouchMoveCapture: v
+        }), document.addEventListener("wheel", u, D), document.addEventListener("touchmove", u, D), document.addEventListener("touchstart", f, D),
+        function() {
+          X = X.filter(function(e) {
+            return e !== a
+          }), document.removeEventListener("wheel", u, D), document.removeEventListener("touchmove", u, D), document.removeEventListener("touchstart", f, D)
+        }
+    }, []);
+    var h = e.removeScrollBar,
+      m = e.inert;
+    return c.createElement(c.Fragment, null, m ? c.createElement(a, {
+      styles: "\n  .block-interactivity-".concat(o, " {pointer-events: none;}\n  .allow-interactivity-").concat(o, " {pointer-events: all;}\n")
+    }) : null, h ? c.createElement(A, {
+      noRelative: e.noRelative,
+      gapMode: e.gapMode
+    }) : null)
+  }, h.useMedium(i), b);
+  var K = c.forwardRef(function(e, t) {
+    return c.createElement(g, (0, s.__assign)({}, e, {
+      ref: t,
+      sideCar: Y
+    }))
+  });
+  K.classNames = g.classNames, e.s(["RemoveScroll", 0, K], 85369)
+}, 28623, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("sparkles", [
+    ["path", {
+      d: "M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z",
+      key: "1s2grr"
+    }],
+    ["path", {
+      d: "M20 2v4",
+      key: "1rf3ol"
+    }],
+    ["path", {
+      d: "M22 4h-4",
+      key: "gwowj6"
+    }],
+    ["circle", {
+      cx: "4",
+      cy: "20",
+      r: "2",
+      key: "6kqj1y"
+    }]
+  ]);
+  e.s(["Sparkles", 0, t], 28623)
+}, 41120, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("refresh-cw", [
+    ["path", {
+      d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8",
+      key: "v9h5vc"
+    }],
+    ["path", {
+      d: "M21 3v5h-5",
+      key: "1q7to0"
+    }],
+    ["path", {
+      d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16",
+      key: "3uifl3"
+    }],
+    ["path", {
+      d: "M8 16H3v5",
+      key: "1cv678"
+    }]
+  ]);
+  e.s(["RefreshCw", 0, t], 41120)
+}, 70152, e => {
+  "use strict";
+  e.s(["clamp", 0, function(e, [t, r]) {
+    return Math.min(r, Math.max(t, e))
+  }])
+}, 59684, e => {
+  "use strict";
+  var t = e.i(43476),
+    r = e.i(71645),
+    n = e.i(48425),
+    o = e.i(96626),
+    a = e.i(30030),
+    i = e.i(20783),
+    l = e.i(30207),
+    s = e.i(86318),
+    c = e.i(34620),
+    u = e.i(70152),
+    d = e.i(81140),
+    f = "ScrollArea",
+    [p, v] = (0, a.createContextScope)(f),
+    [h, m] = p(f),
+    g = r.forwardRef((e, o) => {
+      let {
+        __scopeScrollArea: a,
+        type: l = "hover",
+        dir: c,
+        scrollHideDelay: u = 600,
+        ...d
+      } = e, [f, p] = r.useState(null), [v, m] = r.useState(null), [g, b] = r.useState(null), [w, x] = r.useState(null), [y, E] = r.useState(null), [C, S] = r.useState(0), [R, N] = r.useState(0), [P, j] = r.useState(!1), [k, T] = r.useState(!1), A = (0, i.useComposedRefs)(o, e => p(e)), _ = (0, s.useDirection)(c);
+      return (0, t.jsx)(h, {
+        scope: a,
+        type: l,
+        dir: _,
+        scrollHideDelay: u,
+        scrollArea: f,
+        viewport: v,
+        onViewportChange: m,
+        content: g,
+        onContentChange: b,
+        scrollbarX: w,
+        onScrollbarXChange: x,
+        scrollbarXEnabled: P,
+        onScrollbarXEnabledChange: j,
+        scrollbarY: y,
+        onScrollbarYChange: E,
+        scrollbarYEnabled: k,
+        onScrollbarYEnabledChange: T,
+        onCornerWidthChange: S,
+        onCornerHeightChange: N,
+        children: (0, t.jsx)(n.Primitive.div, {
+          dir: _,
+          ...d,
+          ref: A,
+          style: {
+            position: "relative",
+            "--radix-scroll-area-corner-width": C + "px",
+            "--radix-scroll-area-corner-height": R + "px",
+            ...e.style
+          }
+        })
+      })
+    });
+  g.displayName = f;
+  var b = "ScrollAreaViewport",
+    w = r.forwardRef((e, o) => {
+      let {
+        __scopeScrollArea: a,
+        children: l,
+        nonce: s,
+        ...c
+      } = e, u = m(b, a), d = r.useRef(null), f = (0, i.useComposedRefs)(o, d, u.onViewportChange);
+      return (0, t.jsxs)(t.Fragment, {
+        children: [(0, t.jsx)(x, {
+          nonce: s
+        }), (0, t.jsx)(n.Primitive.div, {
+          "data-radix-scroll-area-viewport": "",
+          ...c,
+          ref: f,
+          style: {
+            overflowX: u.scrollbarXEnabled ? "scroll" : "hidden",
+            overflowY: u.scrollbarYEnabled ? "scroll" : "hidden",
+            ...e.style
+          },
+          children: (0, t.jsx)("div", {
+            ref: u.onContentChange,
+            style: {
+              minWidth: "100%",
+              display: "table"
+            },
+            children: l
+          })
+        })]
+      })
+    });
+  w.displayName = b;
+  var x = r.memo(({
+      nonce: e
+    }) => (0, t.jsx)("style", {
+      dangerouslySetInnerHTML: {
+        __html: "[data-radix-scroll-area-viewport]{scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}[data-radix-scroll-area-viewport]::-webkit-scrollbar{display:none}"
+      },
+      nonce: e
+    }), (e, t) => e.nonce === t.nonce),
+    y = "ScrollAreaScrollbar",
+    E = r.forwardRef((e, n) => {
+      let {
+        forceMount: o,
+        ...a
+      } = e, i = m(y, e.__scopeScrollArea), {
+        onScrollbarXEnabledChange: l,
+        onScrollbarYEnabledChange: s
+      } = i, c = "horizontal" === e.orientation;
+      return r.useEffect(() => (c ? l(!0) : s(!0), () => {
+        c ? l(!1) : s(!1)
+      }), [c, l, s]), "hover" === i.type ? (0, t.jsx)(C, {
+        ...a,
+        ref: n,
+        forceMount: o
+      }) : "scroll" === i.type ? (0, t.jsx)(S, {
+        ...a,
+        ref: n,
+        forceMount: o
+      }) : "auto" === i.type ? (0, t.jsx)(R, {
+        ...a,
+        ref: n,
+        forceMount: o
+      }) : "always" === i.type ? (0, t.jsx)(N, {
+        ...a,
+        ref: n,
+        "data-state": "visible"
+      }) : null
+    });
+  E.displayName = y;
+  var C = r.forwardRef((e, n) => {
+      let {
+        forceMount: a,
+        ...i
+      } = e, l = m(y, e.__scopeScrollArea), [s, c] = r.useState(!1);
+      return r.useEffect(() => {
+        let e = l.scrollArea,
+          t = 0;
+        if (e) {
+          let r = () => {
+              window.clearTimeout(t), c(!0)
+            },
+            n = () => {
+              t = window.setTimeout(() => c(!1), l.scrollHideDelay)
+            };
+          return e.addEventListener("pointerenter", r), e.addEventListener("pointerleave", n), () => {
+            window.clearTimeout(t), e.removeEventListener("pointerenter", r), e.removeEventListener("pointerleave", n)
+          }
+        }
+      }, [l.scrollArea, l.scrollHideDelay]), (0, t.jsx)(o.Presence, {
+        present: a || s,
+        children: (0, t.jsx)(R, {
+          "data-state": s ? "visible" : "hidden",
+          ...i,
+          ref: n
+        })
+      })
+    }),
+    S = r.forwardRef((e, n) => {
+      var a;
+      let {
+        forceMount: i,
+        ...l
+      } = e, s = m(y, e.__scopeScrollArea), c = "horizontal" === e.orientation, u = X(() => p("SCROLL_END"), 100), [f, p] = (a = {
+        hidden: {
+          SCROLL: "scrolling"
+        },
+        scrolling: {
+          SCROLL_END: "idle",
+          POINTER_ENTER: "interacting"
+        },
+        interacting: {
+          SCROLL: "interacting",
+          POINTER_LEAVE: "idle"
+        },
+        idle: {
+          HIDE: "hidden",
+          SCROLL: "scrolling",
+          POINTER_ENTER: "interacting"
+        }
+      }, r.useReducer((e, t) => a[e][t] ?? e, "hidden"));
+      return r.useEffect(() => {
+        if ("idle" === f) {
+          let e = window.setTimeout(() => p("HIDE"), s.scrollHideDelay);
+          return () => window.clearTimeout(e)
+        }
+      }, [f, s.scrollHideDelay, p]), r.useEffect(() => {
+        let e = s.viewport,
+          t = c ? "scrollLeft" : "scrollTop";
+        if (e) {
+          let r = e[t],
+            n = () => {
+              let n = e[t];
+              r !== n && (p("SCROLL"), u()), r = n
+            };
+          return e.addEventListener("scroll", n), () => e.removeEventListener("scroll", n)
+        }
+      }, [s.viewport, c, p, u]), (0, t.jsx)(o.Presence, {
+        present: i || "hidden" !== f,
+        children: (0, t.jsx)(N, {
+          "data-state": "hidden" === f ? "hidden" : "visible",
+          ...l,
+          ref: n,
+          onPointerEnter: (0, d.composeEventHandlers)(e.onPointerEnter, () => p("POINTER_ENTER")),
+          onPointerLeave: (0, d.composeEventHandlers)(e.onPointerLeave, () => p("POINTER_LEAVE"))
+        })
+      })
+    }),
+    R = r.forwardRef((e, n) => {
+      let a = m(y, e.__scopeScrollArea),
+        {
+          forceMount: i,
+          ...l
+        } = e,
+        [s, c] = r.useState(!1),
+        u = "horizontal" === e.orientation,
+        d = X(() => {
+          if (a.viewport) {
+            let e = a.viewport.offsetWidth < a.viewport.scrollWidth,
+              t = a.viewport.offsetHeight < a.viewport.scrollHeight;
+            c(u ? e : t)
+          }
+        }, 10);
+      return Y(a.viewport, d), Y(a.content, d), (0, t.jsx)(o.Presence, {
+        present: i || s,
+        children: (0, t.jsx)(N, {
+          "data-state": s ? "visible" : "hidden",
+          ...l,
+          ref: n
+        })
+      })
+    }),
+    N = r.forwardRef((e, n) => {
+      let {
+        orientation: o = "vertical",
+        ...a
+      } = e, i = m(y, e.__scopeScrollArea), l = r.useRef(null), s = r.useRef(0), [c, u] = r.useState({
+        content: 0,
+        viewport: 0,
+        scrollbar: {
+          size: 0,
+          paddingStart: 0,
+          paddingEnd: 0
+        }
+      }), d = H(c.viewport, c.content), f = {
+        ...a,
+        sizes: c,
+        onSizesChange: u,
+        hasThumb: !!(d > 0 && d < 1),
+        onThumbChange: e => l.current = e,
+        onThumbPointerUp: () => s.current = 0,
+        onThumbPointerDown: e => s.current = e
+      };
+
+      function p(e, t) {
+        return function(e, t, r, n = "ltr") {
+          let o = W(r),
+            a = t || o / 2,
+            i = r.scrollbar.paddingStart + a,
+            l = r.scrollbar.size - r.scrollbar.paddingEnd - (o - a),
+            s = r.content - r.viewport;
+          return B([i, l], "ltr" === n ? [0, s] : [-1 * s, 0])(e)
+        }(e, s.current, c, t)
+      }
+      return "horizontal" === o ? (0, t.jsx)(P, {
+        ...f,
+        ref: n,
+        onThumbPositionChange: () => {
+          if (i.viewport && l.current) {
+            let e = z(i.viewport.scrollLeft, c, i.dir);
+            l.current.style.transform = `translate3d(${e}px, 0, 0)`
+          }
+        },
+        onWheelScroll: e => {
+          i.viewport && (i.viewport.scrollLeft = e)
+        },
+        onDragScroll: e => {
+          i.viewport && (i.viewport.scrollLeft = p(e, i.dir))
+        }
+      }) : "vertical" === o ? (0, t.jsx)(j, {
+        ...f,
+        ref: n,
+        onThumbPositionChange: () => {
+          if (i.viewport && l.current) {
+            let e = z(i.viewport.scrollTop, c);
+            l.current.style.transform = `translate3d(0, ${e}px, 0)`
+          }
+        },
+        onWheelScroll: e => {
+          i.viewport && (i.viewport.scrollTop = e)
+        },
+        onDragScroll: e => {
+          i.viewport && (i.viewport.scrollTop = p(e))
+        }
+      }) : null
+    }),
+    P = r.forwardRef((e, n) => {
+      let {
+        sizes: o,
+        onSizesChange: a,
+        ...l
+      } = e, s = m(y, e.__scopeScrollArea), [c, u] = r.useState(), d = r.useRef(null), f = (0, i.useComposedRefs)(n, d, s.onScrollbarXChange);
+      return r.useEffect(() => {
+        d.current && u(getComputedStyle(d.current))
+      }, [d]), (0, t.jsx)(A, {
+        "data-orientation": "horizontal",
+        ...l,
+        ref: f,
+        sizes: o,
+        style: {
+          bottom: 0,
+          left: "rtl" === s.dir ? "var(--radix-scroll-area-corner-width)" : 0,
+          right: "ltr" === s.dir ? "var(--radix-scroll-area-corner-width)" : 0,
+          "--radix-scroll-area-thumb-width": W(o) + "px",
+          ...e.style
+        },
+        onThumbPointerDown: t => e.onThumbPointerDown(t.x),
+        onDragScroll: t => e.onDragScroll(t.x),
+        onWheelScroll: (t, r) => {
+          if (s.viewport) {
+            var n, o;
+            let a = s.viewport.scrollLeft + t.deltaX;
+            e.onWheelScroll(a), n = a, o = r, n > 0 && n < o && t.preventDefault()
+          }
+        },
+        onResize: () => {
+          d.current && s.viewport && c && a({
+            content: s.viewport.scrollWidth,
+            viewport: s.viewport.offsetWidth,
+            scrollbar: {
+              size: d.current.clientWidth,
+              paddingStart: F(c.paddingLeft),
+              paddingEnd: F(c.paddingRight)
+            }
+          })
+        }
+      })
+    }),
+    j = r.forwardRef((e, n) => {
+      let {
+        sizes: o,
+        onSizesChange: a,
+        ...l
+      } = e, s = m(y, e.__scopeScrollArea), [c, u] = r.useState(), d = r.useRef(null), f = (0, i.useComposedRefs)(n, d, s.onScrollbarYChange);
+      return r.useEffect(() => {
+        d.current && u(getComputedStyle(d.current))
+      }, [d]), (0, t.jsx)(A, {
+        "data-orientation": "vertical",
+        ...l,
+        ref: f,
+        sizes: o,
+        style: {
+          top: 0,
+          right: "ltr" === s.dir ? 0 : void 0,
+          left: "rtl" === s.dir ? 0 : void 0,
+          bottom: "var(--radix-scroll-area-corner-height)",
+          "--radix-scroll-area-thumb-height": W(o) + "px",
+          ...e.style
+        },
+        onThumbPointerDown: t => e.onThumbPointerDown(t.y),
+        onDragScroll: t => e.onDragScroll(t.y),
+        onWheelScroll: (t, r) => {
+          if (s.viewport) {
+            var n, o;
+            let a = s.viewport.scrollTop + t.deltaY;
+            e.onWheelScroll(a), n = a, o = r, n > 0 && n < o && t.preventDefault()
+          }
+        },
+        onResize: () => {
+          d.current && s.viewport && c && a({
+            content: s.viewport.scrollHeight,
+            viewport: s.viewport.offsetHeight,
+            scrollbar: {
+              size: d.current.clientHeight,
+              paddingStart: F(c.paddingTop),
+              paddingEnd: F(c.paddingBottom)
+            }
+          })
+        }
+      })
+    }),
+    [k, T] = p(y),
+    A = r.forwardRef((e, o) => {
+      let {
+        __scopeScrollArea: a,
+        sizes: s,
+        hasThumb: c,
+        onThumbChange: u,
+        onThumbPointerUp: f,
+        onThumbPointerDown: p,
+        onThumbPositionChange: v,
+        onDragScroll: h,
+        onWheelScroll: g,
+        onResize: b,
+        ...w
+      } = e, x = m(y, a), [E, C] = r.useState(null), S = (0, i.useComposedRefs)(o, e => C(e)), R = r.useRef(null), N = r.useRef(""), P = x.viewport, j = s.content - s.viewport, T = (0, l.useCallbackRef)(g), A = (0, l.useCallbackRef)(v), _ = X(b, 10);
+
+      function L(e) {
+        R.current && h({
+          x: e.clientX - R.current.left,
+          y: e.clientY - R.current.top
+        })
+      }
+      return r.useEffect(() => {
+        let e = e => {
+          let t = e.target;
+          E?.contains(t) && T(e, j)
+        };
+        return document.addEventListener("wheel", e, {
+          passive: !1
+        }), () => document.removeEventListener("wheel", e, {
+          passive: !1
+        })
+      }, [P, E, j, T]), r.useEffect(A, [s, A]), Y(E, _), Y(x.content, _), (0, t.jsx)(k, {
+        scope: a,
+        scrollbar: E,
+        hasThumb: c,
+        onThumbChange: (0, l.useCallbackRef)(u),
+        onThumbPointerUp: (0, l.useCallbackRef)(f),
+        onThumbPositionChange: A,
+        onThumbPointerDown: (0, l.useCallbackRef)(p),
+        children: (0, t.jsx)(n.Primitive.div, {
+          ...w,
+          ref: S,
+          style: {
+            position: "absolute",
+            ...w.style
+          },
+          onPointerDown: (0, d.composeEventHandlers)(e.onPointerDown, e => {
+            0 === e.button && (e.target.setPointerCapture(e.pointerId), R.current = E.getBoundingClientRect(), N.current = document.body.style.webkitUserSelect, document.body.style.webkitUserSelect = "none", x.viewport && (x.viewport.style.scrollBehavior = "auto"), L(e))
+          }),
+          onPointerMove: (0, d.composeEventHandlers)(e.onPointerMove, L),
+          onPointerUp: (0, d.composeEventHandlers)(e.onPointerUp, e => {
+            let t = e.target;
+            t.hasPointerCapture(e.pointerId) && t.releasePointerCapture(e.pointerId), document.body.style.webkitUserSelect = N.current, x.viewport && (x.viewport.style.scrollBehavior = ""), R.current = null
+          })
+        })
+      })
+    }),
+    _ = "ScrollAreaThumb",
+    L = r.forwardRef((e, r) => {
+      let {
+        forceMount: n,
+        ...a
+      } = e, i = T(_, e.__scopeScrollArea);
+      return (0, t.jsx)(o.Presence, {
+        present: n || i.hasThumb,
+        children: (0, t.jsx)(D, {
+          ref: r,
+          ...a
+        })
+      })
+    }),
+    D = r.forwardRef((e, o) => {
+      let {
+        __scopeScrollArea: a,
+        style: l,
+        ...s
+      } = e, c = m(_, a), u = T(_, a), {
+        onThumbPositionChange: f
+      } = u, p = (0, i.useComposedRefs)(o, e => u.onThumbChange(e)), v = r.useRef(void 0), h = X(() => {
+        v.current && (v.current(), v.current = void 0)
+      }, 100);
+      return r.useEffect(() => {
+        let e = c.viewport;
+        if (e) {
+          let t = () => {
+            h(), v.current || (v.current = U(e, f), f())
+          };
+          return f(), e.addEventListener("scroll", t), () => e.removeEventListener("scroll", t)
+        }
+      }, [c.viewport, h, f]), (0, t.jsx)(n.Primitive.div, {
+        "data-state": u.hasThumb ? "visible" : "hidden",
+        ...s,
+        ref: p,
+        style: {
+          width: "var(--radix-scroll-area-thumb-width)",
+          height: "var(--radix-scroll-area-thumb-height)",
+          ...l
+        },
+        onPointerDownCapture: (0, d.composeEventHandlers)(e.onPointerDownCapture, e => {
+          let t = e.target.getBoundingClientRect(),
+            r = e.clientX - t.left,
+            n = e.clientY - t.top;
+          u.onThumbPointerDown({
+            x: r,
+            y: n
+          })
+        }),
+        onPointerUp: (0, d.composeEventHandlers)(e.onPointerUp, u.onThumbPointerUp)
+      })
+    });
+  L.displayName = _;
+  var M = "ScrollAreaCorner",
+    I = r.forwardRef((e, r) => {
+      let n = m(M, e.__scopeScrollArea),
+        o = !!(n.scrollbarX && n.scrollbarY);
+      return "scroll" !== n.type && o ? (0, t.jsx)(O, {
+        ...e,
+        ref: r
+      }) : null
+    });
+  I.displayName = M;
+  var O = r.forwardRef((e, o) => {
+    let {
+      __scopeScrollArea: a,
+      ...i
+    } = e, l = m(M, a), [s, c] = r.useState(0), [u, d] = r.useState(0), f = !!(s && u);
+    return Y(l.scrollbarX, () => {
+      let e = l.scrollbarX?.offsetHeight || 0;
+      l.onCornerHeightChange(e), d(e)
+    }), Y(l.scrollbarY, () => {
+      let e = l.scrollbarY?.offsetWidth || 0;
+      l.onCornerWidthChange(e), c(e)
+    }), f ? (0, t.jsx)(n.Primitive.div, {
+      ...i,
+      ref: o,
+      style: {
+        width: s,
+        height: u,
+        position: "absolute",
+        right: "ltr" === l.dir ? 0 : void 0,
+        left: "rtl" === l.dir ? 0 : void 0,
+        bottom: 0,
+        ...e.style
+      }
+    }) : null
+  });
+
+  function F(e) {
+    return e ? parseInt(e, 10) : 0
+  }
+
+  function H(e, t) {
+    let r = e / t;
+    return isNaN(r) ? 0 : r
+  }
+
+  function W(e) {
+    let t = H(e.viewport, e.content),
+      r = e.scrollbar.paddingStart + e.scrollbar.paddingEnd;
+    return Math.max((e.scrollbar.size - r) * t, 18)
+  }
+
+  function z(e, t, r = "ltr") {
+    let n = W(t),
+      o = t.scrollbar.paddingStart + t.scrollbar.paddingEnd,
+      a = t.scrollbar.size - o,
+      i = t.content - t.viewport,
+      l = (0, u.clamp)(e, "ltr" === r ? [0, i] : [-1 * i, 0]);
+    return B([0, i], [0, a - n])(l)
+  }
+
+  function B(e, t) {
+    return r => {
+      if (e[0] === e[1] || t[0] === t[1]) return t[0];
+      let n = (t[1] - t[0]) / (e[1] - e[0]);
+      return t[0] + n * (r - e[0])
+    }
+  }
+  var U = (e, t = () => {}) => {
+    let r = {
+        left: e.scrollLeft,
+        top: e.scrollTop
+      },
+      n = 0;
+    return ! function o() {
+      let a = {
+          left: e.scrollLeft,
+          top: e.scrollTop
+        },
+        i = r.left !== a.left,
+        l = r.top !== a.top;
+      (i || l) && t(), r = a, n = window.requestAnimationFrame(o)
+    }(), () => window.cancelAnimationFrame(n)
+  };
+
+  function X(e, t) {
+    let n = (0, l.useCallbackRef)(e),
+      o = r.useRef(0);
+    return r.useEffect(() => () => window.clearTimeout(o.current), []), r.useCallback(() => {
+      window.clearTimeout(o.current), o.current = window.setTimeout(n, t)
+    }, [n, t])
+  }
+
+  function Y(e, t) {
+    let r = (0, l.useCallbackRef)(t);
+    (0, c.useLayoutEffect)(() => {
+      let t = 0;
+      if (e) {
+        let n = new ResizeObserver(() => {
+          cancelAnimationFrame(t), t = window.requestAnimationFrame(r)
+        });
+        return n.observe(e), () => {
+          window.cancelAnimationFrame(t), n.unobserve(e)
+        }
+      }
+    }, [e, r])
+  }
+  var K = e.i(75157);
+  let V = r.forwardRef(({
+    className: e,
+    children: r,
+    viewportRef: n,
+    onViewportScroll: o,
+    ...a
+  }, i) => (0, t.jsxs)(g, {
+    ref: i,
+    className: (0, K.cn)("relative overflow-hidden", e),
+    ...a,
+    children: [(0, t.jsx)(w, {
+      ref: n,
+      className: "h-full w-full rounded-[inherit]",
+      onScroll: o,
+      children: r
+    }), (0, t.jsx)(q, {}), (0, t.jsx)(I, {})]
+  }));
+  V.displayName = g.displayName;
+  let q = r.forwardRef(({
+    className: e,
+    orientation: r = "vertical",
+    ...n
+  }, o) => (0, t.jsx)(E, {
+    ref: o,
+    orientation: r,
+    className: (0, K.cn)("flex touch-none select-none transition-colors", "vertical" === r && "h-full w-2.5 border-l border-l-transparent p-[1px]", "horizontal" === r && "h-2.5 flex-col border-t border-t-transparent p-[1px]", e),
+    ...n,
+    children: (0, t.jsx)(L, {
+      className: "relative flex-1 rounded-full bg-border"
+    })
+  }));
+  q.displayName = E.displayName, e.s(["ScrollArea", 0, V], 59684)
+}, 37822, e => {
+  "use strict";
+  var t = e.i(43476),
+    r = e.i(71645),
+    n = e.i(81140),
+    o = e.i(20783),
+    a = e.i(30030),
+    i = e.i(26330),
+    l = e.i(3536),
+    s = e.i(65491),
+    c = e.i(10772),
+    u = e.i(53660),
+    d = e.i(74606),
+    f = e.i(96626),
+    p = e.i(48425),
+    v = e.i(91918),
+    h = e.i(69340),
+    m = e.i(86312),
+    g = e.i(85369),
+    b = "Popover",
+    [w, x] = (0, a.createContextScope)(b, [u.createPopperScope]),
+    y = (0, u.createPopperScope)(),
+    [E, C] = w(b),
+    S = e => {
+      let {
+        __scopePopover: n,
+        children: o,
+        open: a,
+        defaultOpen: i,
+        onOpenChange: l,
+        modal: s = !1
+      } = e, d = y(n), f = r.useRef(null), [p, v] = r.useState(!1), [m, g] = (0, h.useControllableState)({
+        prop: a,
+        defaultProp: i ?? !1,
+        onChange: l,
+        caller: b
+      });
+      return (0, t.jsx)(u.Root, {
+        ...d,
+        children: (0, t.jsx)(E, {
+          scope: n,
+          contentId: (0, c.useId)(),
+          triggerRef: f,
+          open: m,
+          onOpenChange: g,
+          onOpenToggle: r.useCallback(() => g(e => !e), [g]),
+          hasCustomAnchor: p,
+          onCustomAnchorAdd: r.useCallback(() => v(!0), []),
+          onCustomAnchorRemove: r.useCallback(() => v(!1), []),
+          modal: s,
+          children: o
+        })
+      })
+    };
+  S.displayName = b;
+  var R = "PopoverAnchor";
+  r.forwardRef((e, n) => {
+    let {
+      __scopePopover: o,
+      ...a
+    } = e, i = C(R, o), l = y(o), {
+      onCustomAnchorAdd: s,
+      onCustomAnchorRemove: c
+    } = i;
+    return r.useEffect(() => (s(), () => c()), [s, c]), (0, t.jsx)(u.Anchor, {
+      ...l,
+      ...a,
+      ref: n
+    })
+  }).displayName = R;
+  var N = "PopoverTrigger",
+    P = r.forwardRef((e, r) => {
+      let {
+        __scopePopover: a,
+        ...i
+      } = e, l = C(N, a), s = y(a), c = (0, o.useComposedRefs)(r, l.triggerRef), d = (0, t.jsx)(p.Primitive.button, {
+        type: "button",
+        "aria-haspopup": "dialog",
+        "aria-expanded": l.open,
+        "aria-controls": l.open ? l.contentId : void 0,
+        "data-state": H(l.open),
+        ...i,
+        ref: c,
+        onClick: (0, n.composeEventHandlers)(e.onClick, l.onOpenToggle)
+      });
+      return l.hasCustomAnchor ? d : (0, t.jsx)(u.Anchor, {
+        asChild: !0,
+        ...s,
+        children: d
+      })
+    });
+  P.displayName = N;
+  var j = "PopoverPortal",
+    [k, T] = w(j, {
+      forceMount: void 0
+    }),
+    A = e => {
+      let {
+        __scopePopover: r,
+        forceMount: n,
+        children: o,
+        container: a
+      } = e, i = C(j, r);
+      return (0, t.jsx)(k, {
+        scope: r,
+        forceMount: n,
+        children: (0, t.jsx)(f.Presence, {
+          present: n || i.open,
+          children: (0, t.jsx)(d.Portal, {
+            asChild: !0,
+            container: a,
+            children: o
+          })
+        })
+      })
+    };
+  A.displayName = j;
+  var _ = "PopoverContent",
+    L = r.forwardRef((e, r) => {
+      let n = T(_, e.__scopePopover),
+        {
+          forceMount: o = n.forceMount,
+          ...a
+        } = e,
+        i = C(_, e.__scopePopover);
+      return (0, t.jsx)(f.Presence, {
+        present: o || i.open,
+        children: i.modal ? (0, t.jsx)(M, {
+          ...a,
+          ref: r
+        }) : (0, t.jsx)(I, {
+          ...a,
+          ref: r
+        })
+      })
+    });
+  L.displayName = _;
+  var D = (0, v.createSlot)("PopoverContent.RemoveScroll"),
+    M = r.forwardRef((e, a) => {
+      let i = C(_, e.__scopePopover),
+        l = r.useRef(null),
+        s = (0, o.useComposedRefs)(a, l),
+        c = r.useRef(!1);
+      return r.useEffect(() => {
+        let e = l.current;
+        if (e) return (0, m.hideOthers)(e)
+      }, []), (0, t.jsx)(g.RemoveScroll, {
+        as: D,
+        allowPinchZoom: !0,
+        children: (0, t.jsx)(O, {
+          ...e,
+          ref: s,
+          trapFocus: i.open,
+          disableOutsidePointerEvents: !0,
+          onCloseAutoFocus: (0, n.composeEventHandlers)(e.onCloseAutoFocus, e => {
+            e.preventDefault(), c.current || i.triggerRef.current?.focus()
+          }),
+          onPointerDownOutside: (0, n.composeEventHandlers)(e.onPointerDownOutside, e => {
+            let t = e.detail.originalEvent,
+              r = 0 === t.button && !0 === t.ctrlKey;
+            c.current = 2 === t.button || r
+          }, {
+            checkForDefaultPrevented: !1
+          }),
+          onFocusOutside: (0, n.composeEventHandlers)(e.onFocusOutside, e => e.preventDefault(), {
+            checkForDefaultPrevented: !1
+          })
+        })
+      })
+    }),
+    I = r.forwardRef((e, n) => {
+      let o = C(_, e.__scopePopover),
+        a = r.useRef(!1),
+        i = r.useRef(!1);
+      return (0, t.jsx)(O, {
+        ...e,
+        ref: n,
+        trapFocus: !1,
+        disableOutsidePointerEvents: !1,
+        onCloseAutoFocus: t => {
+          e.onCloseAutoFocus?.(t), t.defaultPrevented || (a.current || o.triggerRef.current?.focus(), t.preventDefault()), a.current = !1, i.current = !1
+        },
+        onInteractOutside: t => {
+          e.onInteractOutside?.(t), t.defaultPrevented || (a.current = !0, "pointerdown" === t.detail.originalEvent.type && (i.current = !0));
+          let r = t.target;
+          o.triggerRef.current?.contains(r) && t.preventDefault(), "focusin" === t.detail.originalEvent.type && i.current && t.preventDefault()
+        }
+      })
+    }),
+    O = r.forwardRef((e, r) => {
+      let {
+        __scopePopover: n,
+        trapFocus: o,
+        onOpenAutoFocus: a,
+        onCloseAutoFocus: c,
+        disableOutsidePointerEvents: d,
+        onEscapeKeyDown: f,
+        onPointerDownOutside: p,
+        onFocusOutside: v,
+        onInteractOutside: h,
+        ...m
+      } = e, g = C(_, n), b = y(n);
+      return (0, l.useFocusGuards)(), (0, t.jsx)(s.FocusScope, {
+        asChild: !0,
+        loop: !0,
+        trapped: o,
+        onMountAutoFocus: a,
+        onUnmountAutoFocus: c,
+        children: (0, t.jsx)(i.DismissableLayer, {
+          asChild: !0,
+          disableOutsidePointerEvents: d,
+          onInteractOutside: h,
+          onEscapeKeyDown: f,
+          onPointerDownOutside: p,
+          onFocusOutside: v,
+          onDismiss: () => g.onOpenChange(!1),
+          deferPointerDownOutside: !0,
+          children: (0, t.jsx)(u.Content, {
+            "data-state": H(g.open),
+            role: "dialog",
+            id: g.contentId,
+            ...b,
+            ...m,
+            ref: r,
+            style: {
+              ...m.style,
+              "--radix-popover-content-transform-origin": "var(--radix-popper-transform-origin)",
+              "--radix-popover-content-available-width": "var(--radix-popper-available-width)",
+              "--radix-popover-content-available-height": "var(--radix-popper-available-height)",
+              "--radix-popover-trigger-width": "var(--radix-popper-anchor-width)",
+              "--radix-popover-trigger-height": "var(--radix-popper-anchor-height)"
+            }
+          })
+        })
+      })
+    }),
+    F = "PopoverClose";
+
+  function H(e) {
+    return e ? "open" : "closed"
+  }
+  r.forwardRef((e, r) => {
+    let {
+      __scopePopover: o,
+      ...a
+    } = e, i = C(F, o);
+    return (0, t.jsx)(p.Primitive.button, {
+      type: "button",
+      ...a,
+      ref: r,
+      onClick: (0, n.composeEventHandlers)(e.onClick, () => i.onOpenChange(!1))
+    })
+  }).displayName = F, r.forwardRef((e, r) => {
+    let {
+      __scopePopover: n,
+      ...o
+    } = e, a = y(n);
+    return (0, t.jsx)(u.Arrow, {
+      ...a,
+      ...o,
+      ref: r
+    })
+  }).displayName = "PopoverArrow";
+  var W = e.i(75157);
+  let z = r.forwardRef(({
+    className: e,
+    align: r = "end",
+    sideOffset: n = 8,
+    ...o
+  }, a) => (0, t.jsx)(A, {
+    children: (0, t.jsx)(L, {
+      ref: a,
+      align: r,
+      sideOffset: n,
+      className: (0, W.cn)("z-50 rounded-lg border border-border bg-card text-card-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95", e),
+      ...o
+    })
+  }));
+  z.displayName = L.displayName, e.s(["Popover", 0, S, "PopoverContent", 0, z, "PopoverTrigger", 0, P], 37822)
+}, 51702, e => {
+  "use strict";
+  var t = e.i(43476),
+    r = e.i(71645),
+    n = e.i(70812);
+  let o = (0, e.i(56420).default)("check-check", [
+    ["path", {
+      d: "M18 6 7 17l-5-5",
+      key: "116fxf"
+    }],
+    ["path", {
+      d: "m22 10-7.5 7.5L13 16",
+      key: "ke71qq"
+    }]
+  ]);
+  var a = e.i(82022),
+    i = e.i(41120),
+    l = e.i(28623),
+    s = e.i(87486),
+    c = e.i(19455),
+    u = e.i(37822),
+    d = e.i(59684);
+  e.i(89268);
+  var f = e.i(81341),
+    p = e.i(87488);
+  let v = {
+      info: "outline",
+      success: "success",
+      warning: "warning",
+      critical: "destructive"
+    },
+    h = {
+      changelog: "Có gì mới",
+      announcement: "Thông báo",
+      maintenance: "Bảo trì"
+    };
+  e.s(["ProductNotificationCenter", 0, function({
+    unreadCount: e
+  }) {
+    let [m, g] = r.useState(!1), b = r.useRef(!1), w = (0, p.useProductNotificationStore)(e => e.items), x = (0, p.useProductNotificationStore)(e => e.checkedAt), y = (0, p.useProductNotificationStore)(e => e.loading), E = (0, p.useProductNotificationStore)(e => e.currentAppVersion), C = (0, p.useProductNotificationStore)(e => e.lastSeenAppVersion), S = (0, p.useProductNotificationStore)(e => e.readItemIds), R = (0, p.useProductNotificationStore)(e => e.autoOpenedItemIds), N = (0, p.useProductNotificationStore)(e => e.refreshNotifications), P = (0, p.useProductNotificationStore)(e => e.markItemRead), j = (0, p.useProductNotificationStore)(e => e.markAllRead), k = (0, p.useProductNotificationStore)(e => e.markItemsAutoOpened), T = (0, p.useProductNotificationStore)(e => e.setLastSeenAppVersion), A = r.useMemo(() => (0, p.getAutoOpenProductNotificationIds)({
+      items: w,
+      readItemIds: S,
+      autoOpenedItemIds: R,
+      currentAppVersion: E,
+      lastSeenAppVersion: C
+    }), [R, E, w, C, S]);
+    r.useEffect(() => {
+      N({
+        silent: !0,
+        staleMs: p.PRODUCT_NOTIFICATION_CACHE_MS
+      })
+    }, [N]), r.useEffect(() => {
+      !b.current && x && 0 !== A.length && (b.current = !0, k(A))
+    }, [A, x, k]);
+    let _ = r.useCallback(e => {
+        g(e), e && E && T(E)
+      }, [E, T]),
+      L = r.useCallback(() => {
+        j()
+      }, [j]),
+      D = r.useCallback(async e => {
+        !e || e.startsWith("https://") && await (0, f.openUrlInSystemBrowser)(e)
+      }, []),
+      M = (0, p.countUnreadProductNotifications)(w, S),
+      I = r.useMemo(() => [...w].sort((e, t) => {
+        let r = Date.parse(t.publishedAt) - Date.parse(e.publishedAt);
+        return 0 !== r ? r : e.id.localeCompare(t.id)
+      }), [w]);
+    return (0, t.jsxs)(u.Popover, {
+      open: m,
+      onOpenChange: _,
+      children: [(0, t.jsx)(u.PopoverTrigger, {
+        asChild: !0,
+        children: (0, t.jsxs)(c.Button, {
+          type: "button",
+          variant: e > 0 ? "default" : "ghost",
+          size: "icon",
+          className: "relative h-7 w-7 shrink-0",
+          title: "Thông báo",
+          "data-testid": "product-notification-center",
+          children: [(0, t.jsx)(n.Bell, {
+            className: "h-4 w-4"
+          }), e > 0 ? (0, t.jsx)("span", {
+            className: "absolute -right-1 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground",
+            children: e
+          }) : null]
+        })
+      }), (0, t.jsxs)(u.PopoverContent, {
+        className: "w-[min(420px,calc(100vw-1rem))] p-0",
+        align: "end",
+        children: [(0, t.jsx)("div", {
+          className: "border-b border-border px-4 py-3",
+          children: (0, t.jsxs)("div", {
+            className: "flex items-center justify-between gap-3",
+            children: [(0, t.jsxs)("div", {
+              className: "min-w-0",
+              children: [(0, t.jsxs)("div", {
+                className: "flex items-center gap-2",
+                children: [(0, t.jsx)(l.Sparkles, {
+                  className: "h-4 w-4 text-primary"
+                }), (0, t.jsx)("h2", {
+                  className: "text-sm font-semibold",
+                  children: "Timeline cập nhật"
+                })]
+              }), (0, t.jsxs)("p", {
+                className: "mt-0.5 text-xs text-muted-foreground",
+                children: [M, " mục chưa đọc"]
+              })]
+            }), (0, t.jsxs)(c.Button, {
+              type: "button",
+              variant: "ghost",
+              size: "sm",
+              className: "h-7 shrink-0 px-2 text-xs",
+              onClick: L,
+              children: [(0, t.jsx)(o, {
+                className: "h-3.5 w-3.5"
+              }), "Đã đọc"]
+            })]
+          })
+        }), (0, t.jsx)(d.ScrollArea, {
+          className: "max-h-[min(520px,calc(100vh-7rem))]",
+          children: (0, t.jsx)("div", {
+            className: "p-2",
+            children: y && 0 === I.length ? (0, t.jsxs)("div", {
+              className: "flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-4 text-sm text-muted-foreground",
+              children: [(0, t.jsx)(i.RefreshCw, {
+                className: "h-4 w-4 animate-spin"
+              }), "Đang tải thông báo..."]
+            }) : 0 === I.length ? (0, t.jsx)("div", {
+              className: "rounded-lg border border-dashed border-border bg-muted/20 px-3 py-6 text-sm text-muted-foreground",
+              children: "Không có thông báo mới."
+            }) : I.map(e => {
+              var r;
+              let n, i = S.includes(e.id),
+                l = e.title,
+                u = e.summary;
+              return (0, t.jsxs)("article", {
+                className: `relative border-l px-3 py-3 transition-colors hover:bg-muted/30 ${i?"border-border":"border-primary bg-primary/5"}`,
+                children: [(0, t.jsx)("span", {
+                  className: `absolute -left-[5px] top-4 h-2.5 w-2.5 rounded-full border-2 border-card ${i?"bg-muted-foreground":"bg-primary"}`,
+                  "aria-hidden": "true"
+                }), (0, t.jsxs)("div", {
+                  className: "min-w-0",
+                  children: [(0, t.jsxs)("div", {
+                    className: "flex flex-wrap items-center gap-2",
+                    children: [(0, t.jsx)(s.Badge, {
+                      variant: v[e.severity] ?? "outline",
+                      className: "text-[10px]",
+                      children: h[e.source] ?? "Thông báo"
+                    }), (0, t.jsx)("span", {
+                      className: "text-[11px] text-muted-foreground",
+                      children: Number.isNaN((n = new Date(r = e.publishedAt)).getTime()) ? r : new Intl.DateTimeFormat("vi-VN", {
+                        dateStyle: "medium"
+                      }).format(n)
+                    }), "changelog" === e.source && e.version ? (0, t.jsxs)("span", {
+                      className: "text-[11px] text-muted-foreground",
+                      children: ["v", e.version]
+                    }) : null, i ? (0, t.jsx)(s.Badge, {
+                      variant: "outline",
+                      className: "text-[10px]",
+                      children: "Đã đọc"
+                    }) : null]
+                  }), (0, t.jsx)("h3", {
+                    className: "mt-1 text-sm font-medium leading-5",
+                    children: l
+                  }), u ? (0, t.jsx)("p", {
+                    className: "mt-1 line-clamp-3 text-xs leading-5 text-muted-foreground",
+                    children: u
+                  }) : null, (0, t.jsxs)("div", {
+                    className: "mt-3 flex flex-wrap items-center gap-2",
+                    children: [e.actionUrl ? (0, t.jsxs)(c.Button, {
+                      type: "button",
+                      size: "sm",
+                      variant: "outline",
+                      className: "h-7 px-2 text-xs",
+                      onClick: () => void D(e.actionUrl),
+                      children: [(0, t.jsx)(a.ExternalLink, {
+                        className: "h-3.5 w-3.5"
+                      }), e.actionLabel ?? "Mở liên kết"]
+                    }) : null, i ? null : (0, t.jsxs)(c.Button, {
+                      type: "button",
+                      size: "sm",
+                      variant: "ghost",
+                      className: "h-7 px-2 text-xs text-muted-foreground",
+                      onClick: () => P(e.id),
+                      children: [(0, t.jsx)(o, {
+                        className: "h-3.5 w-3.5"
+                      }), "Đánh dấu đã đọc"]
+                    })]
+                  })]
+                })]
+              }, e.id)
+            })
+          })
+        })]
+      })]
+    })
+  }], 51702)
+}, 62955, e => {
+  e.n(e.i(51702))
+}]);

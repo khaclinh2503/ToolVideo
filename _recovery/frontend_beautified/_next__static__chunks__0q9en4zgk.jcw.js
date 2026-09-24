@@ -1,0 +1,44 @@
+(globalThis.TURBOPACK || (globalThis.TURBOPACK = [])).push(["object" == typeof document ? document.currentScript : void 0, 63676, e => {
+  "use strict";
+  let n = (0, e.i(56420).default)("x", [
+    ["path", {
+      d: "M18 6 6 18",
+      key: "1bl5f8"
+    }],
+    ["path", {
+      d: "m6 6 12 12",
+      key: "d8bk6v"
+    }]
+  ]);
+  e.s(["X", 0, n], 63676)
+}, 66423, e => {
+  "use strict";
+  var n = e.i(43476),
+    i = e.i(76639),
+    t = e.i(38991),
+    s = e.i(59727);
+  e.s(["CapCutLoginDialog", 0, function() {
+    let e = (0, t.useAppStore)(e => e.capCutLoginOpen),
+      o = (0, t.useAppStore)(e => e.setCapCutLoginOpen);
+    return (0, n.jsx)(i.Dialog, {
+      open: e,
+      onOpenChange: o,
+      children: (0, n.jsxs)(i.DialogContent, {
+        className: "w-[min(30rem,calc(100vw-2rem))]",
+        children: [(0, n.jsxs)(i.DialogHeader, {
+          children: [(0, n.jsx)(i.DialogTitle, {
+            className: "text-sm",
+            children: "Đăng nhập Giọng CC"
+          }), (0, n.jsx)(i.DialogDescription, {
+            className: "text-[11px]",
+            children: "Đăng nhập một lần để dùng các giọng CC trong mọi project."
+          })]
+        }), (0, n.jsx)(s.CapCutLoginFields, {
+          onConnected: () => o(!1)
+        })]
+      })
+    })
+  }])
+}, 99852, e => {
+  e.n(e.i(66423))
+}]);

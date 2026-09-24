@@ -1,0 +1,654 @@
+(globalThis.TURBOPACK || (globalThis.TURBOPACK = [])).push(["object" == typeof document ? document.currentScript : void 0, 8734, e => {
+  "use strict";
+  let t = (0, e.i(56420).default)("copy", [
+    ["rect", {
+      width: "14",
+      height: "14",
+      x: "8",
+      y: "8",
+      rx: "2",
+      ry: "2",
+      key: "17jyea"
+    }],
+    ["path", {
+      d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2",
+      key: "zix9uf"
+    }]
+  ]);
+  e.s(["Copy", 0, t], 8734)
+}, 54626, e => {
+  "use strict";
+  e.s(["BRAND", 0, {
+    domain: "dichvideo.com",
+    productName: "Dịch Video",
+    technicalName: "Dich Video",
+    slug: "dichvideo",
+    tagline: "Dịch video, phụ đề và lồng tiếng bằng AI"
+  }])
+}, 90509, e => {
+  "use strict";
+  var t = e.i(68476),
+    i = e.i(21826),
+    n = e.i(14829),
+    l = e.i(80932);
+  let a = "dichvideo_marketing_visitor_id";
+  e.s(["buildTrackedDownloadHref", 0, function(e = "landing", t) {
+    let i = new URL(n.DOWNLOAD_APP_HREF);
+    return i.searchParams.set("source", e), i.searchParams.set("channel", i.searchParams.get("channel") || "stable"), i.searchParams.set("arch", i.searchParams.get("arch") || "x64"), t?.trim() && i.searchParams.set("visitor_id", t.trim()), i.toString()
+  }, "getOrCreateMarketingVisitorId", 0, function() {
+    (0, l.captureGoogleAdsClickIds)();
+    let e = localStorage.getItem(a);
+    if (e) return e;
+    let t = "u" > typeof crypto && "randomUUID" in crypto ? crypto.randomUUID() : `visitor-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return localStorage.setItem(a, t), t
+  }, "recordMarketingFunnelEvent", 0, function(e) {
+    let n = (0, l.getStoredGoogleAdsClickIds)(),
+      a = n ? {
+        ...e,
+        metadata: {
+          ...e.metadata,
+          google_ads_click_ids: n
+        }
+      } : e;
+    return t.cloudApi.recordMarketingFunnelEvent(i.DEFAULT_CLOUD_API_URL, a).then(() => void 0).catch(() => void 0)
+  }])
+}, 18566, (e, t, i) => {
+  t.exports = e.r(76562)
+}, 26123, e => {
+  "use strict";
+  var t = e.i(43476),
+    i = e.i(57688),
+    n = e.i(71645),
+    l = e.i(68877),
+    a = e.i(51757),
+    r = e.i(8734),
+    s = e.i(82022),
+    o = e.i(84026),
+    d = e.i(63676),
+    c = e.i(90509);
+  let h = [{
+    title: "Bấm More info",
+    body: "Mở file vừa tải. Nếu Windows hiện màn hình xanh, bấm More info.",
+    image: "/marketing/install-guide/smartscreen-more-info.jpg",
+    alt: "Windows SmartScreen với nút More info",
+    width: 535,
+    height: 503
+  }, {
+    title: "Bấm Run anyway",
+    body: "Sau đó bấm Run anyway để mở bộ cài DichVideo.",
+    image: "/marketing/install-guide/smartscreen-run-anyway.jpg",
+    alt: "Windows SmartScreen với nút Run anyway",
+    width: 541,
+    height: 507
+  }];
+
+  function m({
+    onClose: e
+  }) {
+    return (0, t.jsxs)(u, {
+      title: "Cài đặt chỉ mất 20 giây",
+      onClose: e,
+      children: [(0, t.jsx)("p", {
+        className: "mt-2 text-sm leading-6 text-[#475569]",
+        children: "Vì app còn mới nên Windows có thể hiện thông báo xanh. Đây là điều bình thường với app mới; làm theo 2 bước dưới là xong."
+      }), (0, t.jsx)("div", {
+        className: "mt-4 grid gap-3 sm:grid-cols-2",
+        children: h.map((e, n) => (0, t.jsxs)("article", {
+          className: "rounded-lg border border-[#e5e7eb] bg-[#f8fafc] p-3",
+          children: [(0, t.jsxs)("div", {
+            className: "flex items-start gap-3",
+            children: [(0, t.jsx)("span", {
+              className: "mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#ff5530] text-sm font-semibold text-white",
+              children: n + 1
+            }), (0, t.jsxs)("div", {
+              children: [(0, t.jsx)("h3", {
+                className: "text-sm font-semibold text-[#0a0a0a]",
+                children: e.title
+              }), (0, t.jsx)("p", {
+                className: "mt-1 text-sm leading-6 text-[#475569]",
+                children: e.body
+              })]
+            })]
+          }), (0, t.jsx)(i.default, {
+            src: e.image,
+            alt: e.alt,
+            width: e.width,
+            height: e.height,
+            className: "mt-3 h-auto max-h-44 w-full rounded-md border border-[#d1d5db] object-contain sm:max-h-52"
+          })]
+        }, e.title))
+      }), (0, t.jsxs)("div", {
+        className: "mt-4 rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] p-3",
+        children: [(0, t.jsxs)("div", {
+          className: "flex flex-wrap gap-2 text-sm",
+          children: [(0, t.jsxs)("a", {
+            href: "https://www.virustotal.com/gui/file/6c376122b56de07da6b42cc052874ef9d11779c470248ca82fe8574b3687b527",
+            target: "_blank",
+            rel: "noopener noreferrer",
+            className: "inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 font-semibold text-[#166534] ring-1 ring-[#bbf7d0]",
+            children: [(0, t.jsx)(o.ShieldCheck, {
+              size: 15
+            }), "VirusTotal: 0/69 phát hiện", (0, t.jsx)(s.ExternalLink, {
+              size: 13
+            })]
+          }), (0, t.jsxs)("span", {
+            className: "inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 font-semibold text-[#0f172a] ring-1 ring-[#e2e8f0]",
+            children: [(0, t.jsx)(a.CheckCircle2, {
+              size: 15,
+              className: "text-[#168a4a]"
+            }), "Hơn 600 người đang dùng"]
+          })]
+        }), (0, t.jsx)("p", {
+          className: "mt-3 text-xs leading-5 text-[#475569]",
+          children: "Cần hỗ trợ cài đặt? Nhắn email tieunct@gmail.com, mình sẽ hướng dẫn trực tiếp."
+        })]
+      }), (0, t.jsxs)("details", {
+        className: "mt-4 rounded-lg border border-[#e5e7eb] bg-white px-4 py-3 text-sm text-[#475569]",
+        children: [(0, t.jsx)("summary", {
+          className: "cursor-pointer font-semibold text-[#0a0a0a]",
+          children: "Vẫn không mở được?"
+        }), (0, t.jsxs)("p", {
+          className: "mt-2 leading-6",
+          children: ["Chuột phải vào file vừa tải, chọn ", (0, t.jsx)("b", {
+            children: "Properties"
+          }), ", tích ", (0, t.jsx)("b", {
+            children: "Unblock"
+          }), ", bấm ", (0, t.jsx)("b", {
+            children: "OK"
+          }), ", rồi mở lại file."]
+        })]
+      })]
+    })
+  }
+
+  function g({
+    platform: e,
+    copyStatus: i,
+    onCopy: n,
+    onClose: l
+  }) {
+    return (0, t.jsxs)(u, {
+      title: "App chỉ cài được trên máy tính Windows",
+      onClose: l,
+      children: [(0, t.jsxs)("p", {
+        className: "mt-2 text-sm leading-6 text-[#475569]",
+        children: ["Bạn đang mở trên ", function(e) {
+          switch (e) {
+            case "ios":
+              return "iPhone/iPad";
+            case "android":
+              return "Android";
+            case "mac":
+              return "macOS";
+            case "windows":
+              return "Windows";
+            default:
+              return "thiết bị này"
+          }
+        }(e), ". DichVideo hiện là app Windows, nên hãy gửi link tải sang máy tính Windows để cài."]
+      }), (0, t.jsxs)("button", {
+        type: "button",
+        onClick: n,
+        className: "mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#111111] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#2f2f2f]",
+        children: [(0, t.jsx)(r.Copy, {
+          size: 15
+        }), "copied" === i ? "Đã copy link tải" : "Copy link tải Windows"]
+      }), "failed" === i ? (0, t.jsx)("p", {
+        className: "mt-3 text-sm text-[#b42318]",
+        children: "Không copy được tự động. Hãy mở lại trang này trên máy Windows rồi bấm tải."
+      }) : null, (0, t.jsx)("p", {
+        className: "mt-4 text-xs leading-5 text-[#64748b]",
+        children: "Nếu bạn đang dùng điện thoại để đăng ký tài khoản, bước tiếp theo là mở email hoặc tin nhắn chứa link này trên máy Windows."
+      })]
+    })
+  }
+
+  function u({
+    title: e,
+    children: i,
+    onClose: n
+  }) {
+    return (0, t.jsx)("div", {
+      className: "fixed inset-0 z-[100] flex min-h-dvh items-center justify-center overflow-y-auto bg-black/55 px-3 py-4 sm:px-4",
+      role: "dialog",
+      "aria-modal": "true",
+      "aria-label": e,
+      onClick: n,
+      children: (0, t.jsxs)("div", {
+        className: "relative my-auto max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-lg bg-white p-4 shadow-2xl sm:p-5",
+        onClick: e => e.stopPropagation(),
+        children: [(0, t.jsx)("button", {
+          type: "button",
+          "aria-label": "Đóng",
+          onClick: n,
+          className: "absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-md border border-[#e5e7eb] bg-white text-[#475569] hover:bg-[#f8fafc]",
+          children: (0, t.jsx)(d.X, {
+            size: 17
+          })
+        }), (0, t.jsxs)("div", {
+          className: "pr-10",
+          children: [(0, t.jsx)("p", {
+            className: "text-xs font-semibold uppercase tracking-wide text-[#ff5530]",
+            children: "Hướng dẫn cài đặt"
+          }), (0, t.jsx)("h2", {
+            className: "mt-1 text-xl font-semibold leading-tight text-[#0a0a0a]",
+            children: e
+          })]
+        }), i, (0, t.jsxs)("button", {
+          type: "button",
+          onClick: n,
+          className: "mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md border border-[#d7dce3] bg-white px-4 py-2.5 text-sm font-semibold text-[#0a0a0a] hover:bg-[#f8fafc] sm:w-auto",
+          children: ["Đã hiểu", (0, t.jsx)(l.ArrowRight, {
+            size: 15
+          })]
+        })]
+      })
+    })
+  }
+  e.s(["TrackedDownloadLink", 0, function({
+    source: e,
+    className: i,
+    children: l,
+    fallbackHref: a,
+    metadata: r = {}
+  }) {
+    let [s, o] = (0, n.useState)(null), [d, h] = (0, n.useState)("idle"), [u, f] = (0, n.useState)("other"), [x, b] = (0, n.useState)(() => a ?? (0, c.buildTrackedDownloadHref)(e)), p = (0, n.useMemo)(() => a ?? (0, c.buildTrackedDownloadHref)(e), [a, e]), w = async () => {
+      try {
+        await navigator.clipboard.writeText(x), h("copied")
+      } catch {
+        h("failed")
+      }
+    };
+    return (0, t.jsxs)(t.Fragment, {
+      children: [(0, t.jsx)("a", {
+        href: p,
+        className: i,
+        target: "_blank",
+        rel: "noreferrer",
+        onClick: t => {
+          t.preventDefault();
+          let i = (0, c.getOrCreateMarketingVisitorId)(),
+            n = function() {
+              if ("u" < typeof navigator) return "other";
+              let e = navigator.userAgent.toLowerCase();
+              return e.includes("windows") ? "windows" : /(iphone|ipad|ipod)/.test(e) ? "ios" : e.includes("android") ? "android" : e.includes("macintosh") || e.includes("mac os x") ? "mac" : "other"
+            }(),
+            l = (0, c.buildTrackedDownloadHref)(e, i),
+            a = "ios" === n || "android" === n;
+          if (f(n), b(l), h("idle"), (0, c.recordMarketingFunnelEvent)({
+              event: "download_click",
+              path: window.location.pathname || "/",
+              visitor_id: i,
+              metadata: {
+                source: e,
+                platform: n,
+                is_mobile: a,
+                ...r
+              }
+            }), "windows" === n) {
+            window.open(l, "_blank", "noopener,noreferrer"), o("guide");
+            return
+          }
+          o("not-windows")
+        },
+        children: l
+      }), "guide" === s ? (0, t.jsx)(m, {
+        onClose: () => o(null)
+      }) : null, "not-windows" === s ? (0, t.jsx)(g, {
+        platform: u,
+        copyStatus: d,
+        onCopy: () => void w(),
+        onClose: () => o(null)
+      }) : null]
+    })
+  }])
+}, 90956, e => {
+  "use strict";
+  var t = e.i(43476),
+    i = e.i(18566),
+    n = e.i(68877);
+  let l = (0, e.i(56420).default)("menu", [
+    ["path", {
+      d: "M4 5h16",
+      key: "1tepv9"
+    }],
+    ["path", {
+      d: "M4 12h16",
+      key: "1lakjw"
+    }],
+    ["path", {
+      d: "M4 19h16",
+      key: "1djgab"
+    }]
+  ]);
+  var a = e.i(54626),
+    r = e.i(14829);
+  r.ACCOUNT_SIGNUP_HREF, r.UPGRADE_CONTACT_HREF;
+  let s = [{
+      href: "/",
+      label: "Sản phẩm"
+    }, {
+      href: "/pricing",
+      label: "Bảng giá"
+    }, {
+      href: "/cong-cu/dich-video",
+      label: "Công cụ"
+    }, {
+      href: "/blog",
+      label: "Blog"
+    }, {
+      href: "/faq",
+      label: "Hỗ trợ"
+    }],
+    o = [{
+      title: "Sản phẩm",
+      links: [{
+        href: "/",
+        label: "Tổng quan"
+      }, {
+        href: "/pricing",
+        label: "Bảng giá"
+      }, {
+        href: "/cong-cu/dich-video",
+        label: "Dịch video"
+      }, {
+        href: "/cong-cu/phu-de-tu-dong",
+        label: "Phụ đề tự động"
+      }, {
+        href: "/cong-cu/long-tieng-ai",
+        label: "Lồng tiếng AI"
+      }]
+    }, {
+      title: "Tài khoản",
+      links: [{
+        href: "/account",
+        label: "Đăng nhập"
+      }, {
+        href: r.ACCOUNT_SIGNUP_HREF,
+        label: "Tạo tài khoản"
+      }, {
+        href: "/buy",
+        label: "Nâng cấp"
+      }, {
+        href: r.UPGRADE_CONTACT_HREF,
+        label: "Liên hệ nâng cấp"
+      }]
+    }, {
+      title: "Tài nguyên",
+      links: [{
+        href: "/blog",
+        label: "Blog"
+      }, {
+        href: "/so-sanh",
+        label: "So sánh"
+      }, {
+        href: "/faq",
+        label: "Câu hỏi thường gặp"
+      }, {
+        href: r.ZALO_CONTACT_HREF,
+        label: "Zalo"
+      }, {
+        href: r.TELEGRAM_CONTACT_HREF,
+        label: "Telegram"
+      }, {
+        href: r.ZALO_CONTACT_HREF,
+        label: "Liên hệ hỗ trợ"
+      }]
+    }, {
+      title: "Pháp lý",
+      links: [{
+        href: "/policies",
+        label: "Chính sách hoàn tiền"
+      }, {
+        href: "/terms",
+        label: "Điều khoản sử dụng"
+      }, {
+        href: "/dmca",
+        label: "Bản quyền và sử dụng hợp pháp"
+      }, {
+        href: "/privacy",
+        label: "Chính sách quyền riêng tư"
+      }]
+    }],
+    d = {
+      eyebrow: "Dịch video bằng AI",
+      title: "Dịch video từ mọi ngôn ngữ sang tiếng Việt bằng AI, chất lượng cao",
+      description: "Đăng ký là có 60 phút miễn phí mỗi ngày để tạo phụ đề, chỉnh bản dịch, thêm giọng đọc và xuất MP4 trong một workspace desktop.",
+      ctas: [{
+        label: "Tải app Windows",
+        href: r.DOWNLOAD_APP_HREF,
+        tone: "primary",
+        downloadSource: "landing"
+      }, {
+        label: "Tạo tài khoản miễn phí",
+        href: r.ACCOUNT_SIGNUP_HREF,
+        tone: "secondary"
+      }, {
+        label: "Xem kết quả",
+        href: "#video-proof",
+        tone: "ghost"
+      }],
+      outcomes: [{
+        title: "Bản dịch dễ chỉnh",
+        body: "Giữ song song text gốc, bản dịch và timecode để rà soát nhanh.",
+        eyebrow: "Dịch"
+      }, {
+        title: "Giọng đọc tiếng Việt",
+        body: "Tạo voice-over từ bản dịch đã duyệt, dùng được cho video ngắn lẫn video dài.",
+        eyebrow: "Âm thanh"
+      }, {
+        title: "Phụ đề rõ trên video dọc",
+        body: "Chỉnh style trước khi xuất để chữ dễ đọc trên Shorts, Reels và TikTok.",
+        eyebrow: "Phụ đề"
+      }, {
+        title: "File xuất sẵn dùng",
+        body: "Nhận MP4 hoàn chỉnh cho kênh của bạn hoặc gửi thẳng cho khách hàng.",
+        eyebrow: "Xuất file"
+      }],
+      workflow: [{
+        title: "Nhập video",
+        body: "Đưa file nguồn vào app desktop."
+      }, {
+        title: "Tạo phụ đề",
+        body: "Lấy lời thoại và mốc thời gian từ audio gốc."
+      }, {
+        title: "Chỉnh bản dịch",
+        body: "Rà text tiếng Việt, thuật ngữ và giọng đọc."
+      }, {
+        title: "Xuất MP4",
+        body: "Tạo file cuối để đăng lên kênh hoặc gửi khách."
+      }],
+      audiences: ["Creator Shorts/TikTok/Reels", "Khóa học và webinar", "Agency nội dung", "Đội bán hàng"]
+    };
+  r.DOWNLOAD_APP_HREF, r.ACCOUNT_SIGNUP_HREF, r.ACCOUNT_SIGNUP_HREF, [...[{
+    label: "Phút xử lý",
+    free: "60 phút/ngày",
+    unlimited: "Không giới hạn",
+    wallet: "Theo số phút nạp"
+  }, {
+    label: "Tốc độ xử lý",
+    free: "Theo tốc độ máy của bạn",
+    unlimited: "Server DichVideo nhanh hơn",
+    wallet: "Server DichVideo nhanh hơn"
+  }, {
+    label: "Hiệu lực",
+    free: "Tự làm mới mỗi ngày",
+    unlimited: "Theo thời hạn gói",
+    wallet: "Phút không sử dụng hết hạn sau 90 ngày"
+  }, {
+    label: "Ưu tiên xử lý",
+    free: "Tiêu chuẩn",
+    unlimited: "Có",
+    wallet: "Có"
+  }, {
+    label: "Watermark",
+    free: "Có",
+    unlimited: "Không",
+    wallet: "Không"
+  }, {
+    label: "Thiết bị",
+    free: "1 thiết bị",
+    unlimited: "1 thiết bị",
+    wallet: "Không giới hạn"
+  }].map(e => ({
+    label: e.label,
+    free: e.free,
+    minutes: e.wallet,
+    unlimited: e.unlimited
+  }))];
+  d.workflow;
+  var c = e.i(75157),
+    h = e.i(26123);
+
+  function m(e, t) {
+    return !!e && ("/" === t ? "/" === e : e === t || e.startsWith(`${t}/`))
+  }
+
+  function g({
+    href: e,
+    className: i,
+    children: n
+  }) {
+    return e.startsWith("mailto:") || e.startsWith("http") ? (0, t.jsx)("a", {
+      href: e,
+      className: i,
+      target: e.startsWith("http") ? "_blank" : void 0,
+      rel: e.startsWith("http") ? "noreferrer" : void 0,
+      children: n
+    }) : (0, t.jsx)("a", {
+      href: e,
+      className: i,
+      children: n
+    })
+  }
+
+  function u() {
+    return (0, t.jsx)("span", {
+      "aria-hidden": !0,
+      className: "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#111111] text-sm font-semibold text-white",
+      children: "DV"
+    })
+  }
+  e.s(["BrandMark", 0, u, "LaunchFooter", 0, function() {
+    return (0, t.jsxs)("footer", {
+      className: "border-t border-[#d7dce3] bg-[#111111] px-4 py-12 text-sm text-[#d1d5db] sm:px-6 lg:px-8",
+      children: [(0, t.jsxs)("div", {
+        className: "mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.85fr_2fr]",
+        children: [(0, t.jsx)("div", {
+          children: (0, t.jsxs)("div", {
+            className: "flex items-center gap-3 text-base font-semibold text-white",
+            children: [(0, t.jsx)(u, {}), a.BRAND.productName]
+          })
+        }), (0, t.jsx)("div", {
+          className: "grid gap-8 sm:grid-cols-2 lg:grid-cols-4",
+          children: o.map(e => (0, t.jsxs)("div", {
+            children: [(0, t.jsx)("p", {
+              className: "text-xs font-semibold uppercase text-white",
+              children: e.title
+            }), (0, t.jsx)("ul", {
+              className: "mt-3 space-y-2",
+              children: e.links.map((i, n) => (0, t.jsx)("li", {
+                children: (0, t.jsx)(g, {
+                  href: i.href,
+                  className: "text-[#d1d5db] hover:text-white",
+                  children: i.label
+                })
+              }, `${e.title}-${i.label}-${n}`))
+            })]
+          }, e.title))
+        })]
+      }), (0, t.jsx)("div", {
+        className: "mx-auto mt-10 flex max-w-7xl flex-col gap-2 border-t border-white/10 pt-5 text-xs text-[#9ca3af] sm:flex-row sm:items-center sm:justify-between",
+        children: (0, t.jsxs)("p", {
+          children: ["© ", new Date().getFullYear(), " ", a.BRAND.productName]
+        })
+      })]
+    })
+  }, "LaunchShell", 0, function({
+    children: e
+  }) {
+    let o = (0, i.usePathname)();
+    return (0, t.jsxs)("div", {
+      className: "h-screen overflow-y-auto overflow-x-hidden scroll-smooth bg-[#f7f8fb] text-[#111111]",
+      children: [(0, t.jsx)("a", {
+        href: "#main-content",
+        className: "sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-[#111111] focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white",
+        children: "Bỏ qua menu, vào nội dung chính"
+      }), (0, t.jsx)("header", {
+        className: "sticky top-0 z-40 border-b border-[#e5e7eb] bg-white/95 backdrop-blur",
+        children: (0, t.jsxs)("div", {
+          className: "mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8",
+          children: [(0, t.jsxs)("a", {
+            href: "/",
+            className: "flex min-w-0 items-center gap-3",
+            children: [(0, t.jsx)(u, {}), (0, t.jsx)("span", {
+              className: "truncate text-base font-semibold text-[#111111]",
+              children: a.BRAND.productName
+            })]
+          }), (0, t.jsx)("nav", {
+            "aria-label": "Điều hướng chính",
+            className: "hidden items-center gap-1 md:flex",
+            children: s.map(e => {
+              let i = m(o, e.href);
+              return (0, t.jsx)("a", {
+                href: e.href,
+                "aria-current": i ? "page" : void 0,
+                className: (0, c.cn)("rounded-md px-3 py-2 text-sm font-medium transition", i ? "bg-[#111111] text-white" : "text-[#4b5563] hover:bg-[#eef2f7] hover:text-[#111111]"),
+                children: e.label
+              }, e.href)
+            })
+          }), (0, t.jsxs)("div", {
+            className: "hidden items-center gap-2 md:flex",
+            children: [(0, t.jsx)("a", {
+              href: "/account",
+              className: "rounded-md px-3 py-2 text-sm font-semibold text-[#111111] hover:bg-[#eef2f7]",
+              children: "Tài khoản"
+            }), (0, t.jsxs)(h.TrackedDownloadLink, {
+              source: "landing",
+              fallbackHref: r.DOWNLOAD_APP_HREF,
+              className: "inline-flex items-center gap-2 rounded-md bg-[#ff5530] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#e64a2a]",
+              children: ["Tải app", (0, t.jsx)(n.ArrowRight, {
+                size: 15
+              })]
+            })]
+          }), (0, t.jsxs)("details", {
+            className: "relative md:hidden",
+            children: [(0, t.jsx)("summary", {
+              "aria-label": "Mở menu điều hướng",
+              className: "flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-md border border-[#d1d5db] bg-white text-[#111111] [&::-webkit-details-marker]:hidden",
+              children: (0, t.jsx)(l, {
+                size: 18
+              })
+            }), (0, t.jsx)("div", {
+              className: "absolute right-0 top-12 z-50 w-72 rounded-lg border border-[#e5e7eb] bg-white p-2 shadow-lg",
+              children: (0, t.jsxs)("nav", {
+                className: "flex flex-col gap-1 text-sm font-medium text-[#111111]",
+                children: [s.map(e => {
+                  let i = m(o, e.href);
+                  return (0, t.jsx)("a", {
+                    href: e.href,
+                    "aria-current": i ? "page" : void 0,
+                    className: (0, c.cn)("rounded-md px-3 py-2", i ? "bg-[#111111] text-white" : "hover:bg-[#eef2f7]"),
+                    children: e.label
+                  }, e.href)
+                }), (0, t.jsx)("a", {
+                  href: "/account",
+                  className: "rounded-md px-3 py-2 hover:bg-[#eef2f7]",
+                  children: "Tài khoản"
+                }), (0, t.jsx)(h.TrackedDownloadLink, {
+                  source: "landing",
+                  fallbackHref: r.DOWNLOAD_APP_HREF,
+                  className: "mt-1 rounded-md bg-[#ff5530] px-3 py-2 text-center text-sm font-semibold text-white",
+                  children: "Tải app"
+                })]
+              })
+            })]
+          })]
+        })
+      }), (0, t.jsx)("div", {
+        id: "main-content",
+        children: e
+      })]
+    })
+  }], 90956)
+}]);

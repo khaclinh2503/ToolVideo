@@ -1,0 +1,356 @@
+[
+  {
+    "url": "http://tauri.localhost/app",
+    "type": "Document",
+    "file": "app.html",
+    "bytes": 28088
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/081qnndgjysq0.js",
+    "type": "Script",
+    "file": "_next__static__chunks__081qnndgjysq0.js",
+    "bytes": 77248
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0k0mlfy6dk5-c.css",
+    "type": "Stylesheet",
+    "file": "_next__static__chunks__0k0mlfy6dk5-c.css",
+    "bytes": 195896
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0cf7lknxgl..v.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0cf7lknxgl..v.js",
+    "bytes": 239381
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0i03p20awzdw7.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0i03p20awzdw7.js",
+    "bytes": 25187
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0p-b1yj12hoys.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0p-b1yj12hoys.js",
+    "bytes": 44345
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/15q_a17a~wjcd.js",
+    "type": "Script",
+    "file": "_next__static__chunks__15q_a17a~wjcd.js",
+    "bytes": 45054
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0oj_c9d5yg8k-.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0oj_c9d5yg8k-.js",
+    "bytes": 3941
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/047nud66rccod.js",
+    "type": "Script",
+    "file": "_next__static__chunks__047nud66rccod.js",
+    "bytes": 259279
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0jo7~m_73tmpa.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0jo7~m_73tmpa.js",
+    "bytes": 52061
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/03vbltr6fbmbr.js",
+    "type": "Script",
+    "file": "_next__static__chunks__03vbltr6fbmbr.js",
+    "bytes": 59603
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/10hwk3u28wagu.css",
+    "type": "Stylesheet",
+    "file": "_next__static__chunks__10hwk3u28wagu.css",
+    "bytes": 6613
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0yv3ohh73ictj.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0yv3ohh73ictj.js",
+    "bytes": 68579
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0iyjkzu_mf1-l.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0iyjkzu_mf1-l.js",
+    "bytes": 66455
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0vnx1sv0rkpru.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0vnx1sv0rkpru.js",
+    "bytes": 1197
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0gz1orkzc~xkl.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0gz1orkzc~xkl.js",
+    "bytes": 2163
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/163m~4fec7q-n.js",
+    "type": "Script",
+    "file": "_next__static__chunks__163m~4fec7q-n.js",
+    "bytes": 17502
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0q9en4zgk.jcw.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0q9en4zgk.jcw.js",
+    "bytes": 977
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0y.ajh1jamial.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0y.ajh1jamial.js",
+    "bytes": 24945
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0~.w5vrzb08tf.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0~.w5vrzb08tf.js",
+    "bytes": 59603
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0t2xm2lmrloy6.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0t2xm2lmrloy6.js",
+    "bytes": 28021
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0~n__a_a_hje0.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0~n__a_a_hje0.js",
+    "bytes": 2256
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0578_tyb29tq-.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0578_tyb29tq-.js",
+    "bytes": 59603
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/1019cxawwomjk.js",
+    "type": "Script",
+    "file": "_next__static__chunks__1019cxawwomjk.js",
+    "bytes": 31437
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0vwqoq2.jk_k~.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0vwqoq2.jk_k~.js",
+    "bytes": 404430
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/turbopack-0esr.l4pec2a6.js",
+    "type": "Script",
+    "file": "_next__static__chunks__turbopack-0esr.l4pec2a6.js",
+    "bytes": 10580
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0lys7-fcskuk0.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0lys7-fcskuk0.js",
+    "bytes": 59833
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0h1_4014xfoxf.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0h1_4014xfoxf.js",
+    "bytes": 143181
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0z5-dwgrlpd5z.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0z5-dwgrlpd5z.js",
+    "bytes": 38640
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0m_p1bxtorv5i.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0m_p1bxtorv5i.js",
+    "bytes": 226355
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/00nlqs19-1~_v.js",
+    "type": "Script",
+    "file": "_next__static__chunks__00nlqs19-1~_v.js",
+    "bytes": 30132
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0t5l~v4_dsh5s.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0t5l~v4_dsh5s.js",
+    "bytes": 28198
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0f.wsbtfpr26..js",
+    "type": "Script",
+    "file": "_next__static__chunks__0f.wsbtfpr26..js",
+    "bytes": 1136
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/146w6qtb-kum0.js",
+    "type": "Script",
+    "file": "_next__static__chunks__146w6qtb-kum0.js",
+    "bytes": 55696
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0gs3bie7w7.f4.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0gs3bie7w7.f4.js",
+    "bytes": 47636
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0xi8jm0fmodh..js",
+    "type": "Script",
+    "file": "_next__static__chunks__0xi8jm0fmodh..js",
+    "bytes": 5466
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/18curdy6ste4-.js",
+    "type": "Script",
+    "file": "_next__static__chunks__18curdy6ste4-.js",
+    "bytes": 66841
+  },
+  {
+    "url": "http://tauri.localhost/env.js",
+    "type": "Script",
+    "file": "env.js",
+    "bytes": 60
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/07tcniedxdc~j.js",
+    "type": "Script",
+    "file": "_next__static__chunks__07tcniedxdc~j.js",
+    "bytes": 50766
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0i6-qhdapavlh.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0i6-qhdapavlh.js",
+    "bytes": 44177
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0sggn.mke39u1.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0sggn.mke39u1.js",
+    "bytes": 36962
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0c5w.e4s4uka0.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0c5w.e4s4uka0.js",
+    "bytes": 22562
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0vz9yilo41rdx.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0vz9yilo41rdx.js",
+    "bytes": 36962
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0c3qvz2ds60eu.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0c3qvz2ds60eu.js",
+    "bytes": 46976
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/08cj2w~d99ddx.js",
+    "type": "Script",
+    "file": "_next__static__chunks__08cj2w~d99ddx.js",
+    "bytes": 17982
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/13x7kg~w0~lb_.js",
+    "type": "Script",
+    "file": "_next__static__chunks__13x7kg~w0~lb_.js",
+    "bytes": 57741
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/05-hc5mcv332i.js",
+    "type": "Script",
+    "file": "_next__static__chunks__05-hc5mcv332i.js",
+    "bytes": 563
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0kflgkknl-bqh.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0kflgkknl-bqh.js",
+    "bytes": 17982
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0rdtch10hxvao.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0rdtch10hxvao.js",
+    "bytes": 30998
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0jz4qjc-292sx.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0jz4qjc-292sx.js",
+    "bytes": 29833
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/12n3vror.b50e.js",
+    "type": "Script",
+    "file": "_next__static__chunks__12n3vror.b50e.js",
+    "bytes": 18249
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0d.hddi65w_g~.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0d.hddi65w_g~.js",
+    "bytes": 56445
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/1208~ab1ynaee.js",
+    "type": "Script",
+    "file": "_next__static__chunks__1208~ab1ynaee.js",
+    "bytes": 30137
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0k8oncw~n~zqt.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0k8oncw~n~zqt.js",
+    "bytes": 42774
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0~hmmhm-vm4.w.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0~hmmhm-vm4.w.js",
+    "bytes": 40805
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0idu0ivyajptq.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0idu0ivyajptq.js",
+    "bytes": 23893
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0sgt68puzf6~c.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0sgt68puzf6~c.js",
+    "bytes": 24945
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0.6blbmfgc-ff.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0.6blbmfgc-ff.js",
+    "bytes": 36962
+  },
+  {
+    "url": "http://tauri.localhost/_next/static/chunks/0fsi8lw5utejl.js",
+    "type": "Script",
+    "file": "_next__static__chunks__0fsi8lw5utejl.js",
+    "bytes": 282
+  }
+]
