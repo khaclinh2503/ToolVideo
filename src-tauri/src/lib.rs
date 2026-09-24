@@ -4,6 +4,7 @@ pub mod config;
 pub mod error;
 pub mod ffmpeg;
 pub mod srt;
+pub mod stt;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
