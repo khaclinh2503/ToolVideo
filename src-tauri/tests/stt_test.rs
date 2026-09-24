@@ -10,6 +10,8 @@ fn build_args_uses_spec_defaults() {
     };
     let a = build_args(&m, Path::new("in.wav"), "zh").join(" ");
     assert!(a.contains("--silero-vad-threshold=0.25"));
+    assert!(a.contains("--silero-vad-min-silence-duration=0.20"));
+    assert!(a.contains("--silero-vad-min-speech-duration=0.10"));
     assert!(a.contains("--sense-voice-language=zh"));
     assert!(a.contains("--sense-voice-use-itn=1"));
     assert!(a.contains("--num-threads=4"));

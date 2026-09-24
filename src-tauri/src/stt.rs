@@ -11,8 +11,8 @@ pub fn build_args(m: &SttModels, wav: &Path, lang: &str) -> Vec<String> {
     vec![
         format!("--silero-vad-model={}", m.vad.display()),
         format!("--silero-vad-threshold={}", d::VAD_THRESHOLD),
-        format!("--silero-vad-min-silence-duration={}", d::MIN_SILENCE),
-        format!("--silero-vad-min-speech-duration={}", d::MIN_SPEECH),
+        format!("--silero-vad-min-silence-duration={:.2}", d::MIN_SILENCE),
+        format!("--silero-vad-min-speech-duration={:.2}", d::MIN_SPEECH),
         format!("--silero-vad-max-speech-duration={}", d::MAX_SPEECH),
         format!("--tokens={}", m.tokens.display()),
         format!("--sense-voice-model={}", m.sense_voice.display()),
