@@ -121,27 +121,34 @@ fn download_http_404_is_provider_error() {
 }
 
 #[test]
-fn download_error_during_io_cleans_up_partial_file() {
-    let server = MockServer::start();
-    server.mock(|when, then| {
-        when.method(GET).path("/short");
-        then.status(200).body("short");
-    });
-    let dir = tempfile::tempdir().unwrap();
-    let dest = dir.path().join("short.part");
+fn download_truncated_stream_errors_and_cleans_up_partial_file() {
+    use std::io::{Read as _, Write as _};
+    use std::net::TcpListener;
 
-    let err = download_verified(
-        &server.url("/short"),
-        &dest,
-        HELLO_SHA,
-        &mut |_| {},
-    )
-    .unwrap_err();
-    match err {
-        PipelineError::ChecksumMismatch { .. } => {
-            // Error occurred during I/O (got less data than expected)
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = std::thread::spawn(move || {
+        if let Ok((mut sock, _)) = listener.accept() {
+            let mut buf = [0u8; 4096];
+            let _ = sock.read(&mut buf);
+            let _ = sock.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 1000000\r\n\r\n");
+            let _ = sock.write_all(&vec![b'x'; 1000]);
+            let _ = sock.flush();
         }
-        e => panic!("mong ChecksumMismatch hoặc Io, nhận {e:?}"),
+    });
+
+    let dir = tempfile::tempdir().unwrap();
+    let dest = dir.path().join("truncated.part");
+    let url = format!("http://{addr}/big.bin");
+
+    let err = download_verified(&url, &dest, HELLO_SHA, &mut |_| {}).unwrap_err();
+    match err {
+        PipelineError::Io(m) => assert!(
+            m.contains("đứt kết nối"),
+            "phải là lỗi đọc giữa luồng, không phải lỗi gửi request: {m}"
+        ),
+        e => panic!("mong Io (đứt luồng), nhận {e:?}"),
     }
-    assert!(!dest.exists(), "file tạm phải bị xoá ngay cả khi có lỗi I/O hay hash sai");
+    assert!(!dest.exists(), "file nửa vời phải bị xoá khi đứt luồng");
+    let _ = server.join();
 }
