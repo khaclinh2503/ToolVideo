@@ -50,3 +50,72 @@ fn manifest_installs_to_paths_m1_expects() {
         assert!(all_to.contains(&want.to_string()), "thiếu đích '{want}' trong {all_to:?}");
     }
 }
+
+use app_lib::components::{download_verified, Progress};
+use app_lib::error::PipelineError;
+use httpmock::prelude::*;
+
+// sha256("hello world") = b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9
+const HELLO_SHA: &str = "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9";
+
+#[test]
+fn download_writes_file_and_reports_progress() {
+    let server = MockServer::start();
+    server.mock(|when, then| {
+        when.method(GET).path("/a.bin");
+        then.status(200).body("hello world");
+    });
+    let dir = tempfile::tempdir().unwrap();
+    let dest = dir.path().join("sub").join("a.part");
+
+    let mut seen: Vec<(u64, u64)> = Vec::new();
+    let mut on = |p: Progress| {
+        if let Progress::Download { done, total } = p {
+            seen.push((done, total));
+        }
+    };
+    download_verified(&server.url("/a.bin"), &dest, HELLO_SHA, &mut on).unwrap();
+
+    assert_eq!(std::fs::read(&dest).unwrap(), b"hello world");
+    let last = seen.last().copied().expect("phải báo tiến độ ít nhất 1 lần");
+    assert_eq!(last.0, 11, "done phải bằng số byte đã tải");
+}
+
+#[test]
+fn download_with_wrong_hash_errors_and_leaves_no_file() {
+    let server = MockServer::start();
+    server.mock(|when, then| {
+        when.method(GET).path("/b.bin");
+        then.status(200).body("hello world");
+    });
+    let dir = tempfile::tempdir().unwrap();
+    let dest = dir.path().join("b.part");
+
+    let err = download_verified(&server.url("/b.bin"), &dest, "deadbeef", &mut |_| {}).unwrap_err();
+    match err {
+        PipelineError::ChecksumMismatch { got, .. } => assert_eq!(got, HELLO_SHA),
+        e => panic!("mong ChecksumMismatch, nhận {e:?}"),
+    }
+    assert!(!dest.exists(), "file tạm phải bị xoá khi sai hash");
+}
+
+#[test]
+fn download_http_404_is_provider_error() {
+    let server = MockServer::start();
+    server.mock(|when, then| {
+        when.method(GET).path("/missing");
+        then.status(404).body("nope");
+    });
+    let dir = tempfile::tempdir().unwrap();
+    let err = download_verified(
+        &server.url("/missing"),
+        &dir.path().join("c.part"),
+        HELLO_SHA,
+        &mut |_| {},
+    )
+    .unwrap_err();
+    match err {
+        PipelineError::ProviderError { status, .. } => assert_eq!(status, Some(404)),
+        e => panic!("mong ProviderError, nhận {e:?}"),
+    }
+}
