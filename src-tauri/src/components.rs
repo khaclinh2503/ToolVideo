@@ -1,7 +1,7 @@
 use crate::error::PipelineError;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub enum Archive {
