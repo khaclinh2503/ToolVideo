@@ -43,3 +43,7 @@ lto = true
 opt-level = 3
 panic = "abort"
 strip = true
+
+[[bin]]
+name = "pin_components"
+path = "src/bin/pin_components.rs"

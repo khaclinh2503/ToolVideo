@@ -2,8 +2,8 @@
   {
     "id": "ffmpeg",
     "url": "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-essentials_build.zip",
-    "sha256": "",
-    "size": 0,
+    "sha256": "60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba",
+    "size": 114768076,
     "archive": "zip",
     "files": [
       { "from": "ffmpeg-9.0.2-essentials_build/bin/ffmpeg.exe", "to": "ffmpeg/ffmpeg.exe" },
@@ -13,8 +13,8 @@
   {
     "id": "sherpa",
     "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.8/sherpa-onnx-v1.13.8-win-x64-shared-MT-Release.tar.bz2",
-    "sha256": "",
-    "size": 0,
+    "sha256": "6dffdc715a4465b989446a6105265d2cb345e7101591a17d35534b6758f6e8df",
+    "size": 24805859,
     "archive": "tar.bz2",
     "files": [
       { "from": "sherpa-onnx-v1.13.8-win-x64-shared-MT-Release/bin/", "to": "sherpa" }
@@ -31,7 +31,7 @@
   {
     "id": "sense-voice-tokens",
     "url": "https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main/tokens.txt",
-    "sha256": "",
+    "sha256": "f449eb28dc567533d7fa59be34e2abca8784f771850c78a47fb731a31429a1dc",
     "size": 315894,
     "archive": "raw",
     "files": [{ "from": null, "to": "sherpa/tokens.txt" }]
@@ -39,16 +39,16 @@
   {
     "id": "silero-vad",
     "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
-    "sha256": "",
-    "size": 0,
+    "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
+    "size": 643854,
     "archive": "raw",
     "files": [{ "from": null, "to": "sherpa/vad-model.onnx" }]
   },
   {
     "id": "piper",
     "url": "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip",
-    "sha256": "",
-    "size": 0,
+    "sha256": "f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea",
+    "size": 22477236,
     "archive": "zip",
     "files": [{ "from": "piper/", "to": "piper" }]
   },
@@ -63,7 +63,7 @@
   {
     "id": "piper-voice-vi-cfg",
     "url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/vi/vi_VN/vais1000/medium/vi_VN-vais1000-medium.onnx.json",
-    "sha256": "",
+    "sha256": "fafb9da1354ed4b77c31af228ed41fb41cd825c14cffa105454b25e6ae751ee0",
     "size": 4860,
     "archive": "raw",
     "files": [{ "from": null, "to": "piper/vi_VN-vais1000-medium.onnx.json" }]
