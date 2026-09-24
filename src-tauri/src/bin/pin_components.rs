@@ -62,8 +62,12 @@ fn main() {
 
     for s in &specs {
         let dest = dir.join(format!("{}.bin", s.id));
+        // Cache khoá theo id, không theo URL: nếu đổi URL cho 1 id đã tồn tại,
+        // phải tự xoá %TEMP%\dvl-pin\ trước khi chạy lại — nếu không tool sẽ
+        // dùng lại byte cũ trong cache và ghim nhầm hash đã lỗi thời.
         if !dest.exists() {
             eprintln!("--> tải {} ...", s.id);
+            let part = dir.join(format!("{}.bin.part", s.id));
             // Ghim = chấp nhận bất kỳ hash nào ở lần đầu: tải bằng client thô, không verify.
             let mut resp = reqwest::blocking::Client::builder()
                 .user_agent("DichVideo-Local/0.1")
@@ -75,8 +79,24 @@ fn main() {
                 .send()
                 .unwrap_or_else(|e| panic!("{}: {e}", s.id));
             assert!(resp.status().is_success(), "{}: HTTP {}", s.id, resp.status());
-            let mut f = std::fs::File::create(&dest).unwrap();
-            std::io::copy(&mut resp, &mut f).unwrap();
+            // Server không phải lúc nào cũng gửi Content-Length ⇒ None nghĩa là
+            // "không kiểm được", không phải lỗi.
+            let expected_len = resp.content_length();
+            let mut f = std::fs::File::create(&part).unwrap();
+            let written = std::io::copy(&mut resp, &mut f).unwrap_or_else(|e| panic!("{}: {e}", s.id));
+            drop(f);
+            if let Some(expected) = expected_len {
+                assert_eq!(
+                    written, expected,
+                    "{}: tải dở dang — ghi {written} byte nhưng server báo {expected} byte (mất kết nối giữa chừng?)",
+                    s.id
+                );
+            }
+            // Chỉ đổi tên sang '.bin' SAU KHI tải xong trọn vẹn và khớp kích
+            // thước. Nếu quá trình bị ngắt (mất mạng, Ctrl-C, bị kill) thì chỉ
+            // còn lại '.part' sót lại; lần chạy sau `dest.exists()` vẫn false
+            // nên sẽ tải lại từ đầu chứ không ghim nhầm hash của file dở dang.
+            std::fs::rename(&part, &dest).unwrap_or_else(|e| panic!("{}: {e}", s.id));
         }
         let (sha, size) = sha256_of(&dest).unwrap();
         println!("\n=== {} ===\n  \"sha256\": \"{sha}\",\n  \"size\": {size},", s.id);
