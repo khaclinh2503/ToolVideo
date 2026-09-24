@@ -45,8 +45,14 @@ fn manifest_has_all_eight_components_with_valid_shape() {
 fn manifest_installs_to_paths_m1_expects() {
     let s = specs().unwrap();
     let all_to: Vec<String> = s.iter().flat_map(|c| c.files.iter().map(|f| f.to.clone())).collect();
-    // 5 đường dẫn resolve_engine_ctx đang đòi (ffmpeg.exe nằm trong cây con "ffmpeg")
-    for want in ["sherpa/sense-voice.onnx", "sherpa/tokens.txt", "sherpa/vad-model.onnx"] {
+    // 4/5 đường dẫn resolve_engine_ctx đang đòi, khai báo tĩnh trong components.json.
+    // (sherpa-onnx-vad-with-offline-asr.exe không kiểm được ở đây vì nó đến qua chép cả cây con.)
+    for want in [
+        "ffmpeg/ffmpeg.exe",
+        "sherpa/sense-voice.onnx",
+        "sherpa/tokens.txt",
+        "sherpa/vad-model.onnx",
+    ] {
         assert!(all_to.contains(&want.to_string()), "thiếu đích '{want}' trong {all_to:?}");
     }
 }
@@ -100,23 +106,22 @@ fn download_with_wrong_hash_errors_and_leaves_no_file() {
 }
 
 #[test]
-fn download_http_404_is_provider_error() {
+fn download_http_404_is_io_error_with_status_and_url() {
     let server = MockServer::start();
     server.mock(|when, then| {
         when.method(GET).path("/missing");
         then.status(404).body("nope");
     });
     let dir = tempfile::tempdir().unwrap();
-    let err = download_verified(
-        &server.url("/missing"),
-        &dir.path().join("c.part"),
-        HELLO_SHA,
-        &mut |_| {},
-    )
-    .unwrap_err();
+    let url = server.url("/missing");
+    let err = download_verified(&url, &dir.path().join("c.part"), HELLO_SHA, &mut |_| {})
+        .unwrap_err();
     match err {
-        PipelineError::ProviderError { status, .. } => assert_eq!(status, Some(404)),
-        e => panic!("mong ProviderError, nhận {e:?}"),
+        PipelineError::Io(m) => {
+            assert!(m.contains(&url), "thông điệp phải nêu url: {m}");
+            assert!(m.contains("404"), "thông điệp phải nêu mã trạng thái HTTP: {m}");
+        }
+        e => panic!("mong Io, nhận {e:?}"),
     }
 }
 

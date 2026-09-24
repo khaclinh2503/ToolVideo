@@ -25,11 +25,8 @@ fn require_path(p: PathBuf) -> Result<PathBuf, String> {
         Ok(p)
     } else {
         Err(format!(
-            "Model chưa cài: {}. Hãy đặt ffmpeg, sherpa-onnx, SenseVoice và silero-VAD (vad-model.onnx) vào {}. \
-             Các file cần có: ffmpeg/ffmpeg.exe, sherpa/sherpa-onnx-vad-with-offline-asr.exe, sherpa/sense-voice.onnx, \
-             sherpa/tokens.txt, sherpa/vad-model.onnx.",
-            p.display(),
-            models_dir().display()
+            "Model chưa cài: {}. Hãy bấm nút \"Tải bộ công cụ\" để tự động tải và cài đặt.",
+            p.display()
         ))
     }
 }
@@ -118,11 +115,11 @@ pub fn missing_component_ids(models: &std::path::Path) -> Result<Vec<String>, St
 
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-struct ComponentProgressEvent {
-    id: String,
-    phase: &'static str,
-    done: u64,
-    total: u64,
+pub struct ComponentProgressEvent {
+    pub id: String,
+    pub phase: &'static str,
+    pub done: u64,
+    pub total: u64,
 }
 
 #[tauri::command]

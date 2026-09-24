@@ -21,6 +21,33 @@ fn dtos_are_camel_case_and_stt_has_project_dir() {
 }
 
 #[test]
+fn component_progress_event_is_camel_case_with_expected_phases() {
+    let ev = app_lib::commands::ComponentProgressEvent {
+        id: "ffmpeg".into(),
+        phase: "download",
+        done: 1,
+        total: 2,
+    };
+    let js = serde_json::to_string(&ev).unwrap();
+    assert!(js.contains("\"id\":\"ffmpeg\""));
+    assert!(js.contains("\"phase\":\"download\""));
+    assert!(js.contains("\"done\":1"));
+    assert!(js.contains("\"total\":2"));
+
+    // App.tsx branches on these three literal phase strings.
+    for phase in ["download", "extract", "done"] {
+        let ev = app_lib::commands::ComponentProgressEvent {
+            id: "x".into(),
+            phase,
+            done: 0,
+            total: 0,
+        };
+        let js = serde_json::to_string(&ev).unwrap();
+        assert!(js.contains(&format!("\"phase\":\"{phase}\"")));
+    }
+}
+
+#[test]
 fn components_missing_report_lists_ids_not_yet_installed() {
     let dir = tempfile::tempdir().unwrap();
     let missing = app_lib::commands::missing_component_ids(dir.path()).unwrap();

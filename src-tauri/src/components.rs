@@ -82,11 +82,10 @@ pub fn download_verified(
         .send()
         .map_err(|e| PipelineError::Io(format!("không tải được {url}: {e}")))?;
     if !resp.status().is_success() {
-        return Err(PipelineError::ProviderError {
-            provider: "download".into(),
-            status: Some(resp.status().as_u16()),
-            msg: url.to_string(),
-        });
+        let status = resp.status().as_u16();
+        return Err(PipelineError::Io(format!(
+            "không tải được {url}: HTTP {status}"
+        )));
     }
 
     let result = (|| -> Result<String, PipelineError> {
