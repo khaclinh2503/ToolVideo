@@ -5,6 +5,7 @@ pub enum PipelineError {
     NoAudioStream,
     EngineFailed { stage: String, code: i32, stderr: String },
     Io(String),
+    ProviderError { provider: String, status: Option<u16>, msg: String },
 }
 
 impl PipelineError {
@@ -15,6 +16,7 @@ impl PipelineError {
             PipelineError::NoAudioStream => "no_audio_stream",
             PipelineError::EngineFailed { .. } => "engine_failed",
             PipelineError::Io(_) => "io_error",
+            PipelineError::ProviderError { .. } => "provider_error",
         }
     }
 }
@@ -42,6 +44,15 @@ impl std::fmt::Display for PipelineError {
                 "[checksum_mismatch] File tải về hỏng (sha256 mong đợi {expected}, nhận {got})."
             ),
             PipelineError::Io(msg) => write!(f, "[io_error] {msg}"),
+            PipelineError::ProviderError { provider, status, msg } => {
+                let vi = match status {
+                    Some(401) | Some(403) => "API key sai hoặc không có quyền".to_string(),
+                    Some(429) => "Quá giới hạn gọi API, thử lại sau".to_string(),
+                    Some(s) if *s >= 500 => format!("Dịch vụ lỗi phía server ({s})"),
+                    _ => msg.chars().take(200).collect(),
+                };
+                write!(f, "[provider_error] {provider}: {vi}")
+            }
         }
     }
 }
