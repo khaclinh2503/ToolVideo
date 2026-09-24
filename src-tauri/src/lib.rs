@@ -8,6 +8,7 @@ pub mod pipeline;
 pub mod srt;
 pub mod stt;
 pub mod translate;
+pub mod wav;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
