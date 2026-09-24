@@ -24,31 +24,24 @@ pub fn build_args(m: &SttModels, wav: &Path, lang: &str) -> Vec<String> {
     ]
 }
 
-// KNOWN RISK: exact sherpa-onnx-offline output format is unverified (no binary available
-// in this build environment). Assumed format, one segment per non-empty line:
-//   "<start_seconds> <end_seconds> <text>"
-// e.g. "0.000 1.500 你好". See tests/fixtures/sherpa_sample_output.txt.
-// parse_output is isolated so it can be adjusted once verified end-to-end.
+// Output format of `sherpa-onnx-vad-with-offline-asr` (verified 2026-09-24 against
+// sherpa-onnx v1.13.8 win-x64): results go to STDOUT, one segment per line:
+//   "<start_seconds> -- <end_seconds>: <text>"
+// e.g. "0.000 -- 5.212: 市场规模除了去年负增长之外，每年都在稳步增加。"
+// Logs/config dumps go to stderr. See tests/fixtures/sherpa_sample_output.txt.
 pub fn parse_output(text: &str) -> Result<Vec<Segment>, PipelineError> {
     let mut segs = Vec::new();
     let mut any_nonempty = false;
     for line in text.lines().filter(|l| !l.trim().is_empty()) {
         any_nonempty = true;
-        let trimmed = line.trim_start();
-        let mut parts = trimmed.splitn(2, char::is_whitespace);
-        let a = parts.next();
-        let rest = parts.next().unwrap_or("").trim_start();
-        let mut parts2 = rest.splitn(2, char::is_whitespace);
-        let b = parts2.next();
-        let t = parts2.next().unwrap_or("").trim();
-        if let (Some(a), Some(b)) = (a, b) {
-            if let (Ok(s), Ok(e)) = (a.parse::<f64>(), b.parse::<f64>()) {
-                segs.push(Segment {
-                    start_ms: (s * 1000.0).round() as u64,
-                    end_ms: (e * 1000.0).round() as u64,
-                    text: t.to_string(),
-                });
-            }
+        let Some((a, rest)) = line.trim().split_once(" -- ") else { continue };
+        let Some((b, t)) = rest.split_once(':') else { continue };
+        if let (Ok(s), Ok(e)) = (a.trim().parse::<f64>(), b.trim().parse::<f64>()) {
+            segs.push(Segment {
+                start_ms: (s * 1000.0).round() as u64,
+                end_ms: (e * 1000.0).round() as u64,
+                text: t.trim().to_string(),
+            });
         }
     }
     if any_nonempty && segs.is_empty() {
@@ -81,7 +74,7 @@ pub fn run_stt(
     }
     let out = cmd.output().map_err(|err| {
         if err.kind() == std::io::ErrorKind::NotFound {
-            PipelineError::EngineMissing("sherpa-onnx-offline".into())
+            PipelineError::EngineMissing("sherpa-onnx-vad-with-offline-asr".into())
         } else {
             PipelineError::Io(err.to_string())
         }

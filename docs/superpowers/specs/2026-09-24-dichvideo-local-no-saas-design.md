@@ -77,8 +77,11 @@ Thứ tự: `extract_audio → [separate] → stt → translate → tts → reti
 | compose | `ffmpeg` mix: giọng dịch + nền | volumeOriginal 0.18, volumeTranslated 3.0 |
 | export | `ffmpeg` mux video + audio mới; burn sub (tuỳ chọn) `-vf subtitles/ass` | encoder cấu hình được |
 
-> Lưu ý: `media-segmenter` của app gốc chính là **sherpa-onnx-offline** (cùng bộ cờ
-> `--sense-voice-model --silero-vad-model`). Bản độc lập dùng sherpa-onnx chính thức → tham số 1:1.
+> Lưu ý (đã xác minh 2026-09-24, sherpa-onnx v1.13.8 win-x64): binary chính thức tương ứng
+> `media-segmenter` của app gốc là **`sherpa-onnx-vad-with-offline-asr.exe`** (nhận đủ cờ
+> `--silero-vad-*` + `--sense-voice-*`); `sherpa-onnx-offline.exe` KHÔNG nhận cờ VAD. Kết quả in ra
+> **stdout**, mỗi dòng `START -- END: TEXT` (giây); log ra stderr. Tham số 1:1 với app gốc.
+> E2E clip 15s: 3.4s, RTF ≈ 0.04 (CPU).
 
 ## 5. Cấp engine & model (tải từ nguồn public, lần đầu)
 

@@ -55,7 +55,7 @@ fn require_path(p: PathBuf) -> Result<PathBuf, String> {
     } else {
         Err(format!(
             "Model chưa cài: {}. Hãy đặt ffmpeg, sherpa-onnx, SenseVoice và silero-VAD (vad-model.onnx) vào {}. \
-             Các file cần có: ffmpeg/ffmpeg.exe, sherpa/sherpa-onnx-offline.exe, sherpa/sense-voice.onnx, \
+             Các file cần có: ffmpeg/ffmpeg.exe, sherpa/sherpa-onnx-vad-with-offline-asr.exe, sherpa/sense-voice.onnx, \
              sherpa/tokens.txt, sherpa/vad-model.onnx.",
             p.display(),
             models_dir().display()
@@ -66,7 +66,7 @@ fn require_path(p: PathBuf) -> Result<PathBuf, String> {
 fn resolve_engine_ctx() -> Result<EngineCtx, String> {
     let md = models_dir();
     let ffmpeg = require_path(md.join("ffmpeg").join("ffmpeg.exe"))?;
-    let sherpa = require_path(md.join("sherpa").join("sherpa-onnx-offline.exe"))?;
+    let sherpa = require_path(md.join("sherpa").join("sherpa-onnx-vad-with-offline-asr.exe"))?;
     let sense_voice = require_path(md.join("sherpa").join("sense-voice.onnx"))?;
     let tokens = require_path(md.join("sherpa").join("tokens.txt"))?;
     let vad = require_path(md.join("sherpa").join("vad-model.onnx"))?;

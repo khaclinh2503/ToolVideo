@@ -19,38 +19,51 @@ fn build_args_uses_spec_defaults() {
     assert!(a.ends_with("in.wav"));
 }
 
+// Real format of sherpa-onnx-vad-with-offline-asr (stdout): "START -- END: TEXT"
 #[test]
 fn parses_empty_and_cjk() {
     assert_eq!(parse_output("").unwrap().len(), 0);
-    let segs = parse_output("0.000 1.500 你好").unwrap();
+    let segs = parse_output("0.000 -- 1.500: 你好").unwrap();
     assert_eq!(segs[0].end_ms, 1500);
     assert_eq!(segs[0].text, "你好");
 }
 
 #[test]
 fn parses_fixture_file() {
+    // fixture = verbatim stdout of a real 15s run (sherpa-onnx v1.13.8, SenseVoice int8)
     let text = std::fs::read_to_string("tests/fixtures/sherpa_sample_output.txt").unwrap();
     let segs = parse_output(&text).unwrap();
     assert_eq!(segs.len(), 3);
     assert_eq!(segs[0].start_ms, 0);
-    assert_eq!(segs[0].end_ms, 1500);
-    assert_eq!(segs[0].text, "你好，欢迎使用");
+    assert_eq!(segs[0].end_ms, 5212);
+    assert_eq!(segs[0].text, "市场规模除了去年负增长之外，每年都在稳步增加。");
+    assert_eq!(segs[2].start_ms, 11036);
+    assert_eq!(segs[2].end_ms, 14976);
 }
 
 #[test]
-fn parses_double_space_separated_line() {
-    let segs = parse_output("0.000  1.500  你好").unwrap();
+fn parses_text_containing_colons_and_extra_spaces() {
+    // only the FIRST ':' after " -- " is the separator; colons inside text are kept
+    let segs = parse_output("  0.500 --  2.250:  时间: 12:30 到了  ").unwrap();
     assert_eq!(segs.len(), 1);
-    assert_eq!(segs[0].start_ms, 0);
-    assert_eq!(segs[0].end_ms, 1500);
-    assert_eq!(segs[0].text, "你好");
+    assert_eq!(segs[0].start_ms, 500);
+    assert_eq!(segs[0].end_ms, 2250);
+    assert_eq!(segs[0].text, "时间: 12:30 到了");
 }
 
 #[test]
 fn parse_output_rounds_ms() {
-    let segs = parse_output("1.0005 2.0 x").unwrap();
+    let segs = parse_output("1.0005 -- 2.0: x").unwrap();
     assert_eq!(segs[0].start_ms, 1001);
     assert_eq!(segs[0].end_ms, 2000);
+}
+
+#[test]
+fn parse_output_skips_log_lines_but_keeps_segments() {
+    // a stray non-segment line mixed in must be skipped, not turn the run into an error
+    let segs = parse_output("Started!\n0.000 -- 1.000: a\nElapsed seconds: 0.6 s\n").unwrap();
+    assert_eq!(segs.len(), 1);
+    assert_eq!(segs[0].text, "a");
 }
 
 #[test]
