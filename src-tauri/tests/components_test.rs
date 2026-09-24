@@ -152,3 +152,154 @@ fn download_truncated_stream_errors_and_cleans_up_partial_file() {
     assert!(!dest.exists(), "file nửa vời phải bị xoá khi đứt luồng");
     let _ = server.join();
 }
+
+use app_lib::components::{place_files, ComponentSpec, FileMap};
+use std::io::Write as _;
+
+fn spec(id: &str, archive: Archive, files: Vec<(Option<&str>, &str)>) -> ComponentSpec {
+    ComponentSpec {
+        id: id.into(),
+        url: "https://example.invalid/x".into(),
+        sha256: String::new(),
+        size: 0,
+        archive,
+        files: files
+            .into_iter()
+            .map(|(from, to)| FileMap { from: from.map(|s| s.to_string()), to: to.into() })
+            .collect(),
+    }
+}
+
+fn make_zip(path: &std::path::Path, entries: &[(&str, &[u8])]) {
+    let f = std::fs::File::create(path).unwrap();
+    let mut z = zip::ZipWriter::new(f);
+    let opt = zip::write::SimpleFileOptions::default();
+    for (name, data) in entries {
+        z.start_file(*name, opt).unwrap();
+        z.write_all(data).unwrap();
+    }
+    z.finish().unwrap();
+}
+
+fn make_tar_bz2(path: &std::path::Path, entries: &[(&str, &[u8])]) {
+    let f = std::fs::File::create(path).unwrap();
+    let enc = bzip2::write::BzEncoder::new(f, bzip2::Compression::fast());
+    let mut t = tar::Builder::new(enc);
+    for (name, data) in entries {
+        let mut h = tar::Header::new_gnu();
+        h.set_size(data.len() as u64);
+        h.set_mode(0o644);
+        h.set_cksum();
+        t.append_data(&mut h, *name, *data).unwrap();
+    }
+    t.into_inner().unwrap().finish().unwrap();
+}
+
+#[test]
+fn place_raw_renames_download_to_target() {
+    let dir = tempfile::tempdir().unwrap();
+    let models = dir.path().join("models");
+    let part = dir.path().join("x.part");
+    std::fs::write(&part, b"MODEL").unwrap();
+
+    let s = spec("m", Archive::Raw, vec![(None, "sherpa/sense-voice.onnx")]);
+    let written = place_files(&part, &s, &models).unwrap();
+
+    assert_eq!(written, vec!["sherpa/sense-voice.onnx".to_string()]);
+    assert_eq!(std::fs::read(models.join("sherpa/sense-voice.onnx")).unwrap(), b"MODEL");
+}
+
+#[test]
+fn place_zip_picks_single_files_and_ignores_the_rest() {
+    let dir = tempfile::tempdir().unwrap();
+    let models = dir.path().join("models");
+    let zip_path = dir.path().join("a.zip");
+    make_zip(&zip_path, &[
+        ("build/bin/ffmpeg.exe", b"FF"),
+        ("build/bin/ffprobe.exe", b"FP"),
+        ("build/bin/ffplay.exe", b"PLAY"),
+    ]);
+
+    let s = spec("ffmpeg", Archive::Zip, vec![
+        (Some("build/bin/ffmpeg.exe"), "ffmpeg/ffmpeg.exe"),
+        (Some("build/bin/ffprobe.exe"), "ffmpeg/ffprobe.exe"),
+    ]);
+    place_files(&zip_path, &s, &models).unwrap();
+
+    assert_eq!(std::fs::read(models.join("ffmpeg/ffmpeg.exe")).unwrap(), b"FF");
+    assert_eq!(std::fs::read(models.join("ffmpeg/ffprobe.exe")).unwrap(), b"FP");
+    assert!(!models.join("ffmpeg/ffplay.exe").exists(), "không được chép file không khai báo");
+}
+
+#[test]
+fn place_zip_copies_whole_subtree_when_from_ends_with_slash() {
+    let dir = tempfile::tempdir().unwrap();
+    let models = dir.path().join("models");
+    let zip_path = dir.path().join("p.zip");
+    make_zip(&zip_path, &[
+        ("piper/piper.exe", b"EXE"),
+        ("piper/espeak-ng-data/vi_dict", b"DICT"),
+        ("other/readme.txt", b"NO"),
+    ]);
+
+    let s = spec("piper", Archive::Zip, vec![(Some("piper/"), "piper")]);
+    let mut written = place_files(&zip_path, &s, &models).unwrap();
+    written.sort();
+
+    assert_eq!(written, vec!["piper/espeak-ng-data/vi_dict".to_string(), "piper/piper.exe".to_string()]);
+    assert_eq!(std::fs::read(models.join("piper/piper.exe")).unwrap(), b"EXE");
+    assert_eq!(std::fs::read(models.join("piper/espeak-ng-data/vi_dict")).unwrap(), b"DICT");
+    assert!(!models.join("other").exists());
+}
+
+#[test]
+fn place_tar_bz2_copies_subtree() {
+    let dir = tempfile::tempdir().unwrap();
+    let models = dir.path().join("models");
+    let tb = dir.path().join("s.tar.bz2");
+    make_tar_bz2(&tb, &[
+        ("sherpa-onnx-v1/bin/sherpa-onnx-vad-with-offline-asr.exe", b"ASR"),
+        ("sherpa-onnx-v1/bin/onnxruntime.dll", b"DLL"),
+        ("sherpa-onnx-v1/include/x.h", b"H"),
+    ]);
+
+    let s = spec("sherpa", Archive::TarBz2, vec![(Some("sherpa-onnx-v1/bin/"), "sherpa")]);
+    place_files(&tb, &s, &models).unwrap();
+
+    assert_eq!(
+        std::fs::read(models.join("sherpa/sherpa-onnx-vad-with-offline-asr.exe")).unwrap(),
+        b"ASR"
+    );
+    assert_eq!(std::fs::read(models.join("sherpa/onnxruntime.dll")).unwrap(), b"DLL");
+    assert!(!models.join("sherpa/x.h").exists());
+}
+
+#[test]
+fn place_errors_when_declared_member_missing() {
+    let dir = tempfile::tempdir().unwrap();
+    let zip_path = dir.path().join("e.zip");
+    make_zip(&zip_path, &[("build/bin/other.exe", b"X")]);
+
+    let s = spec("ffmpeg", Archive::Zip, vec![(Some("build/bin/ffmpeg.exe"), "ffmpeg/ffmpeg.exe")]);
+    let err = place_files(&zip_path, &s, &dir.path().join("models")).unwrap_err();
+    match err {
+        PipelineError::Io(m) => assert!(m.contains("ffmpeg.exe"), "thông điệp phải nêu tên file: {m}"),
+        e => panic!("mong Io, nhận {e:?}"),
+    }
+}
+
+#[test]
+fn place_rejects_path_traversal_entries() {
+    let dir = tempfile::tempdir().unwrap();
+    let models = dir.path().join("models");
+    let zip_path = dir.path().join("evil.zip");
+    make_zip(&zip_path, &[("piper/../../evil.txt", b"PWN"), ("piper/ok.txt", b"OK")]);
+
+    let s = spec("piper", Archive::Zip, vec![(Some("piper/"), "piper")]);
+    let err = place_files(&zip_path, &s, &models).unwrap_err();
+    match err {
+        PipelineError::Io(m) => assert!(m.contains("không hợp lệ"), "{m}"),
+        e => panic!("mong Io, nhận {e:?}"),
+    }
+    assert!(!dir.path().join("evil.txt").exists());
+}
