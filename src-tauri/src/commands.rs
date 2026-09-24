@@ -105,3 +105,48 @@ pub fn get_config() -> crate::config::AppConfig {
 pub fn save_config(cfg: crate::config::AppConfig) -> Result<(), String> {
     crate::config::save_config(&cfg).map_err(|e| e.to_string())
 }
+
+/// Danh sách id component chưa cài (dùng cho UI và test; không gọi mạng).
+pub fn missing_component_ids(models: &std::path::Path) -> Result<Vec<String>, String> {
+    let specs = crate::components::specs().map_err(|e| e.to_string())?;
+    Ok(specs
+        .into_iter()
+        .filter(|s| !crate::components::is_installed(s, models))
+        .map(|s| s.id)
+        .collect())
+}
+
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ComponentProgressEvent {
+    id: String,
+    phase: &'static str,
+    done: u64,
+    total: u64,
+}
+
+#[tauri::command]
+pub async fn ensure_components(app: tauri::AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        use tauri::Emitter;
+        let models = crate::config::models_dir();
+        std::fs::create_dir_all(&models).map_err(|e| e.to_string())?;
+        crate::components::install_all(&models, &mut |id, p| {
+            let ev = match p {
+                crate::components::Progress::Download { done, total } => ComponentProgressEvent {
+                    id: id.to_string(), phase: "download", done, total,
+                },
+                crate::components::Progress::Extract => ComponentProgressEvent {
+                    id: id.to_string(), phase: "extract", done: 0, total: 0,
+                },
+                crate::components::Progress::Done => ComponentProgressEvent {
+                    id: id.to_string(), phase: "done", done: 0, total: 0,
+                },
+            };
+            let _ = app.emit("component_progress", ev);
+        })
+        .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { listen } from "@tauri-apps/api/event";
 import "./App.css";
 
 interface SttResultDto { srtPath: string; cueCount: number; projectDir: string }
@@ -15,10 +16,37 @@ function App() {
   const [cfg, setCfg] = useState<AppConfig | null>(null);
   const [provider, setProvider] = useState("google_free");
   const [tgt, setTgt] = useState("vi");
+  const [dl, setDl] = useState("");
+
+  useEffect(() => {
+    const un = listen<{ id: string; phase: string; done: number; total: number }>(
+      "component_progress",
+      (e) => {
+        const { id, phase, done, total } = e.payload;
+        if (phase === "download") {
+          const pct = total > 0 ? ` ${Math.floor((done / total) * 100)}%` : ` ${(done / 1048576).toFixed(0)}MB`;
+          setDl(`Đang tải ${id}${pct}`);
+        } else if (phase === "extract") {
+          setDl(`Đang giải nén ${id}...`);
+        } else {
+          setDl(`Xong ${id}`);
+        }
+      },
+    );
+    return () => { un.then((f) => f()); };
+  }, []);
 
   useEffect(() => {
     invoke<AppConfig>("get_config").then((c) => { setCfg(c); setProvider(c.translate.default_provider); setTgt(c.translate.target_lang); });
   }, []);
+
+  async function onEnsure() {
+    setRunning(true); setStatus("Đang chuẩn bị bộ công cụ...");
+    try {
+      await invoke("ensure_components");
+      setStatus("Đã cài đủ bộ công cụ."); setDl("");
+    } catch (e) { setStatus(`Lỗi: ${String(e)}`); } finally { setRunning(false); }
+  }
 
   async function onRun() {
     const selected = await open({ filters: [{ name: "Video", extensions: ["mp4", "mkv", "mov"] }] });
@@ -60,7 +88,11 @@ function App() {
   return (
     <main className="container">
       <h1>DichVideo-Local</h1>
-      <div className="row"><button type="button" onClick={onRun} disabled={running}>{running ? "Đang chạy..." : "Chạy STT"}</button></div>
+      <div className="row">
+        <button type="button" onClick={onEnsure} disabled={running}>Tải bộ công cụ</button>
+        <button type="button" onClick={onRun} disabled={running}>{running ? "Đang chạy..." : "Chạy STT"}</button>
+      </div>
+      {dl && <p style={{ opacity: 0.7 }}>{dl}</p>}
 
       <h2>Dịch</h2>
       <div className="row">
