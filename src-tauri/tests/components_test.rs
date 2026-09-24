@@ -303,3 +303,70 @@ fn place_rejects_path_traversal_entries() {
     }
     assert!(!dir.path().join("evil.txt").exists());
 }
+
+use app_lib::components::{install_component, is_installed};
+
+#[test]
+fn install_downloads_places_and_records_state() {
+    let server = MockServer::start();
+    let m = server.mock(|when, then| {
+        when.method(GET).path("/model.onnx");
+        then.status(200).body("hello world");
+    });
+    let dir = tempfile::tempdir().unwrap();
+    let models = dir.path().to_path_buf();
+
+    let mut s = spec("sense-voice", Archive::Raw, vec![(None, "sherpa/sense-voice.onnx")]);
+    s.url = server.url("/model.onnx");
+    s.sha256 = HELLO_SHA.into();
+
+    assert!(!is_installed(&s, &models));
+    install_component(&s, &models, &mut |_| {}).unwrap();
+
+    assert_eq!(std::fs::read(models.join("sherpa/sense-voice.onnx")).unwrap(), b"hello world");
+    assert!(models.join(".state").join("sense-voice.json").exists());
+    assert!(is_installed(&s, &models));
+    m.assert_hits(1);
+
+    // Lần 2: bỏ qua hoàn toàn, không phát request nào nữa.
+    install_component(&s, &models, &mut |_| {}).unwrap();
+    m.assert_hits(1);
+}
+
+#[test]
+fn install_with_bad_hash_leaves_no_target_and_no_state() {
+    let server = MockServer::start();
+    server.mock(|when, then| {
+        when.method(GET).path("/bad.onnx");
+        then.status(200).body("hello world");
+    });
+    let dir = tempfile::tempdir().unwrap();
+    let models = dir.path().to_path_buf();
+
+    let mut s = spec("sense-voice", Archive::Raw, vec![(None, "sherpa/sense-voice.onnx")]);
+    s.url = server.url("/bad.onnx");
+    s.sha256 = "0000000000000000000000000000000000000000000000000000000000000000".into();
+
+    assert!(install_component(&s, &models, &mut |_| {}).is_err());
+    assert!(!models.join("sherpa/sense-voice.onnx").exists());
+    assert!(!models.join(".state").join("sense-voice.json").exists());
+    assert!(!is_installed(&s, &models));
+}
+
+#[test]
+fn is_installed_false_when_state_hash_differs() {
+    let dir = tempfile::tempdir().unwrap();
+    let models = dir.path().to_path_buf();
+    std::fs::create_dir_all(models.join("sherpa")).unwrap();
+    std::fs::write(models.join("sherpa/sense-voice.onnx"), b"x").unwrap();
+    std::fs::create_dir_all(models.join(".state")).unwrap();
+    std::fs::write(
+        models.join(".state").join("sense-voice.json"),
+        r#"{"sha256":"cũ","files":["sherpa/sense-voice.onnx"]}"#,
+    )
+    .unwrap();
+
+    let mut s = spec("sense-voice", Archive::Raw, vec![(None, "sherpa/sense-voice.onnx")]);
+    s.sha256 = "mới".into();
+    assert!(!is_installed(&s, &models), "sha256 đổi ⇒ phải cài lại");
+}

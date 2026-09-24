@@ -250,3 +250,82 @@ pub fn place_files(
     }
     Ok(written)
 }
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct InstallState {
+    sha256: String,
+    files: Vec<String>,
+}
+
+fn state_path(models: &Path, id: &str) -> PathBuf {
+    models.join(".state").join(format!("{id}.json"))
+}
+
+/// Đã cài = sổ `.state` ghi đúng sha256 hiện hành **và** mọi file trong sổ còn tồn tại.
+pub fn is_installed(spec: &ComponentSpec, models: &Path) -> bool {
+    let Ok(text) = std::fs::read_to_string(state_path(models, &spec.id)) else {
+        return false;
+    };
+    let Ok(st) = serde_json::from_str::<InstallState>(&text) else {
+        return false;
+    };
+    if !st.sha256.eq_ignore_ascii_case(&spec.sha256) {
+        return false;
+    }
+    !st.files.is_empty()
+        && st.files.iter().all(|f| {
+            safe_join(models, f).map(|p| p.exists()).unwrap_or(false)
+        })
+}
+
+pub fn install_component(
+    spec: &ComponentSpec,
+    models: &Path,
+    on: &mut dyn FnMut(Progress),
+) -> Result<(), PipelineError> {
+    if is_installed(spec, models) {
+        on(Progress::Done);
+        return Ok(());
+    }
+    let tmp_dir = models.join(".tmp");
+    std::fs::create_dir_all(&tmp_dir).map_err(|e| PipelineError::Io(e.to_string()))?;
+    let part = tmp_dir.join(format!("{}.part", spec.id));
+
+    download_verified(&spec.url, &part, &spec.sha256, on)?;
+
+    on(Progress::Extract);
+    let files = place_files(&part, spec, models)?;
+    let _ = std::fs::remove_file(&part);
+
+    let sp = state_path(models, &spec.id);
+    if let Some(d) = sp.parent() {
+        std::fs::create_dir_all(d).map_err(|e| PipelineError::Io(e.to_string()))?;
+    }
+    let st = InstallState { sha256: spec.sha256.clone(), files };
+    std::fs::write(
+        &sp,
+        serde_json::to_string_pretty(&st).map_err(|e| PipelineError::Io(e.to_string()))?,
+    )
+    .map_err(|e| PipelineError::Io(e.to_string()))?;
+
+    on(Progress::Done);
+    Ok(())
+}
+
+/// Cài lần lượt mọi component; dừng ngay ở cái đầu tiên lỗi.
+pub fn install_all(
+    models: &Path,
+    on: &mut dyn FnMut(&str, Progress),
+) -> Result<(), PipelineError> {
+    for spec in specs()? {
+        if spec.sha256.trim().is_empty() {
+            return Err(PipelineError::Io(format!(
+                "component '{}' chưa ghim sha256 trong components.json — chạy `cargo run --bin pin_components`",
+                spec.id
+            )));
+        }
+        let id = spec.id.clone();
+        install_component(&spec, models, &mut |p| on(&id, p))?;
+    }
+    Ok(())
+}
