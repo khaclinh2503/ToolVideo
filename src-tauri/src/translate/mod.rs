@@ -1,6 +1,7 @@
 use crate::{config::TranslateConfig, error::PipelineError, srt::Segment};
 
 pub mod google_free;
+pub mod openai_compat;
 
 pub(crate) fn http_client() -> reqwest::blocking::Client {
     reqwest::blocking::Client::builder()
@@ -61,10 +62,25 @@ pub fn translate_segments(
 
 pub fn make_provider(
     id: &str,
-    _cfg: &TranslateConfig,
+    cfg: &TranslateConfig,
 ) -> Result<Box<dyn TranslateProvider>, PipelineError> {
     match id {
         "google_free" => Ok(Box::new(google_free::GoogleFree::new())),
+        "openai_compat" => {
+            let o = &cfg.openai;
+            if o.api_key.trim().is_empty() || o.base_url.trim().is_empty() || o.model.trim().is_empty() {
+                return Err(PipelineError::ProviderError {
+                    provider: id.into(),
+                    status: None,
+                    msg: "thiếu cấu hình openai_compat: api_key/base_url/model".into(),
+                });
+            }
+            Ok(Box::new(openai_compat::OpenAiCompat {
+                base_url: o.base_url.clone(),
+                api_key: o.api_key.clone(),
+                model: o.model.clone(),
+            }))
+        }
         _ => Err(PipelineError::ProviderError {
             provider: id.into(),
             status: None,
