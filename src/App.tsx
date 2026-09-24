@@ -1,49 +1,50 @@
 import { useState } from "react";
-import reactLogo from "./assets/react.svg";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import "./App.css";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+interface SttResultDto {
+  srtPath: string;
+  cueCount: number;
+}
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+function App() {
+  const [status, setStatus] = useState("");
+  const [running, setRunning] = useState(false);
+
+  async function onRun() {
+    const selected = await open({
+      filters: [{ name: "Video", extensions: ["mp4", "mkv", "mov"] }],
+    });
+    if (!selected) return;
+
+    setRunning(true);
+    setStatus("Đang chạy STT...");
+    try {
+      const r = await invoke<SttResultDto>("run_stt", {
+        videoPath: selected,
+        lang: "zh",
+      });
+      setStatus(`Xong: ${r.cueCount} cue → ${r.srtPath}`);
+    } catch (e) {
+      setStatus(`Lỗi: ${String(e)}`);
+    } finally {
+      setRunning(false);
+    }
   }
 
   return (
     <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+      <h1>DichVideo-Local</h1>
+      <p>Chọn video và chạy nhận dạng giọng nói (STT).</p>
 
       <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+        <button type="button" onClick={onRun} disabled={running}>
+          {running ? "Đang chạy..." : "Chạy STT"}
+        </button>
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
+      {status && <p>{status}</p>}
     </main>
   );
 }
