@@ -1,5 +1,7 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 pub mod config;
+pub mod error;
+pub mod srt;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
