@@ -7,6 +7,7 @@ pub mod ffmpeg;
 pub mod pipeline;
 pub mod srt;
 pub mod stt;
+pub mod translate;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
