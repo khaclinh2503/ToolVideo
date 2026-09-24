@@ -4,6 +4,15 @@ mod tests {
     use app_lib::srt::Segment;
 
     #[test]
+    fn finalize_srt_empty_segments_ok() {
+        let dir = tempfile::tempdir().unwrap();
+        let r = finalize_srt(&[], dir.path()).unwrap();
+        assert_eq!(r.cue_count, 0);
+        assert!(r.srt_path.exists());
+        assert_eq!(std::fs::read_to_string(&r.srt_path).unwrap(), "");
+    }
+
+    #[test]
     fn finalize_writes_file_and_counts() {
         let dir = tempfile::tempdir().unwrap();
         let segs = vec![Segment {

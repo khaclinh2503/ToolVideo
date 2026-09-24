@@ -11,7 +11,9 @@ pub mod stt_defaults {
 }
 
 pub fn data_dir() -> PathBuf {
-    dirs::data_dir().unwrap().join("dichvideo-local")
+    dirs::data_dir()
+        .expect("Không xác định được thư mục dữ liệu người dùng (APPDATA)")
+        .join("dichvideo-local")
 }
 
 pub fn models_dir() -> PathBuf {

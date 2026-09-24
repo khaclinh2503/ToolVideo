@@ -54,7 +54,9 @@ fn require_path(p: PathBuf) -> Result<PathBuf, String> {
         Ok(p)
     } else {
         Err(format!(
-            "Model chưa cài: {}. Hãy đặt sherpa-onnx + SenseVoice + ffmpeg vào {}.",
+            "Model chưa cài: {}. Hãy đặt ffmpeg, sherpa-onnx, SenseVoice và silero-VAD (vad-model.onnx) vào {}. \
+             Các file cần có: ffmpeg/ffmpeg.exe, sherpa/sherpa-onnx-offline.exe, sherpa/sense-voice.onnx, \
+             sherpa/tokens.txt, sherpa/vad-model.onnx.",
             p.display(),
             models_dir().display()
         ))
@@ -88,7 +90,7 @@ pub async fn run_stt(video_path: String, lang: String) -> Result<SttResultDto, S
     std::fs::create_dir_all(&project_dir).map_err(|e| e.to_string())?;
 
     let result = run_stt_pipeline(&ctx, video, &project_dir, &lang)
-        .map_err(|e| format!("{:?}", e))?;
+        .map_err(|e| e.to_string())?;
 
     Ok(SttResultDto {
         srt_path: result.srt_path.display().to_string(),
