@@ -1,12 +1,48 @@
 use crate::error::PipelineError;
+use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub enum Archive {
+    #[serde(rename = "zip")]
+    Zip,
+    #[serde(rename = "tar.bz2")]
+    TarBz2,
+    #[serde(rename = "raw")]
+    Raw,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct FileMap {
+    /// `None` ⇒ archive = Raw (chính file tải về).
+    /// `Some("a/b/c.exe")` ⇒ 1 file trong archive.
+    /// `Some("a/b/")` ⇒ cả cây con (kết bằng '/').
+    pub from: Option<String>,
+    /// Đường dẫn đích, tương đối `models_dir()`, luôn dùng '/'.
+    pub to: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct ComponentSpec {
     pub id: String,
     pub url: String,
     pub sha256: String,
-    pub unpack: bool,
+    pub size: u64,
+    pub archive: Archive,
+    pub files: Vec<FileMap>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Progress {
+    Download { done: u64, total: u64 },
+    Extract,
+    Done,
+}
+
+pub fn specs() -> Result<Vec<ComponentSpec>, PipelineError> {
+    serde_json::from_str(include_str!("../components.json"))
+        .map_err(|e| PipelineError::Io(format!("components.json hỏng: {e}")))
 }
 
 pub fn verify_sha256(path: &Path, expected: &str) -> Result<(), PipelineError> {
@@ -20,31 +56,4 @@ pub fn verify_sha256(path: &Path, expected: &str) -> Result<(), PipelineError> {
             got,
         })
     }
-}
-
-pub async fn ensure_component(spec: &ComponentSpec) -> Result<PathBuf, PipelineError> {
-    let dir = crate::config::models_dir().join(&spec.id);
-    let marker = dir.join(".ok");
-    if marker.exists() {
-        return Ok(dir);
-    }
-    std::fs::create_dir_all(&dir).map_err(|e| PipelineError::Io(e.to_string()))?;
-    let archive = dir.join("download.bin");
-    let bytes = reqwest::get(&spec.url)
-        .await
-        .map_err(|e| PipelineError::Io(e.to_string()))?
-        .bytes()
-        .await
-        .map_err(|e| PipelineError::Io(e.to_string()))?;
-    std::fs::write(&archive, &bytes).map_err(|e| PipelineError::Io(e.to_string()))?;
-    verify_sha256(&archive, &spec.sha256)?;
-    if spec.unpack {
-        let file = std::fs::File::open(&archive).map_err(|e| PipelineError::Io(e.to_string()))?;
-        zip::ZipArchive::new(file)
-            .map_err(|e| PipelineError::Io(e.to_string()))?
-            .extract(&dir)
-            .map_err(|e| PipelineError::Io(e.to_string()))?;
-    }
-    std::fs::write(&marker, b"ok").ok();
-    Ok(dir)
 }
