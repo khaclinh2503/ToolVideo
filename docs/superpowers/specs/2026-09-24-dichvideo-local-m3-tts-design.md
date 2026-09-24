@@ -15,7 +15,7 @@ Sau khi M2 tạo `subtitles/translated.vi.srt`, người dùng bấm **Lồng ti
 đã đổi text). Kèm theo: **ComponentManager** tự tải/verify/cài 8 artifact (ffmpeg, sherpa-onnx,
 SenseVoice + tokens, silero-vad, piper, voice vi + config) — trả nợ kỹ thuật của M1 và là điều kiện để TTS chạy được.
 
-**Thành công khi:** trên máy trắng, bấm "Tải bộ công cụ" → tải ~470MB, verify sha256, cài vào
+**Thành công khi:** trên máy trắng, bấm "Tải bộ công cụ" → tải ~428MB, verify sha256, cài vào
 `%APPDATA%\dichvideo-local\models\`; rồi chạy thật 1 clip ~15s: video → STT → dịch → TTS, ra đủ
 số wav bằng số cue có text, manifest khớp, nghe được tiếng Việt. Chạy lại lần 2: 0 cue sinh mới
 (toàn cache hit). Thiếu file / sai checksum / piper chết giữa chừng → lỗi tiếng Việt nêu rõ cue nào.
@@ -38,7 +38,7 @@ số wav bằng số cue có text, manifest khớp, nghe được tiếng Việt
 | id | URL | Dạng | Kích thước | sha256 |
 |----|-----|------|-----------|--------|
 | `ffmpeg` | `github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-essentials_build.zip` | zip | ~80MB | ghim khi chạy `pin_components` |
-| `sherpa` | `github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.8/sherpa-onnx-v1.13.8-win-x64-static-MT-Release.tar.bz2` | tar.bz2 | ~60MB | ghim khi chạy `pin_components` |
+| `sherpa` | `github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.8/sherpa-onnx-v1.13.8-win-x64-shared-MT-Release.tar.bz2` | tar.bz2 | 23.7MB | ghim khi chạy `pin_components` |
 | `sense-voice` | `huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main/model.int8.onnx` | raw | 239,233,841 | `c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51` |
 | `sense-voice-tokens` | `…/resolve/main/tokens.txt` | raw | 315,894 | ghim khi chạy `pin_components` (không phải LFS) |
 | `silero-vad` | `github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx` | raw | ~2MB | ghim khi chạy `pin_components` |
@@ -48,6 +48,9 @@ số wav bằng số cue có text, manifest khớp, nghe được tiếng Việt
 
 Hai sha256 có sẵn lấy từ `lfs.oid` của HuggingFace API (LFS oid **chính là** sha256 nội dung file).
 Chọn `model.int8.onnx` (239MB) thay vì `model.onnx` (937MB): giảm tải 4×, chất lượng đủ dùng.
+Chọn bản sherpa **`shared`** thay vì `static`: `static-MT-Release` nặng 237.7MB (mỗi exe link tĩnh
+onnxruntime) trong khi `shared-MT-Release` chỉ 23.7MB; hậu tố `MT` giữ CRT tĩnh nên vẫn **không cần
+cài VC++ redist**.
 Dùng tag GitHub bất biến thay cho `gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip` — URL đó
 trỏ bản mới nhất nên sha256 đổi theo thời gian, **không ghim được**.
 
@@ -77,6 +80,10 @@ trỏ bản mới nhất nên sha256 đổi theo thời gian, **không ghim đư
     pub files: Vec<FileMap>,         // Raw ⇒ đúng 1 phần tử, `from` bỏ trống
 }
 #[derive(Deserialize)] pub struct FileMap { pub from: Option<String>, pub to: String }
+// `from` có 3 dạng:
+//   "a/b/c.exe"  — 1 file trong archive  → chép ra models/<to>
+//   "a/b/"       — cả cây con (kết bằng '/') → chép ra thư mục models/<to>
+//   null         — chỉ dùng cho archive = "raw" (chính file tải về → models/<to>)
 pub enum Progress { Download { done: u64, total: u64 }, Extract, Done }
 
 pub fn specs() -> Result<Vec<ComponentSpec>, PipelineError>;   // include_str!("../components.json")
@@ -92,8 +99,11 @@ Luồng `install_component`:
    cập nhật `Sha256`, gọi `on(Progress::Download)` tối đa ~10 lần/giây. **Không** nạp cả file vào RAM
    (`ensure_component` cũ dùng `.bytes()` — 239MB trong RAM là không chấp nhận được).
 3. So sha256 ⇒ lệch: xoá `.part`, trả `ChecksumMismatch`.
-4. Giải nén **chỉ những member cần** theo `files[].from` vào `.tmp/<id>/`, rồi `rename` sang đích;
-   `Raw` thì `rename` thẳng `.part` → đích. Tạo thư mục cha nếu thiếu.
+4. Giải nén **chỉ những member khớp** `files[].from` (file lẻ hoặc cả cây con) vào `.tmp/<id>/`, rồi
+   `rename` sang đích; `Raw` thì `rename` thẳng `.part` → đích. Tạo thư mục cha nếu thiếu.
+   Dùng cây con cho `sherpa` (`bin/` — exe + dll đi cùng nhau) và `piper` (`piper/` — exe +
+   `espeak-ng-data/` + dll); dùng file lẻ cho `ffmpeg` (chỉ lấy `ffmpeg.exe`/`ffprobe.exe`, bỏ
+   `ffplay.exe` không dùng).
 5. Ghi `.state/<id>.json` `{"sha256": "...", "files": ["..."]}`; xoá `.tmp/<id>*`.
 
 `install_all` dừng ở component lỗi đầu tiên (không nuốt lỗi), các component đã cài trước đó giữ nguyên.
@@ -283,10 +293,10 @@ kho cache dùng chung giữa các project, DPAPI cho key (M5).
 | Rủi ro | Giảm thiểu |
 |--------|-----------|
 | Bố cục bên trong `.tar.bz2` của sherpa chưa biết ⇒ `from` sai | `pin_components` in danh sách entry trước khi ghim; chỉnh `components.json` rồi mới code tiếp |
-| Bản sherpa `static-MT-Release` có thể vẫn cần `.dll` đi kèm | Kiểm ngay ở E2E component; nếu thiếu thì thêm các `.dll` vào `files[]` |
+| Bản `shared-MT-Release` tách exe và `.dll` ra nhiều thư mục | Chép nguyên cây `bin/` (và `lib/` nếu có) thay vì nhặt từng file; `pin_components` in danh sách entry để chốt |
 | Piper 2023.11.14-2 đã cũ, giọng `vais1000` chỉ ở mức khá | Chấp nhận ở M3; VieNeu là bản nâng chất lượng ở milestone sau, trait không đổi |
 | ffmpeg 9.0.2 mới hơn bản M1 từng thử | Cờ M1 dùng (`-map 0:a:0 -af aresample=…`) là cờ ổn định lâu năm; E2E STT sẽ bắt được nếu vỡ |
-| Tải 470MB đứt giữa chừng | `.part` bị xoá, chạy lại từ đầu component đó; các component đã xong không tải lại |
+| Tải 428MB đứt giữa chừng | `.part` bị xoá, chạy lại từ đầu component đó; các component đã xong không tải lại |
 | Mạng công ty chặn HF/GitHub | Đã thử `curl` tới cả hai nguồn ở máy này: **thông** |
 | Piper sinh 22050 Hz, khác 16000 Hz của STT | Ghi `sample_rate` vào manifest; M4 resample khi mix |
 
