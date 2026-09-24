@@ -312,12 +312,15 @@ pub fn install_component(
     Ok(())
 }
 
-/// Cài lần lượt mọi component; dừng ngay ở cái đầu tiên lỗi.
-pub fn install_all(
+/// Cài lần lượt các `specs` đã cho; dừng ngay ở cái đầu tiên lỗi.
+/// Tách khỏi `install_all` để có thể test bằng spec tự tạo (mock),
+/// không phụ thuộc `components.json` thật (tránh tải mạng thật khi test).
+pub fn install_specs(
+    specs: &[ComponentSpec],
     models: &Path,
     on: &mut dyn FnMut(&str, Progress),
 ) -> Result<(), PipelineError> {
-    for spec in specs()? {
+    for spec in specs {
         if spec.sha256.trim().is_empty() {
             return Err(PipelineError::Io(format!(
                 "component '{}' chưa ghim sha256 trong components.json — chạy `cargo run --bin pin_components`",
@@ -325,7 +328,15 @@ pub fn install_all(
             )));
         }
         let id = spec.id.clone();
-        install_component(&spec, models, &mut |p| on(&id, p))?;
+        install_component(spec, models, &mut |p| on(&id, p))?;
     }
     Ok(())
+}
+
+/// Cài lần lượt mọi component; dừng ngay ở cái đầu tiên lỗi.
+pub fn install_all(
+    models: &Path,
+    on: &mut dyn FnMut(&str, Progress),
+) -> Result<(), PipelineError> {
+    install_specs(&specs()?, models, on)
 }

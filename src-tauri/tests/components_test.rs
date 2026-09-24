@@ -370,3 +370,61 @@ fn is_installed_false_when_state_hash_differs() {
     s.sha256 = "mới".into();
     assert!(!is_installed(&s, &models), "sha256 đổi ⇒ phải cài lại");
 }
+
+use app_lib::components::install_specs;
+
+#[test]
+fn install_specs_stops_after_first_failing_component() {
+    let server = MockServer::start();
+    let m1 = server.mock(|when, then| {
+        when.method(GET).path("/fail.bin");
+        then.status(200).body("hello world");
+    });
+    let m2 = server.mock(|when, then| {
+        when.method(GET).path("/never.bin");
+        then.status(200).body("hello world");
+    });
+    let dir = tempfile::tempdir().unwrap();
+    let models = dir.path().to_path_buf();
+
+    // spec đầu: hash khai báo sai ⇒ download_verified sẽ lỗi ChecksumMismatch.
+    let mut s1 = spec("comp-a", Archive::Raw, vec![(None, "a/a.bin")]);
+    s1.url = server.url("/fail.bin");
+    s1.sha256 = "0000000000000000000000000000000000000000000000000000000000000000".into();
+
+    // spec sau: hash đúng, nhưng không được phép chạm tới vì spec đầu đã lỗi.
+    let mut s2 = spec("comp-b", Archive::Raw, vec![(None, "b/b.bin")]);
+    s2.url = server.url("/never.bin");
+    s2.sha256 = HELLO_SHA.into();
+
+    let err = install_specs(&[s1, s2], &models, &mut |_, _| {});
+    assert!(err.is_err(), "install_specs phải trả lỗi khi spec đầu lỗi");
+
+    m1.assert_hits(1);
+    m2.assert_hits(0);
+}
+
+#[test]
+fn install_specs_rejects_unpinned_sha256_before_any_network_call() {
+    let server = MockServer::start();
+    let m = server.mock(|when, then| {
+        when.method(GET).path("/unpinned.bin");
+        then.status(200).body("hello world");
+    });
+    let dir = tempfile::tempdir().unwrap();
+    let models = dir.path().to_path_buf();
+
+    let mut s = spec("comp-c", Archive::Raw, vec![(None, "c/c.bin")]);
+    s.url = server.url("/unpinned.bin");
+    s.sha256 = String::new();
+
+    let err = install_specs(&[s], &models, &mut |_, _| {}).unwrap_err();
+    match err {
+        PipelineError::Io(msg) => {
+            assert!(msg.contains("comp-c"), "thông điệp phải nêu id component: {msg}");
+            assert!(msg.contains("chưa ghim"), "thông điệp phải nói rõ chưa ghim sha256: {msg}");
+        }
+        e => panic!("mong Io, nhận {e:?}"),
+    }
+    m.assert_hits(0);
+}
