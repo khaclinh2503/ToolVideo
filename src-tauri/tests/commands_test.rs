@@ -71,8 +71,11 @@ fn export_dto_serialize_ra_camel_case() {
 }
 
 #[test]
-fn export_progress_event_serialize_ra_camel_case() {
-    let ev = app_lib::commands::ExportProgressEvent { phase: "retime".into() };
-    let j = serde_json::to_string(&ev).unwrap();
-    assert!(j.contains("\"phase\":\"retime\""), "{j}");
+fn export_progress_event_giu_nguyen_4_ten_phase() {
+    // App.tsx branches on these four literal phase strings verbatim.
+    for phase in ["retime", "dub", "encode", "done"] {
+        let ev = app_lib::commands::ExportProgressEvent { phase: phase.into() };
+        let j = serde_json::to_string(&ev).unwrap();
+        assert_eq!(j, format!("{{\"phase\":\"{phase}\"}}"), "{j}");
+    }
 }
