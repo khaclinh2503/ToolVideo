@@ -37,4 +37,14 @@ fn text_cannot_forge_field_boundary() {
     let x = cache_key("piper", "v", 1.0, "\u{1f}a");
     let y = cache_key("piper", "v\u{1f}", 1.0, "a");
     assert_ne!(x, y, "0x1F trong text không được làm nhoè ranh giới trường");
+
+    // Cặp trường LIỀN KỀ (provider, voice): nối bằng dấu phân cách 0x1F thường sẽ đụng độ
+    // vì "a\u{1f}" + "b" == "a" + "\u{1f}b" khi ghép chuỗi thô. length_scale và text giữ
+    // nguyên ở cả hai vế để phép so sánh chỉ phụ thuộc vào ranh giới provider/voice.
+    let p = cache_key("a\u{1f}b", "c", 1.0, "Xin chào");
+    let q = cache_key("a", "b\u{1f}c", 1.0, "Xin chào");
+    assert_ne!(
+        p, q,
+        "0x1F trong provider không được làm nhoè ranh giới provider/voice"
+    );
 }
