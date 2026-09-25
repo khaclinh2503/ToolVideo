@@ -4,6 +4,11 @@ version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
+# Crate có hai binary (app và công cụ pin_components), nên `cargo run` — thứ mà
+# `npm run tauri dev` gọi — không tự đoán được chạy cái nào và báo lỗi
+# "could not determine which binary to run". Đã hỏng từ lúc thêm pin_components
+# (9e1f091) tới khi phát hiện ở M6; chỉ định rõ binary của app.
+default-run = "dichvideo-local"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
