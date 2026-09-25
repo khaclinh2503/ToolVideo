@@ -157,6 +157,75 @@ pub struct TtsResultDto {
     pub cached: usize,
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportResultDto {
+    pub output_path: String,
+    /// Số cue phải đọc nhanh hơn để vừa khung.
+    pub adjusted: usize,
+    /// Số cue đọc nhanh hết cỡ mà vẫn tràn.
+    pub capped: usize,
+    pub placed: usize,
+    pub truncated: usize,
+    pub saturated: usize,
+}
+
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportProgressEvent {
+    /// "retime" | "dub" | "encode" | "done"
+    pub phase: String,
+}
+
+#[tauri::command]
+pub async fn run_export(
+    app: tauri::AppHandle,
+    project_dir: String,
+    video_path: String,
+    tgt: String,
+    burn_subs: bool,
+    soft_subs: bool,
+) -> Result<ExportResultDto, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<ExportResultDto, String> {
+        use tauri::Emitter;
+        let cfg = crate::config::load_config();
+        let md = models_dir();
+        let ffmpeg = require_path(md.join("ffmpeg").join("ffmpeg.exe"))?;
+        let ffprobe = require_path(md.join("ffmpeg").join("ffprobe.exe"))?;
+        let p = crate::tts::make_provider(&cfg.tts.default_provider, &cfg.tts, &md)
+            .map_err(|e| e.to_string())?;
+
+        let r = crate::pipeline::run_export_stage(
+            Path::new(&project_dir),
+            &ffmpeg,
+            &ffprobe,
+            Path::new(&video_path),
+            p.as_ref(),
+            &cfg.tts.voice,
+            cfg.tts.length_scale,
+            &tgt,
+            &cfg.compose,
+            burn_subs,
+            soft_subs,
+            &mut |phase| {
+                let _ = app.emit("export_progress", ExportProgressEvent { phase: phase.to_string() });
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+        Ok(ExportResultDto {
+            output_path: r.output_path.display().to_string(),
+            adjusted: r.retime.adjusted,
+            capped: r.retime.capped,
+            placed: r.dub.placed,
+            truncated: r.dub.truncated,
+            saturated: r.dub.saturated,
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub async fn run_tts(project_dir: String, tgt: String) -> Result<TtsResultDto, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<TtsResultDto, String> {

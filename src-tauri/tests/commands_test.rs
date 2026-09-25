@@ -54,3 +54,25 @@ fn components_missing_report_lists_ids_not_yet_installed() {
     assert_eq!(missing.len(), 8, "thư mục trống ⇒ cả 8 component đều thiếu");
     assert!(missing.contains(&"piper".to_string()));
 }
+
+#[test]
+fn export_dto_serialize_ra_camel_case() {
+    let dto = app_lib::commands::ExportResultDto {
+        output_path: r"E:\du an\output\final.mp4".into(),
+        adjusted: 3,
+        capped: 1,
+        placed: 42,
+        truncated: 0,
+        saturated: 0,
+    };
+    let j = serde_json::to_string(&dto).unwrap();
+    assert!(j.contains("\"outputPath\""), "UI đọc camelCase: {j}");
+    assert!(!j.contains("output_path"), "{j}");
+}
+
+#[test]
+fn export_progress_event_serialize_ra_camel_case() {
+    let ev = app_lib::commands::ExportProgressEvent { phase: "retime".into() };
+    let j = serde_json::to_string(&ev).unwrap();
+    assert!(j.contains("\"phase\":\"retime\""), "{j}");
+}
