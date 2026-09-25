@@ -16,7 +16,7 @@ pub fn classify_ffmpeg_failure(stage: &str, code: i32, stderr: &str) -> Pipeline
 
 pub fn extract_audio(ffmpeg: &Path, input: &Path, out_wav: &Path) -> Result<(), PipelineError> {
     let mut cmd = Command::new(ffmpeg);
-    cmd.args(["-hide_banner", "-y", "-i"])
+    cmd.args(["-hide_banner", "-nostats", "-y", "-i"])
         .arg(input)
         .args([
             "-map", "0:a:0", "-vn", "-af",

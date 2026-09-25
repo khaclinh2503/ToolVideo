@@ -151,6 +151,15 @@ fn luon_ket_bang_duong_dan_dau_ra_va_co_faststart() {
 }
 
 #[test]
+fn co_nostats_de_khong_tich_luy_tien_do_vao_stderr() {
+    // Thiếu -nostats: ffmpeg in tiến độ ra stderr kết thúc bằng '\r' (không
+    // phải '\n'), nên cả buổi encode là MỘT dòng — error.rs lấy "20 dòng cuối"
+    // sẽ nuốt trọn cả blob đó thay vì lỗi thật.
+    let a = args_of(&opts(false, false, true), None);
+    assert!(a.iter().any(|s| s == "-nostats"), "thiếu -nostats: {a:?}");
+}
+
+#[test]
 fn burn_srt_duoc_chep_sang_ten_ascii_canh_ban_dich() {
     let d = tempfile::tempdir().unwrap();
     let sub = d.path().join("subtitles");

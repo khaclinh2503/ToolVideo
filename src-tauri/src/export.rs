@@ -158,7 +158,7 @@ pub fn build_export_args(
     let soft = o.soft_subs && !o.burn_subs;
     let soft_srt = if soft { srt } else { None };
 
-    let mut a: Vec<OsString> = vec!["-hide_banner".into(), "-y".into()];
+    let mut a: Vec<OsString> = vec!["-hide_banner".into(), "-nostats".into(), "-y".into()];
     a.push("-i".into());
     a.push(video.into());
     a.push("-i".into());
