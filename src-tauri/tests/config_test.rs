@@ -46,3 +46,34 @@ fn tts_config_defaults_and_backward_compat() {
     assert_eq!(cfg.tts.voice, "vi_VN-vais1000-medium");
     assert!((cfg.tts.length_scale - 1.0).abs() < 1e-6);
 }
+
+#[test]
+fn compose_mac_dinh_dung_gia_tri_cua_ung_dung_goc() {
+    let c = app_lib::config::ComposeConfig::default();
+    assert_eq!(c.volume_original, 0.18);
+    assert_eq!(c.volume_dub, 3.0);
+    assert_eq!(c.guard_ms, 80);
+    assert_eq!(c.min_length_scale, 0.6);
+    assert_eq!(c.crf, 20);
+    assert_eq!(c.preset, "medium");
+}
+
+#[test]
+fn config_json_cu_khong_co_compose_van_doc_duoc() {
+    // config.json viết ra từ M2/M3 không có khoá "compose"
+    let cfg = app_lib::config::parse_config_or_default(
+        r#"{"translate":{"default_provider":"google_free","target_lang":"vi"}}"#,
+    );
+    assert_eq!(cfg.compose.volume_dub, 3.0);
+    assert_eq!(cfg.translate.target_lang, "vi");
+}
+
+#[test]
+fn compose_doc_duoc_gia_tri_nguoi_dung_sua() {
+    let cfg = app_lib::config::parse_config_or_default(
+        r#"{"compose":{"volume_original":0.3,"volume_dub":2.0,"guard_ms":120,"min_length_scale":0.7,"crf":18,"preset":"slow"}}"#,
+    );
+    assert_eq!(cfg.compose.volume_original, 0.3);
+    assert_eq!(cfg.compose.guard_ms, 120);
+    assert_eq!(cfg.compose.preset, "slow");
+}

@@ -32,6 +32,8 @@ pub struct AppConfig {
     pub translate: TranslateConfig,
     #[serde(default)]
     pub tts: TtsConfig,
+    #[serde(default)]
+    pub compose: ComposeConfig,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -65,6 +67,33 @@ impl Default for TtsConfig {
             default_provider: "piper".into(),
             voice: "vi_VN-vais1000-medium".into(),
             length_scale: 1.0,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ComposeConfig {
+    /// Âm lượng tiếng gốc khi trộn (giữ ở nền).
+    pub volume_original: f32,
+    /// Âm lượng giọng dịch.
+    pub volume_dub: f32,
+    /// Khoảng đệm giữa hai câu, mili-giây.
+    pub guard_ms: u64,
+    /// Chặn dưới của `length_scale` khi ép giọng vừa khung.
+    pub min_length_scale: f32,
+    pub crf: u32,
+    pub preset: String,
+}
+
+impl Default for ComposeConfig {
+    fn default() -> Self {
+        Self {
+            volume_original: 0.18,
+            volume_dub: 3.0,
+            guard_ms: crate::retime::GUARD_MS,
+            min_length_scale: crate::retime::MIN_LENGTH_SCALE,
+            crf: 20,
+            preset: "medium".into(),
         }
     }
 }
