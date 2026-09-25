@@ -131,13 +131,27 @@ fn sua_mot_cue_roi_nghe_thu_chi_doi_wav_cua_cue_do() {
         println!("chạm trần MIN_LENGTH_SCALE={MIN_LENGTH_SCALE} — đúng hành vi capped của retime::fit_scale, không phải lỗi");
         // Chỗ hở đã để lọt lỗi task 3b: 1837 so với 1895ms (ngắn 3%, thuần
         // nhiễu suy diễn của Piper) vẫn thoả `r2.duration_ms < r.duration_ms`
-        // ở trên. Ngưỡng 15% (xem task-3b-brief.md) đủ xa cả nhiễu (~3%) lẫn
-        // hành vi ép tốc độ thật (~27% ở length_scale 0.6) để phân biệt được
-        // "xanh nhờ nhiễu" với "xanh nhờ engine thật sự ép tốc độ".
-        let nguong = r.duration_ms * 85 / 100;
+        // ở trên.
+        //
+        // Ngưỡng 10%, tính lại từ biên thật thay vì ước lượng (review task-3b,
+        // F2). Ba lượt đo cùng tốc độ trong task-3b-brief.md (1.7299 / 1.6834
+        // / 1.6719 giây) cho mỗi phép đo lệch khoảng ±1.7% quanh trung bình do
+        // nhiễu suy diễn của Piper.
+        //   - Trường hợp thật (hiệu ứng ép ~20%): nếu bản ép đo cao 1.7% còn
+        //     bản nền đo thấp 1.7%, tỉ lệ quan sát được xấu nhất là
+        //     0.80 × 1.034 ⇒ rút ngắn chỉ còn ~17%.
+        //   - Trường hợp lỗi (engine phớt lờ length_scale): hai phép đo lệch
+        //     ngược chiều cho rút ngắn biểu kiến tối đa ~3.4%.
+        //   ⇒ phân bố thật là "≥17% nếu đúng" và "≤3.4% nếu hỏng"; 10% nằm
+        //     gần giữa, cách mỗi phía khoảng 7 điểm phần trăm.
+        // Câu/clip dùng ở đây chỉ đo được ~19-20% (không phải ~27% như câu
+        // khác trong brief) vì Piper thêm khoảng lặng đầu/cuối không co giãn
+        // theo length_scale — biên vẫn đủ rộng so với ngưỡng 10% nên không
+        // cần đổi câu kiểm tra.
+        let nguong = r.duration_ms * 90 / 100;
         assert!(
             r2.duration_ms < nguong,
-            "chạm trần MIN_LENGTH_SCALE thì bản ép phải ngắn hơn ít nhất 15% so với bản nền: {} so với ngưỡng {} (nền {})",
+            "chạm trần MIN_LENGTH_SCALE thì bản ép phải ngắn hơn ít nhất 10% so với bản nền: {} so với ngưỡng {} (nền {})",
             r2.duration_ms,
             nguong,
             r.duration_ms
