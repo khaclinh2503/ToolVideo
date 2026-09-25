@@ -137,9 +137,14 @@ pub fn build_filter_complex(o: &ExportOpts) -> String {
     // giữ đỉnh dưới 0 dBFS.
     // level=disabled bắt buộc: mặc định alimiter tự bật "auto level", tự động
     // khuếch đại lại đầu ra về 0 dB — xoá sạch chính cái limit vừa đặt, y hệt
-    // cái bẫy normalize=1 của amix ở trên. Thiếu cờ này, đỉnh âm đo được sau
-    // khi mux vượt cả 0 dBFS dù limit=0.98.
-    parts.push("[mx]alimiter=limit=0.98:level=disabled[aout]".into());
+    // cái bẫy normalize=1 của amix ở trên.
+    // limit=0.89 (~ -1 dBFS), không phải một số gần 0 dBFS: mux cuối cùng mã
+    // hoá AAC, và giải mã AAC có thể vọt đỉnh tới ~0.5 dB so với mẫu PCM đưa
+    // vào — đo được trên chính giọng lồng thật, không phải suy đoán. Ở
+    // limit=0.98 đỉnh sau AAC đã vượt hẳn 0 dBFS dù limiter "đúng". −1 dBFS là
+    // mức đệm quy ước cho phát hành qua codec mất dữ liệu, chọn theo nguyên
+    // tắc đó chứ không theo riêng file test này — đừng chỉnh lại gần 0 dBFS.
+    parts.push("[mx]alimiter=limit=0.89:level=disabled[aout]".into());
     parts.join(";")
 }
 

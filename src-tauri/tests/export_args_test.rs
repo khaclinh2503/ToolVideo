@@ -64,7 +64,7 @@ fn amix_phai_tat_normalize() {
         "tiếng lồng phải gắn với volume 3.0: {f}"
     );
     assert!(
-        f.contains("[mx]alimiter=limit=0.98:level=disabled[aout]"),
+        f.contains("[mx]alimiter=limit=0.89:level=disabled[aout]"),
         "phải chặn đỉnh sau khi nhân 3.0, và tắt auto-level (mặc định true, tự khuếch đại ngược lại đúng limit vừa áp): {f}"
     );
 }
@@ -77,7 +77,7 @@ fn khong_co_tieng_goc_thi_khong_nhan_3_lan() {
     assert!(!f.contains("amix"), "một nguồn thì không trộn: {f}");
     assert!(f.contains("[1:a]volume=1[mx]"), "filtergraph: {f}");
     assert!(
-        f.contains("[mx]alimiter=limit=0.98:level=disabled[aout]"),
+        f.contains("[mx]alimiter=limit=0.89:level=disabled[aout]"),
         "filtergraph: {f}"
     );
 }
