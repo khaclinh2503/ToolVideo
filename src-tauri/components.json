@@ -67,5 +67,13 @@
     "size": 4860,
     "archive": "raw",
     "files": [{ "from": null, "to": "piper/vi_VN-vais1000-medium.onnx.json" }]
+  },
+  {
+    "id": "yt-dlp",
+    "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp.exe",
+    "sha256": "66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a",
+    "size": 17840399,
+    "archive": "raw",
+    "files": [{ "from": null, "to": "yt-dlp/yt-dlp.exe" }]
   }
 ]

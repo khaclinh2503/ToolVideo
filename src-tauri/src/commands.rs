@@ -136,6 +136,44 @@ pub struct ComponentProgressEvent {
     pub total: u64,
 }
 
+/// Thư mục chứa video tải từ link. Để ngoài `projects/` vì một video tải về có
+/// thể được dùng lại cho nhiều dự án, và xoá dự án thì không nên mất file gốc.
+pub fn downloads_dir() -> std::path::PathBuf {
+    crate::config::data_dir().join("downloads")
+}
+
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadProgressEvent {
+    pub percent: f32,
+}
+
+#[tauri::command]
+pub async fn download_video(app: tauri::AppHandle, url: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+        use tauri::Emitter;
+        let md = models_dir();
+        let ytdlp = require_path(md.join("yt-dlp").join("yt-dlp.exe"))?;
+        let ffmpeg_dir = md.join("ffmpeg");
+        let out = downloads_dir();
+
+        // Chỉ phát sự kiện khi phần trăm đổi tới mức thấy được: yt-dlp báo tiến
+        // độ vài chục lần mỗi giây, gửi hết sang webview là phí.
+        let mut last = -1.0f32;
+        let path = crate::download::run_download(&ytdlp, &ffmpeg_dir, &url, &out, &mut |p| {
+            if p - last >= 1.0 || p >= 100.0 {
+                last = p;
+                let _ = app.emit("download_progress", DownloadProgressEvent { percent: p });
+            }
+        })
+        .map_err(|e| e.to_string())?;
+
+        Ok(path.display().to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub fn components_ready() -> Result<bool, String> {
     crate::components::all_installed(&crate::config::models_dir()).map_err(|e| e.to_string())

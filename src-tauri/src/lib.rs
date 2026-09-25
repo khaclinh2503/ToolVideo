@@ -4,6 +4,7 @@ pub mod components;
 pub mod compose;
 pub mod config;
 pub mod cues;
+pub mod download;
 pub mod error;
 pub mod export;
 pub mod ffmpeg;
@@ -28,6 +29,7 @@ pub fn run() {
             commands::save_config,
             commands::ensure_components,
             commands::components_ready,
+            commands::download_video,
             commands::run_tts,
             commands::run_export,
             commands::list_projects,

@@ -15,14 +15,18 @@ fn verify_rejects_wrong_hash() {
 }
 
 #[test]
-fn manifest_has_all_eight_components_with_valid_shape() {
+fn manifest_liet_ke_du_moi_artifact_va_dung_hinh_dang() {
     let s = specs().unwrap();
-    assert_eq!(s.len(), 8, "components.json phải có đủ 8 artifact");
+    // Con số ở đây là bản kiểm kê có chủ ý, không phải chi tiết cài đặt: thêm
+    // hay bớt một artifact thì phải sửa cả danh sách id bên dưới, để không ai
+    // lặng lẽ thêm một thứ được tải về rồi đem chạy mà không ai soát.
+    assert_eq!(s.len(), 9, "components.json phải có đủ 9 artifact");
 
     let ids: Vec<&str> = s.iter().map(|c| c.id.as_str()).collect();
     for want in [
         "ffmpeg", "sherpa", "sense-voice", "sense-voice-tokens",
         "silero-vad", "piper", "piper-voice-vi", "piper-voice-vi-cfg",
+        "yt-dlp",
     ] {
         assert!(ids.contains(&want), "thiếu component '{want}' trong {ids:?}");
     }

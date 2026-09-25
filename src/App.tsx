@@ -85,6 +85,8 @@ function App() {
   const [pickedVideo, setPickedVideo] = useState("");
   // Đường dẫn file vừa xuất, để mở thẳng thư mục chứa nó.
   const [exported, setExported] = useState("");
+  const [url, setUrl] = useState("");
+  const [dlPct, setDlPct] = useState<number | null>(null);
 
   useEffect(() => {
     const un = listen<{ id: string; phase: string; done: number; total: number }>(
@@ -113,6 +115,13 @@ function App() {
         done: "",
       };
       setExportPhase(ten[e.payload.phase] ?? e.payload.phase);
+    });
+    return () => { un.then((f) => f()); };
+  }, []);
+
+  useEffect(() => {
+    const un = listen<{ percent: number }>("download_progress", (e) => {
+      setDlPct(e.payload.percent);
     });
     return () => { un.then((f) => f()); };
   }, []);
@@ -155,6 +164,23 @@ function App() {
       setStatus("Đã cài đủ bộ công cụ."); setDl("");
       await refreshTools();
     } catch (e) { setStatus(`Lỗi: ${String(e)}`); } finally { setRunning(false); }
+  }
+
+  async function onDownload() {
+    if (!url.trim()) { setStatus("Dán link video vào đã."); return; }
+    setRunning(true); setDlPct(0); setStatus("Đang tải video từ link…");
+    try {
+      const path = await invoke<string>("download_video", { url });
+      // Tải xong thì coi như vừa chọn file đó ở Bước 1 — cùng đường với
+      // onPickVideo, nên phải xoá trạng thái dự án cũ y hệt.
+      setProjectDir(""); setVideoPath(""); setCues([]); setCueAudio(""); setCueNote(""); setExported("");
+      setPickedVideo(path);
+      setStatus(`Đã tải: ${baseName(path)} — sang Bước 2 để lấy lời thoại.`);
+    } catch (e) {
+      setStatus(`Lỗi tải video: ${String(e)}`);
+    } finally {
+      setRunning(false); setDlPct(null);
+    }
   }
 
   async function onPickVideo() {
@@ -409,7 +435,19 @@ function App() {
           <button type="button" className="primary" onClick={onPickVideo} disabled={running}>
             Chọn video…
           </button>
+          <span className="muted">hoặc dán link</span>
+          <input
+            className="grow"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://www.youtube.com/watch?v=…"
+            disabled={running}
+          />
+          <button type="button" onClick={onDownload} disabled={running || !url.trim()}>
+            Tải về
+          </button>
         </div>
+        {dlPct !== null && <p className="muted">Đang tải… {dlPct.toFixed(0)}%</p>}
         {pickedVideo ? (
           <p className="muted">Đã chọn: {baseName(pickedVideo)} — sang Bước 2 để lấy lời thoại.</p>
         ) : videoPath ? (

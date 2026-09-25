@@ -51,8 +51,18 @@ fn component_progress_event_is_camel_case_with_expected_phases() {
 fn components_missing_report_lists_ids_not_yet_installed() {
     let dir = tempfile::tempdir().unwrap();
     let missing = app_lib::commands::missing_component_ids(dir.path()).unwrap();
-    assert_eq!(missing.len(), 8, "thư mục trống ⇒ cả 8 component đều thiếu");
+    // So với chính danh sách spec chứ không ghim con số: ý cần khẳng định là
+    // "thư mục trống ⇒ THIẾU HẾT", và thêm một component mới không được làm
+    // test này đỏ oan. Vẫn bắt được lỗi thật (lọc nhầm, trùng, rơi mục) vì so
+    // cả tập id chứ không chỉ số lượng.
+    let tat_ca: Vec<String> = app_lib::components::specs()
+        .unwrap()
+        .into_iter()
+        .map(|s| s.id)
+        .collect();
+    assert_eq!(missing, tat_ca, "thư mục trống ⇒ mọi component đều phải bị báo thiếu");
     assert!(missing.contains(&"piper".to_string()));
+    assert!(missing.contains(&"yt-dlp".to_string()));
 }
 
 #[test]
