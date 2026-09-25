@@ -47,6 +47,13 @@ pub fn build_dub_track(
             None => continue,
         };
         let path = tts_dir.join(rel);
+        if !path.exists() {
+            return Err(PipelineError::Io(format!(
+                "thiếu file wav của cue {} ({}) — xoá thư mục tts/ rồi chạy lại Lồng tiếng",
+                s.index,
+                path.display()
+            )));
+        }
         let (r, samples) = wav::read_pcm16_mono(&path)?;
         if r != rate {
             return Err(PipelineError::Io(format!(

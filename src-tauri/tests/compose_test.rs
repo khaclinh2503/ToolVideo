@@ -152,7 +152,16 @@ fn thieu_file_cue_thi_bao_loi() {
     let d = tempfile::tempdir().unwrap();
     let tts = d.path();
     let m = manifest(1000, vec![seg(1, 0, Some("segments/khong-ton-tai.wav"))]);
-    assert!(build_dub_track(tts, &m, 1000, &tts.join("dub.wav")).is_err());
+    let e = build_dub_track(tts, &m, 1000, &tts.join("dub.wav")).unwrap_err();
+    let msg = e.to_string();
+    assert!(
+        msg.contains("khong-ton-tai.wav"),
+        "lỗi phải nêu tên file thiếu: {msg}"
+    );
+    assert!(
+        msg.contains("chạy lại Lồng tiếng"),
+        "lỗi phải nêu cách khắc phục, như hai lỗi compose khác: {msg}"
+    );
 }
 
 #[test]
