@@ -169,7 +169,7 @@ function App() {
           return;
         }
       }
-      const src = provider === "google_free" ? "auto" : "zh";
+      const src = srcLang || "auto";
       const r = await invoke<TranslateResultDto>("run_translate", { projectDir, provider, src, tgt });
       setStatus(`Dịch xong: ${r.cueCount} cue → ${r.srtPath}`);
     } catch (e) { setStatus(`Lỗi: ${String(e)}`); } finally { setRunning(false); }
