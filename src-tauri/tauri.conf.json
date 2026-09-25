@@ -13,8 +13,11 @@
     "windows": [
       {
         "title": "DichVideo-Local",
-        "width": 800,
-        "height": 600
+        "width": 1200,
+        "height": 820,
+        "minWidth": 880,
+        "minHeight": 600,
+        "backgroundColor": "#09090b"
       }
     ],
     "security": {

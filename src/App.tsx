@@ -290,91 +290,110 @@ function App() {
     <main className="container">
       <h1>DichVideo-Local</h1>
 
-      <h2>Dự án gần đây</h2>
-      {projects.length === 0 && (
-        <p style={{ opacity: 0.7 }}>Chưa có dự án nào. Chạy STT trên một video để tạo.</p>
-      )}
-      {projects.map((p) => (
-        <div className="row" key={p.projectDir}>
-          <span style={{ flex: 1 }}>
-            <b>{p.videoName}</b>
-            {" · "}
-            {new Date(p.updatedAt).toLocaleString()}
-            {" · "}
-            {[
-              p.hasStt && "STT",
-              p.hasTranslation && "Dịch",
-              p.hasTts && "Lồng tiếng",
-              p.hasExport && "Xuất",
-            ]
-              .filter(Boolean)
-              .join(" · ") || "trống"}
-            {!p.videoExists && (
-              <span style={{ color: "#c00" }}> · ⚠ mất video gốc</span>
-            )}
-          </span>
-          <button type="button" onClick={() => onOpenProject(p)} disabled={running}>Mở</button>
-          <button type="button" onClick={() => onDeleteProject(p)} disabled={running}>Xoá</button>
+      <section>
+        <h2>Dự án gần đây</h2>
+        {projects.length === 0 && (
+          <p className="muted">Chưa có dự án nào. Chạy STT trên một video để tạo.</p>
+        )}
+        {projects.map((p) => (
+          <div className="project-row" key={p.projectDir}>
+            <span className="grow">
+              <b>{p.videoName}</b>
+              <span className="muted">
+                {" · "}
+                {new Date(p.updatedAt).toLocaleString()}
+                {" · "}
+                {[
+                  p.hasStt && "STT",
+                  p.hasTranslation && "Dịch",
+                  p.hasTts && "Lồng tiếng",
+                  p.hasExport && "Xuất",
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "trống"}
+              </span>
+              {!p.videoExists && (
+                <>
+                  {" "}
+                  <span className="badge err">⚠ mất video gốc</span>
+                </>
+              )}
+            </span>
+            <button type="button" onClick={() => onOpenProject(p)} disabled={running}>Mở</button>
+            <button type="button" className="danger" onClick={() => onDeleteProject(p)} disabled={running}>Xoá</button>
+          </div>
+        ))}
+      </section>
+
+      <section>
+        <h2>Chọn video</h2>
+        <div className="row">
+          <button type="button" onClick={onEnsure} disabled={running}>Tải bộ công cụ</button>
+          <select
+            value={srcLang}
+            onChange={(e) => setSrcLang(e.target.value)}
+            disabled={running}
+            title="Ngôn ngữ nói trong video"
+          >
+            {srcLangs.map((l) => (
+              <option key={l} value={l}>{l === "" ? "(tự nhận dạng)" : l}</option>
+            ))}
+          </select>
+          <button type="button" className="primary" onClick={onRun} disabled={running || srcLangs.length === 0}>
+            {running ? "Đang chạy..." : "Chạy STT"}
+          </button>
         </div>
-      ))}
+        {dl && <p className="muted">{dl}</p>}
+      </section>
 
-      <h2>Chọn video</h2>
-      <div className="row">
-        <button type="button" onClick={onEnsure} disabled={running}>Tải bộ công cụ</button>
-        <select
-          value={srcLang}
-          onChange={(e) => setSrcLang(e.target.value)}
-          disabled={running}
-          title="Ngôn ngữ nói trong video"
-        >
-          {srcLangs.map((l) => (
-            <option key={l} value={l}>{l === "" ? "(tự nhận dạng)" : l}</option>
-          ))}
-        </select>
-        <button type="button" onClick={onRun} disabled={running || srcLangs.length === 0}>
-          {running ? "Đang chạy..." : "Chạy STT"}
-        </button>
-      </div>
-      {dl && <p style={{ opacity: 0.7 }}>{dl}</p>}
-
-      <h2>Dịch</h2>
-      <div className="row">
-        <select value={provider} onChange={(e) => setProvider(e.target.value)}>
-          <option value="google_free">Google (miễn phí)</option>
-          <option value="openai_compat">LLM (OpenAI-compatible, key riêng)</option>
-        </select>
-        <input value={tgt} onChange={(e) => setTgt(e.target.value)} placeholder="Ngôn ngữ đích (vi)" style={{ width: 80 }} />
-        <button type="button" onClick={onTranslate} disabled={running || !projectDir}>Dịch</button>
-      </div>
-      {provider === "openai_compat" && oa && (
-        <div className="row" style={{ flexDirection: "column", gap: 6 }}>
-          <input value={oa.base_url} onChange={(e) => setOa({ base_url: e.target.value })} placeholder="base_url" />
-          <input value={oa.api_key} onChange={(e) => setOa({ api_key: e.target.value })} placeholder="api_key" type="password" />
-          <input value={oa.model} onChange={(e) => setOa({ model: e.target.value })} placeholder="model" />
-          <button type="button" onClick={onSaveCfg}>Lưu cấu hình</button>
+      <section>
+        <h2>Dịch</h2>
+        <div className="row">
+          <select value={provider} onChange={(e) => setProvider(e.target.value)}>
+            <option value="google_free">Google (miễn phí)</option>
+            <option value="openai_compat">LLM (OpenAI-compatible, key riêng)</option>
+          </select>
+          <input value={tgt} onChange={(e) => setTgt(e.target.value)} placeholder="Ngôn ngữ đích (vi)" className="input-lang" />
+          <button type="button" className="primary" onClick={onTranslate} disabled={running || !projectDir}>Dịch</button>
         </div>
-      )}
+        {provider === "openai_compat" && oa && (
+          <div className="row col">
+            <input value={oa.base_url} onChange={(e) => setOa({ base_url: e.target.value })} placeholder="base_url" />
+            <input value={oa.api_key} onChange={(e) => setOa({ api_key: e.target.value })} placeholder="api_key" type="password" />
+            <input value={oa.model} onChange={(e) => setOa({ model: e.target.value })} placeholder="model" />
+            <button type="button" onClick={onSaveCfg}>Lưu cấu hình</button>
+          </div>
+        )}
+      </section>
 
-      <h2>Sửa phụ đề</h2>
-      <div className="row">
-        <button type="button" onClick={onLoadCues} disabled={running || !projectDir}>
-          Nạp danh sách
-        </button>
-        {cues.length > 0 && <span style={{ opacity: 0.7 }}>{cues.length} cue</span>}
-      </div>
-      {cueNote && <p style={{ color: "#c60" }}>{cueNote}</p>}
-      {cueAudio && <audio src={cueAudio} controls autoPlay style={{ width: "100%" }} />}
-      {cues.map((c) => (
-        <CueRow key={c.index} cue={c} running={running} onSave={onSaveCue} onPreview={onPreviewCue} />
-      ))}
+      <section>
+        <h2>Sửa phụ đề</h2>
+        <div className="row">
+          <button type="button" onClick={onLoadCues} disabled={running || !projectDir}>
+            Nạp danh sách
+          </button>
+          {cues.length > 0 && <span className="muted">{cues.length} cue</span>}
+        </div>
+        {cueNote && <p className="badge stale">{cueNote}</p>}
+        {cueAudio && <audio src={cueAudio} controls autoPlay />}
+        {cues.length > 0 && (
+          <div className="cue-list">
+            {cues.map((c) => (
+              <CueRow key={c.index} cue={c} running={running} onSave={onSaveCue} onPreview={onPreviewCue} />
+            ))}
+          </div>
+        )}
+      </section>
 
-      <h2>Lồng tiếng</h2>
-      <div className="row">
-        <button type="button" onClick={onTts} disabled={running || !projectDir}>Lồng tiếng</button>
-      </div>
+      <section>
+        <h2>Lồng tiếng</h2>
+        <div className="row">
+          <button type="button" className="primary" onClick={onTts} disabled={running || !projectDir}>Lồng tiếng</button>
+        </div>
+      </section>
 
-      <h2>Xuất video</h2>
-      <div className="row">
+      <section>
+        <h2>Xuất video</h2>
         <label>
           <input
             type="checkbox"
@@ -383,8 +402,6 @@ function App() {
           />
           Ghi phụ đề vào hình (burn-in, phải mã hoá lại video nên lâu hơn nhiều)
         </label>
-      </div>
-      <div className="row">
         <label>
           <input
             type="checkbox"
@@ -394,18 +411,20 @@ function App() {
           />
           Kèm phụ đề bật/tắt được
         </label>
-      </div>
-      <div className="row">
-        <button
-          type="button"
-          onClick={onExport}
-          disabled={running || !projectDir || !videoPath}
-        >
-          Xuất video
-        </button>
-        {exportPhase && <span>{exportPhase}</span>}
-      </div>
-      {status && <p>{status}</p>}
+        <div className="row">
+          <button
+            type="button"
+            className="primary"
+            onClick={onExport}
+            disabled={running || !projectDir || !videoPath}
+          >
+            Xuất video
+          </button>
+          {exportPhase && <span className="muted">{exportPhase}</span>}
+        </div>
+      </section>
+
+      {status && <p className="status">{status}</p>}
     </main>
   );
 }
@@ -433,27 +452,30 @@ function CueRow({
   }, [cue.text, cue.startMs, cue.endMs]);
 
   return (
-    <div className="row" style={{ alignItems: "flex-start" }}>
-      <span style={{ width: 32, opacity: 0.6 }}>{cue.index}</span>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <input value={startRaw} onChange={(e) => setStartRaw(e.target.value)} style={{ width: 120 }} />
-        <input value={endRaw} onChange={(e) => setEndRaw(e.target.value)} style={{ width: 120 }} />
+    <div className={cue.stale ? "cue-row stale" : "cue-row"}>
+      <span className="cue-index">{cue.index}</span>
+      <div className="cue-times">
+        <input
+          value={startRaw}
+          onChange={(e) => setStartRaw(e.target.value)}
+          title="Thời điểm bắt đầu"
+        />
+        <input
+          value={endRaw}
+          onChange={(e) => setEndRaw(e.target.value)}
+          title="Thời điểm kết thúc"
+        />
       </div>
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={2}
-        style={{ flex: 1 }}
-      />
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} />
+      <div className="cue-actions">
         <button type="button" onClick={() => onSave(cue, text, startRaw, endRaw)} disabled={running}>
           Lưu
         </button>
-        <button type="button" onClick={() => onPreview(cue)} disabled={running}>
+        <button type="button" className="primary" onClick={() => onPreview(cue)} disabled={running}>
           Nghe thử
         </button>
+        {cue.stale && <span className="badge stale">⚠ chưa nghe lại</span>}
       </div>
-      {cue.stale && <span style={{ color: "#c60", width: 110 }}>⚠ chưa nghe lại</span>}
     </div>
   );
 }
