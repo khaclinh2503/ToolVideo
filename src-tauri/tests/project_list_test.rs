@@ -1,4 +1,4 @@
-use app_lib::project::{list, save, status, ProjectMeta};
+use app_lib::project::{list, save, status, ProjectMeta, ProjectStatus};
 use std::path::Path;
 
 fn meta(video: &str, tgt: &str, updated: u64) -> ProjectMeta {
@@ -27,23 +27,74 @@ fn du_an_trong_thi_moi_co_deu_false() {
     assert!(!s.video_exists);
 }
 
+/// So sánh toàn bộ `ProjectStatus` (không chỉ cờ vừa bật) sau mỗi bước, để ghim
+/// luôn những cờ đang còn `false` — nếu chỉ assert đúng cờ mới thêm, một
+/// `has_export` đọc nhầm file khác (vd. `source.srt` thay vì `output/final.mp4`)
+/// vẫn để cả bài test này xanh, vì chưa từng có bước nào assert `has_export`
+/// phải là `false` khi `source.srt` đã tồn tại từ bước đầu.
 #[test]
 fn tung_co_bat_theo_dung_file_tuong_ung() {
     let d = tempfile::tempdir().unwrap();
     let m = meta("khong-ton-tai.mp4", "vi", 1);
 
+    assert_eq!(
+        status(d.path(), &m),
+        ProjectStatus {
+            has_stt: false,
+            has_translation: false,
+            has_tts: false,
+            has_export: false,
+            video_exists: false,
+        }
+    );
+
     touch(&d.path().join("subtitles/source.srt"));
-    assert!(status(d.path(), &m).has_stt);
-    assert!(!status(d.path(), &m).has_translation);
+    assert_eq!(
+        status(d.path(), &m),
+        ProjectStatus {
+            has_stt: true,
+            has_translation: false,
+            has_tts: false,
+            has_export: false,
+            video_exists: false,
+        }
+    );
 
     touch(&d.path().join("subtitles/translated.vi.srt"));
-    assert!(status(d.path(), &m).has_translation);
+    assert_eq!(
+        status(d.path(), &m),
+        ProjectStatus {
+            has_stt: true,
+            has_translation: true,
+            has_tts: false,
+            has_export: false,
+            video_exists: false,
+        }
+    );
 
     touch(&d.path().join("tts/manifest.json"));
-    assert!(status(d.path(), &m).has_tts);
+    assert_eq!(
+        status(d.path(), &m),
+        ProjectStatus {
+            has_stt: true,
+            has_translation: true,
+            has_tts: true,
+            has_export: false,
+            video_exists: false,
+        }
+    );
 
     touch(&d.path().join("output/final.mp4"));
-    assert!(status(d.path(), &m).has_export);
+    assert_eq!(
+        status(d.path(), &m),
+        ProjectStatus {
+            has_stt: true,
+            has_translation: true,
+            has_tts: true,
+            has_export: true,
+            video_exists: false,
+        }
+    );
 }
 
 #[test]
