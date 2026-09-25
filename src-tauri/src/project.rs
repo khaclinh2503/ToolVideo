@@ -71,3 +71,60 @@ pub fn update(
     m.updated_at = now_ms;
     save(project_dir, &m)
 }
+
+/// Trạng thái từng giai đoạn, **suy từ file đang có trên đĩa** mỗi lần hỏi.
+/// Không lưu vào `project.json`: một bản sao sẽ nói dối ngay khi người dùng xoá
+/// tay thư mục `tts/`.
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+pub struct ProjectStatus {
+    pub has_stt: bool,
+    pub has_translation: bool,
+    pub has_tts: bool,
+    pub has_export: bool,
+    /// Video nguồn còn ở chỗ cũ không. Ổ cắm ngoài bị rút hay file bị chuyển là
+    /// hỏng hóc dễ gặp nhất sau một thời gian dùng, và danh sách phải nói ra
+    /// thay vì để người dùng bấm Xuất rồi mới thấy lỗi.
+    pub video_exists: bool,
+}
+
+pub fn status(project_dir: &Path, m: &ProjectMeta) -> ProjectStatus {
+    ProjectStatus {
+        has_stt: project_dir.join("subtitles").join("source.srt").exists(),
+        has_translation: project_dir
+            .join("subtitles")
+            .join(format!("translated.{}.srt", m.tgt_lang))
+            .exists(),
+        has_tts: project_dir.join("tts").join("manifest.json").exists(),
+        has_export: project_dir.join("output").join("final.mp4").exists(),
+        video_exists: Path::new(&m.video_path).exists(),
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ProjectSummary {
+    pub project_dir: PathBuf,
+    pub meta: ProjectMeta,
+    pub status: ProjectStatus,
+}
+
+/// Quét `projects_root`, bỏ qua mọi thư mục con không có `project.json` đọc được
+/// — đó cũng chính là cách thư mục do test E2E sinh ra không lọt vào danh sách,
+/// không cần danh sách loại trừ theo tên. Sắp xếp `updated_at` giảm dần.
+pub fn list(projects_root: &Path) -> Vec<ProjectSummary> {
+    let rd = match std::fs::read_dir(projects_root) {
+        Ok(rd) => rd,
+        Err(_) => return Vec::new(),
+    };
+    let mut out: Vec<ProjectSummary> = rd
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.is_dir())
+        .filter_map(|dir| {
+            let meta = load(&dir)?;
+            let st = status(&dir, &meta);
+            Some(ProjectSummary { project_dir: dir, meta, status: st })
+        })
+        .collect();
+    out.sort_by(|a, b| b.meta.updated_at.cmp(&a.meta.updated_at));
+    out
+}
