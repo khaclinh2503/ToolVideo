@@ -1,6 +1,21 @@
 use crate::{config::stt_defaults as d, error::PipelineError, srt::Segment};
 use std::path::{Path, PathBuf};
 
+/// Các giá trị hợp lệ cho `--sense-voice-language`, **đã kiểm bằng cách chạy
+/// engine thật** (xem `tests/e2e_src_lang_test.rs`). Đừng thêm giá trị vào đây
+/// mà chưa chạy lại đầu dò đó: cờ này thuộc sherpa-onnx, không phải của ta, và
+/// một giá trị bị từ chối chỉ lộ ra lúc chạy.
+///
+/// Đã thăm dò 2026-09-25 trên sherpa-onnx-vad-with-offline-asr.exe (model
+/// SenseVoice) với clip tiếng Anh: `auto`, `zh`, `en`, `ja`, `ko`, `yue` và
+/// chuỗi rỗng `""` **đều được engine chấp nhận** (exit 0, sinh SRT bình
+/// thường) — SenseVoice không từ chối giá trị nào trong số này, kể cả khi
+/// ngôn ngữ khai báo không khớp giọng nói thật (vẫn nhận dạng đúng tiếng Anh
+/// dù khai `zh`/`ja`/`ko`). Chuỗi rỗng chỉ được thử như một phương án dự
+/// phòng cho trường hợp `auto` bị từ chối (xem task-4-brief.md Step 1); vì
+/// `auto` đã hợp lệ nên không đưa `""` vào danh sách chọn được của UI.
+pub const SRC_LANGS: &[&str] = &["auto", "zh", "en", "ja", "ko", "yue"];
+
 pub struct SttModels {
     pub sense_voice: PathBuf,
     pub tokens: PathBuf,
