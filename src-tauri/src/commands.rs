@@ -361,3 +361,106 @@ pub fn delete_project(project_dir: String) -> Result<(), String> {
 pub fn src_langs() -> Vec<String> {
     crate::stt::SRC_LANGS.iter().map(|s| s.to_string()).collect()
 }
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CueDto {
+    pub index: usize,
+    pub start_ms: u64,
+    pub end_ms: u64,
+    pub text: String,
+    pub duration_ms: u64,
+    pub audio_path: Option<String>,
+    pub stale: bool,
+}
+
+pub fn cue_to_dto(c: &crate::cues::CueView) -> CueDto {
+    CueDto {
+        index: c.index,
+        start_ms: c.start_ms,
+        end_ms: c.end_ms,
+        text: c.text.clone(),
+        duration_ms: c.duration_ms,
+        audio_path: c.audio_path.as_ref().map(|p| p.display().to_string()),
+        stale: c.stale,
+    }
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviewDto {
+    pub audio_path: String,
+    pub duration_ms: u64,
+    pub length_scale: f32,
+    pub unconstrained: bool,
+}
+
+#[tauri::command]
+pub fn list_cues(project_dir: String, tgt: String) -> Result<Vec<CueDto>, String> {
+    crate::cues::list(Path::new(&project_dir), &tgt)
+        .map(|v| v.iter().map(cue_to_dto).collect())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn save_cue(
+    project_dir: String,
+    tgt: String,
+    index: usize,
+    text: String,
+    start_ms: u64,
+    end_ms: u64,
+) -> Result<(), String> {
+    crate::cues::save(Path::new(&project_dir), &tgt, index, &text, start_ms, end_ms)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn preview_cue(
+    project_dir: String,
+    tgt: String,
+    index: usize,
+) -> Result<PreviewDto, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<PreviewDto, String> {
+        let cfg = crate::config::load_config();
+        let md = models_dir();
+        let p = crate::tts::make_provider(&cfg.tts.default_provider, &cfg.tts, &md)
+            .map_err(|e| e.to_string())?;
+
+        // Độ dài video chỉ cần cho cue cuối; video mất thì nghe thử không ràng buộc.
+        let dir = Path::new(&project_dir);
+        let video_ms = crate::project::load(dir).and_then(|meta| {
+            let ffprobe = md.join("ffmpeg").join("ffprobe.exe");
+            let video = Path::new(&meta.video_path);
+            if !ffprobe.exists() || !video.exists() {
+                return None;
+            }
+            crate::export::probe_duration_ms(&ffprobe, video).ok()
+        });
+
+        let opts = crate::retime::FitOpts {
+            guard_ms: cfg.compose.guard_ms,
+            min_scale: cfg.compose.min_length_scale,
+        };
+        let r = crate::cues::preview(
+            dir,
+            p.as_ref(),
+            &cfg.tts.voice,
+            cfg.tts.length_scale,
+            &tgt,
+            index,
+            video_ms,
+            &opts,
+        )
+        .map_err(|e| e.to_string())?;
+
+        Ok(PreviewDto {
+            audio_path: r.audio_path.display().to_string(),
+            duration_ms: r.duration_ms,
+            length_scale: r.length_scale,
+            unconstrained: r.unconstrained,
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

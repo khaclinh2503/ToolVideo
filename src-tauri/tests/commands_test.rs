@@ -182,3 +182,39 @@ fn new_project_meta_trim_khoang_trang_quanh_ma_ngon_ngu() {
     assert_eq!(m.src_lang, "ja");
     assert_eq!(m.tgt_lang, "vi");
 }
+
+#[test]
+fn cue_dto_serialize_ra_camel_case() {
+    let v = app_lib::cues::CueView {
+        index: 3,
+        start_ms: 1000,
+        end_ms: 2000,
+        text: "Xin chào".into(),
+        duration_ms: 900,
+        audio_path: Some(std::path::PathBuf::from(r"E:\du an\tts\segments\cue-0003.wav")),
+        stale: true,
+    };
+    let j = serde_json::to_string(&app_lib::commands::cue_to_dto(&v)).unwrap();
+
+    // Cặp đa từ mới phân biệt được rename_all; trường một từ thì không.
+    assert!(j.contains("\"startMs\":1000"), "{j}");
+    assert!(!j.contains("start_ms"), "{j}");
+    assert!(j.contains("\"durationMs\":900"), "{j}");
+    assert!(j.contains("\"audioPath\""), "{j}");
+    assert!(j.contains("\"stale\":true"), "{j}");
+}
+
+#[test]
+fn cue_dto_audio_path_null_khi_chua_co_giong() {
+    let v = app_lib::cues::CueView {
+        index: 1,
+        start_ms: 0,
+        end_ms: 1000,
+        text: "X".into(),
+        duration_ms: 0,
+        audio_path: None,
+        stale: true,
+    };
+    let j = serde_json::to_string(&app_lib::commands::cue_to_dto(&v)).unwrap();
+    assert!(j.contains("\"audioPath\":null"), "{j}");
+}
