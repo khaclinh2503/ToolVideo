@@ -167,3 +167,29 @@ fn khong_co_cue_nao_van_ra_dai_im_lang_dung_do_dai() {
     assert_eq!(s.len(), 1500);
     assert!(s.iter().all(|v| *v == 0));
 }
+
+#[test]
+fn ceiling_buffer_length_cho_rate_khong_chia_het() {
+    let d = tempfile::tempdir().unwrap();
+    let tts = d.path();
+    // 22050 Hz (Piper rate) với 1 ms: 1 × 22050 / 1000 = 22.05 → ceil = 23 samples
+    let m = manifest(22050, vec![]);
+    let out = tts.join("dub.wav");
+    build_dub_track(tts, &m, 1, &out).unwrap();
+    let (rate, s) = read_pcm16_mono(&out).unwrap();
+    assert_eq!(rate, 22050);
+    assert_eq!(s.len(), 23, "buffer phải ceil(1 × 22050 / 1000) = 23 mẫu, không phải floor = 22");
+}
+
+#[test]
+fn ceiling_buffer_length_longer_uneven_divide() {
+    let d = tempfile::tempdir().unwrap();
+    let tts = d.path();
+    // 22050 Hz với 1001 ms: 1001 × 22050 / 1000 = 22072.05 → ceil = 22073
+    let m = manifest(22050, vec![]);
+    let out = tts.join("dub.wav");
+    build_dub_track(tts, &m, 1001, &out).unwrap();
+    let (rate, s) = read_pcm16_mono(&out).unwrap();
+    assert_eq!(rate, 22050);
+    assert_eq!(s.len(), 22073, "buffer phải ceil(1001 × 22050 / 1000) = 22073 mẫu");
+}
