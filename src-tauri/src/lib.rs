@@ -5,6 +5,7 @@ pub mod config;
 pub mod error;
 pub mod ffmpeg;
 pub mod pipeline;
+pub mod retime;
 pub mod srt;
 pub mod stt;
 pub mod translate;
