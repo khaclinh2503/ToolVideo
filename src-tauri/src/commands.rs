@@ -318,12 +318,21 @@ fn touch_project(project_dir: &str, f: impl FnOnce(&mut crate::project::ProjectM
     }
 }
 
+/// `async` + `spawn_blocking`: `project::status` gọi `Path::exists()` trên
+/// `video_path` của từng dự án, và đường dẫn đó có thể là ổ mạng (UNC/ổ đã
+/// map) không còn kết nối được — khi đó `exists()` treo tới khi hết timeout
+/// SMB. Chạy trên thread pool blocking để không đứng hình cửa sổ chính, cùng
+/// khuôn `run_tts` đã dùng trong file này.
 #[tauri::command]
-pub fn list_projects() -> Result<Vec<ProjectSummaryDto>, String> {
-    Ok(crate::project::list(&projects_dir())
-        .iter()
-        .map(summary_to_dto)
-        .collect())
+pub async fn list_projects() -> Result<Vec<ProjectSummaryDto>, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        crate::project::list(&projects_dir())
+            .iter()
+            .map(summary_to_dto)
+            .collect()
+    })
+    .await
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
