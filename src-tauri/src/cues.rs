@@ -86,3 +86,41 @@ pub fn list(project_dir: &Path, tgt: &str) -> Result<Vec<CueView>, PipelineError
         })
         .collect())
 }
+
+/// Ghi một cue trở lại SRT, giữ nguyên mọi cue khác. tmp + rename.
+///
+/// Cho phép chồng lấn với cue kề: `retime` và `compose` đã có đường xử lý
+/// (đếm `saturated` trong `DubStats`), còn cấm chồng lấn sẽ chặn những ca cắt
+/// phụ đề hợp lệ. Chỉ chặn khoảng thời gian rỗng hoặc âm.
+pub fn save(
+    project_dir: &Path,
+    tgt: &str,
+    index: usize,
+    text: &str,
+    start_ms: u64,
+    end_ms: u64,
+) -> Result<(), PipelineError> {
+    if start_ms >= end_ms {
+        return Err(PipelineError::Io(
+            "Thời điểm bắt đầu phải nhỏ hơn thời điểm kết thúc".into(),
+        ));
+    }
+
+    let mut segs = read_segments(project_dir, tgt)?;
+    if index == 0 || index > segs.len() {
+        return Err(PipelineError::Io(format!(
+            "Không có cue số {index} (bản dịch có {} cue)",
+            segs.len()
+        )));
+    }
+
+    let s = &mut segs[index - 1];
+    s.text = text.to_string();
+    s.start_ms = start_ms;
+    s.end_ms = end_ms;
+
+    let path = srt_path(project_dir, tgt);
+    let tmp = path.with_extension("srt.tmp");
+    std::fs::write(&tmp, srt::write_srt(&segs)).map_err(|e| PipelineError::Io(e.to_string()))?;
+    std::fs::rename(&tmp, &path).map_err(|e| PipelineError::Io(e.to_string()))
+}
