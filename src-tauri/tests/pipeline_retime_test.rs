@@ -196,3 +196,31 @@ fn doi_end_ms_khong_bao_loi_retime_van_chay_binh_thuong() {
     assert_eq!(r.tts.generated, 1);
     assert_eq!(r.tts.cached, 1);
 }
+
+// --- I2: retime phải hội tụ — chạy lần hai trên cùng dữ liệu là no-op ---
+
+#[test]
+fn chay_retime_lan_hai_khong_lam_gi_them() {
+    let dir = tempfile::tempdir().unwrap();
+    write_translated(dir.path(), &[("Câu dài", 0, 3000), ("Câu ngắn", 5000, 6000)]);
+
+    let p1 = ScaledTts::new(vec![6000, 2000]);
+    run_tts_stage(dir.path(), &p1, "v", &ScalePlan::uniform(1.0), "vi").unwrap();
+
+    let p2 = ScaledTts::new(vec![6000, 2000]);
+    let r1 = run_retime_stage(dir.path(), &p2, "v", 1.0, 10_000, &FitOpts::default(), "vi").unwrap();
+    assert_eq!(r1.adjusted, 1, "lượt 1: cue 1 phải đổi tốc độ để vừa khe");
+    assert_eq!(r1.tts.generated, 1);
+
+    // Lượt 2 trên cùng project, KHÔNG sửa gì: phải hội tụ, không sinh lại,
+    // không đổi tốc độ nữa. Nếu retime dùng lại `base_scale` cố định thay vì
+    // tốc độ hiện tại của cue (`s.length_scale`) thì cue 1 sẽ bị bóp lại lần
+    // nữa từ 1.0 xuống 0.82 một lần nữa (0.82 -> 0.67...) thay vì giữ 0.82.
+    let p3 = ScaledTts::new(vec![6000, 2000]);
+    let r2 = run_retime_stage(dir.path(), &p3, "v", 1.0, 10_000, &FitOpts::default(), "vi").unwrap();
+
+    assert_eq!(r2.adjusted, 0, "lượt 2 phải hội tụ: không cue nào đổi tốc độ nữa");
+    assert_eq!(r2.tts.generated, 0, "lượt 2 không được sinh lại cue nào");
+    assert_eq!(r2.tts.cached, 2, "cả hai cue phải dùng lại wav đã có");
+    assert!(p3.generated().is_empty(), "provider giả không được nhận job nào ở lượt 2");
+}
