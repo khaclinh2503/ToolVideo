@@ -101,14 +101,23 @@ pub struct ScalePlan {
 }
 
 impl ScalePlan {
-    /// Mọi cue dùng chung một tốc độ.
+    /// Mọi cue dùng chung một tốc độ. Lượng tử hoá ngay tại đây (xem
+    /// `retime::quantize`) để không phụ thuộc gọi đúng đường retime mới an
+    /// toàn: `cache_key` băm `length_scale` bằng `"{:.3}"`, nên một giá trị
+    /// 3 chữ số thập phân (ví dụ từ `save_config`) sẽ tạo khoá khác nhau
+    /// giữa lượt Lồng tiếng và lượt Xuất video, khiến mọi cue bị sinh lại
+    /// mãi mãi dù không ai đổi tốc độ.
     pub fn uniform(base: f32) -> Self {
-        Self { base, per_cue: Vec::new() }
+        Self { base: crate::retime::quantize(base), per_cue: Vec::new() }
     }
 
-    /// Tốc độ riêng theo thứ tự cue; `base` là giá trị dự phòng.
+    /// Tốc độ riêng theo thứ tự cue; `base` là giá trị dự phòng. Cùng lý do
+    /// lượng tử hoá như `uniform`.
     pub fn per_cue(base: f32, v: Vec<f32>) -> Self {
-        Self { base, per_cue: v }
+        Self {
+            base: crate::retime::quantize(base),
+            per_cue: v.into_iter().map(crate::retime::quantize).collect(),
+        }
     }
 
     /// Ngoài phạm vi — kể cả `index == 0` — trả về `base`.
