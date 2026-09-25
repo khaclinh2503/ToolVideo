@@ -111,7 +111,15 @@ pub fn read_pcm16_mono(path: &Path) -> Result<(u32, Vec<i16>), PipelineError> {
 }
 
 /// Ghi wav PCM 16-bit mono chuẩn 44-byte header.
+///
+/// Ghi trực tiếp qua `BufWriter` theo lô thay vì dựng thêm một `Vec<u8>` chứa
+/// toàn bộ dữ liệu trước khi `fs::write`: `compose::build_dub_track` đã cấp
+/// phát sẵn `Vec<i16>` mẫu, nên một bản sao byte đầy đủ thứ hai nhân đôi đỉnh
+/// bộ nhớ một cách không cần thiết (video 1 giờ ở 22050 Hz: ~318 MB thay vì
+/// ~159 MB; 3 giờ: ~950 MB).
 pub fn write_pcm16_mono(path: &Path, rate: u32, samples: &[i16]) -> Result<(), PipelineError> {
+    use std::io::Write;
+
     let data_len = samples
         .len()
         .checked_mul(2)
@@ -128,23 +136,36 @@ pub fn write_pcm16_mono(path: &Path, rate: u32, samples: &[i16]) -> Result<(), P
         std::fs::create_dir_all(d).map_err(|e| PipelineError::Io(e.to_string()))?;
     }
 
-    let mut b = Vec::with_capacity(44 + data_len as usize);
-    b.extend_from_slice(b"RIFF");
-    b.extend_from_slice(&(36 + data_len).to_le_bytes());
-    b.extend_from_slice(b"WAVEfmt ");
-    b.extend_from_slice(&16u32.to_le_bytes());
-    b.extend_from_slice(&1u16.to_le_bytes()); // PCM
-    b.extend_from_slice(&1u16.to_le_bytes()); // mono
-    b.extend_from_slice(&rate.to_le_bytes());
-    b.extend_from_slice(&(rate * 2).to_le_bytes()); // byte/giây
-    b.extend_from_slice(&2u16.to_le_bytes()); // block align
-    b.extend_from_slice(&16u16.to_le_bytes()); // bits
-    b.extend_from_slice(b"data");
-    b.extend_from_slice(&data_len.to_le_bytes());
-    for s in samples {
-        b.extend_from_slice(&s.to_le_bytes());
-    }
+    let write = || -> std::io::Result<()> {
+        let file = std::fs::File::create(path)?;
+        let mut w = std::io::BufWriter::new(file);
+        w.write_all(b"RIFF")?;
+        w.write_all(&(36 + data_len).to_le_bytes())?;
+        w.write_all(b"WAVEfmt ")?;
+        w.write_all(&16u32.to_le_bytes())?;
+        w.write_all(&1u16.to_le_bytes())?; // PCM
+        w.write_all(&1u16.to_le_bytes())?; // mono
+        w.write_all(&rate.to_le_bytes())?;
+        w.write_all(&(rate * 2).to_le_bytes())?; // byte/giây
+        w.write_all(&2u16.to_le_bytes())?; // block align
+        w.write_all(&16u16.to_le_bytes())?; // bits
+        w.write_all(b"data")?;
+        w.write_all(&data_len.to_le_bytes())?;
 
-    std::fs::write(path, b)
-        .map_err(|e| PipelineError::Io(format!("không ghi được wav {}: {e}", path.display())))
+        // Đệm nhỏ, cố định trên stack — không cấp phát theo kích thước
+        // `samples`, nên đỉnh bộ nhớ không tăng thêm dù dải bao dài.
+        const CHUNK_SAMPLES: usize = 8192;
+        let mut buf = [0u8; CHUNK_SAMPLES * 2];
+        for chunk in samples.chunks(CHUNK_SAMPLES) {
+            let mut n = 0;
+            for s in chunk {
+                buf[n..n + 2].copy_from_slice(&s.to_le_bytes());
+                n += 2;
+            }
+            w.write_all(&buf[..n])?;
+        }
+        w.flush()
+    };
+
+    write().map_err(|e| PipelineError::Io(format!("không ghi được wav {}: {e}", path.display())))
 }
