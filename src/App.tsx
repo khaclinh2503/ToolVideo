@@ -172,6 +172,7 @@ function App() {
       const src = srcLang || "auto";
       const r = await invoke<TranslateResultDto>("run_translate", { projectDir, provider, src, tgt });
       setStatus(`Dịch xong: ${r.cueCount} cue → ${r.srtPath}`);
+      await refreshProjects();
     } catch (e) { setStatus(`Lỗi: ${String(e)}`); } finally { setRunning(false); }
   }
 
@@ -181,6 +182,7 @@ function App() {
     try {
       const r = await invoke<TtsResultDto>("run_tts", { projectDir, tgt });
       setStatus(`Lồng tiếng xong: ${r.cueCount} cue (sinh mới ${r.generated}, dùng lại ${r.cached}) → ${r.manifestPath}`);
+      await refreshProjects();
     } catch (e) { setStatus(`Lỗi: ${String(e)}`); } finally { setRunning(false); }
   }
 
@@ -194,6 +196,7 @@ function App() {
         ? ` (${r.capped} câu phải đọc nhanh hết cỡ mà vẫn tràn)`
         : "";
       setStatus(`Xuất xong: ${r.outputPath} — ${r.placed} câu lồng tiếng${canhBao}`);
+      await refreshProjects();
     } catch (e) {
       setStatus(`Lỗi: ${String(e)}`);
     } finally {
