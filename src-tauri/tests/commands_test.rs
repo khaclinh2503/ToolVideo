@@ -79,3 +79,62 @@ fn export_progress_event_giu_nguyen_4_ten_phase() {
         assert_eq!(j, format!("{{\"phase\":\"{phase}\"}}"), "{j}");
     }
 }
+
+#[test]
+fn project_summary_dto_serialize_ra_camel_case() {
+    let s = app_lib::project::ProjectSummary {
+        project_dir: std::path::PathBuf::from(r"E:\du an\p1"),
+        meta: app_lib::project::ProjectMeta {
+            version: 1,
+            video_path: r"E:\phim\clip.mp4".into(),
+            src_lang: "zh".into(),
+            tgt_lang: "vi".into(),
+            created_at: 1,
+            updated_at: 2,
+        },
+        status: app_lib::project::ProjectStatus {
+            has_stt: true,
+            has_translation: false,
+            has_tts: false,
+            has_export: false,
+            video_exists: true,
+        },
+    };
+    let j = serde_json::to_string(&app_lib::commands::summary_to_dto(&s)).unwrap();
+
+    // Cặp đa từ mới phân biệt được rename_all; trường một từ thì không.
+    assert!(j.contains("\"projectDir\""), "{j}");
+    assert!(!j.contains("project_dir"), "{j}");
+    assert!(j.contains("\"videoName\":\"clip.mp4\""), "{j}");
+    assert!(j.contains("\"hasStt\":true"), "{j}");
+    assert!(j.contains("\"videoExists\":true"), "{j}");
+}
+
+#[test]
+fn video_name_roi_ve_ca_duong_dan_khi_khong_tach_duoc_ten_file() {
+    let s = app_lib::project::ProjectSummary {
+        project_dir: std::path::PathBuf::from("p"),
+        meta: app_lib::project::ProjectMeta {
+            version: 1,
+            video_path: "".into(),
+            src_lang: "zh".into(),
+            tgt_lang: "vi".into(),
+            created_at: 1,
+            updated_at: 2,
+        },
+        status: app_lib::project::ProjectStatus {
+            has_stt: false,
+            has_translation: false,
+            has_tts: false,
+            has_export: false,
+            video_exists: false,
+        },
+    };
+    assert_eq!(app_lib::commands::summary_to_dto(&s).video_name, "");
+}
+
+#[test]
+fn src_langs_khong_rong_va_co_gia_tri_mac_dinh_o_dau() {
+    // UI lấy phần tử đầu làm mặc định cho ô chọn.
+    assert!(!app_lib::stt::SRC_LANGS.is_empty());
+}

@@ -28,6 +28,10 @@ pub fn run() {
             commands::ensure_components,
             commands::run_tts,
             commands::run_export,
+            commands::list_projects,
+            commands::open_project,
+            commands::delete_project,
+            commands::src_langs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

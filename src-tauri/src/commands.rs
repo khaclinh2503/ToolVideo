@@ -61,6 +61,21 @@ pub async fn run_stt(video_path: String, lang: String) -> Result<SttResultDto, S
         let result = run_stt_pipeline(&ctx, video, &project_dir, &lang)
             .map_err(|e| e.to_string())?;
 
+        let cfg = crate::config::load_config();
+        let now = crate::project::now_ms();
+        crate::project::save(
+            &project_dir,
+            &crate::project::ProjectMeta {
+                version: 1,
+                video_path: video.display().to_string(),
+                src_lang: lang.clone(),
+                tgt_lang: cfg.translate.target_lang.clone(),
+                created_at: now,
+                updated_at: now,
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
         Ok(SttResultDto {
             srt_path: result.srt_path.display().to_string(),
             cue_count: result.cue_count,
@@ -84,6 +99,8 @@ pub async fn run_translate(
         let p = crate::translate::make_provider(&provider, &cfg.translate).map_err(|e| e.to_string())?;
         let r = crate::pipeline::run_translate_stage(Path::new(&project_dir), p.as_ref(), &src, &tgt)
             .map_err(|e| e.to_string())?;
+        let tgt_luu = tgt.clone();
+        touch_project(&project_dir, move |m| m.tgt_lang = tgt_luu);
         Ok(TranslateResultDto {
             srt_path: r.srt_path.display().to_string(),
             cue_count: r.cue_count,
@@ -213,6 +230,8 @@ pub async fn run_export(
         )
         .map_err(|e| e.to_string())?;
 
+        touch_project(&project_dir, |_| {});
+
         Ok(ExportResultDto {
             output_path: r.output_path.display().to_string(),
             adjusted: r.retime.adjusted,
@@ -241,6 +260,7 @@ pub async fn run_tts(project_dir: String, tgt: String) -> Result<TtsResultDto, S
             &tgt,
         )
         .map_err(|e| e.to_string())?;
+        touch_project(&project_dir, |_| {});
         Ok(TtsResultDto {
             manifest_path: r.manifest_path.display().to_string(),
             cue_count: r.cue_count,
@@ -250,4 +270,88 @@ pub async fn run_tts(project_dir: String, tgt: String) -> Result<TtsResultDto, S
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectSummaryDto {
+    pub project_dir: String,
+    pub video_path: String,
+    /// Tên file, để hiển thị — đường dẫn đầy đủ quá dài cho một dòng danh sách.
+    pub video_name: String,
+    pub src_lang: String,
+    pub tgt_lang: String,
+    pub updated_at: u64,
+    pub has_stt: bool,
+    pub has_translation: bool,
+    pub has_tts: bool,
+    pub has_export: bool,
+    pub video_exists: bool,
+}
+
+pub fn summary_to_dto(s: &crate::project::ProjectSummary) -> ProjectSummaryDto {
+    ProjectSummaryDto {
+        project_dir: s.project_dir.display().to_string(),
+        video_path: s.meta.video_path.clone(),
+        video_name: Path::new(&s.meta.video_path)
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| s.meta.video_path.clone()),
+        src_lang: s.meta.src_lang.clone(),
+        tgt_lang: s.meta.tgt_lang.clone(),
+        updated_at: s.meta.updated_at,
+        has_stt: s.status.has_stt,
+        has_translation: s.status.has_translation,
+        has_tts: s.status.has_tts,
+        has_export: s.status.has_export,
+        video_exists: s.status.video_exists,
+    }
+}
+
+/// Chạm `updated_at` sau khi một giai đoạn chạy xong. Lỗi chỉ ghi ra stderr,
+/// không làm hỏng kết quả của giai đoạn — cùng lý do với `project::update` khi
+/// không có meta: không được để một dấu thời gian đánh đổ công việc thật.
+fn touch_project(project_dir: &str, f: impl FnOnce(&mut crate::project::ProjectMeta)) {
+    if let Err(e) = crate::project::update(
+        Path::new(project_dir),
+        crate::project::now_ms(),
+        f,
+    ) {
+        eprintln!("không cập nhật được project.json: {e}");
+    }
+}
+
+#[tauri::command]
+pub fn list_projects() -> Result<Vec<ProjectSummaryDto>, String> {
+    Ok(crate::project::list(&projects_dir())
+        .iter()
+        .map(summary_to_dto)
+        .collect())
+}
+
+#[tauri::command]
+pub fn open_project(project_dir: String) -> Result<ProjectSummaryDto, String> {
+    let dir = Path::new(&project_dir);
+    let meta = crate::project::load(dir).ok_or_else(|| {
+        format!(
+            "Không đọc được dự án ({}) — thiếu hoặc hỏng project.json",
+            dir.display()
+        )
+    })?;
+    let status = crate::project::status(dir, &meta);
+    Ok(summary_to_dto(&crate::project::ProjectSummary {
+        project_dir: dir.to_path_buf(),
+        meta,
+        status,
+    }))
+}
+
+#[tauri::command]
+pub fn delete_project(project_dir: String) -> Result<(), String> {
+    crate::project::delete(&projects_dir(), Path::new(&project_dir)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn src_langs() -> Vec<String> {
+    crate::stt::SRC_LANGS.iter().map(|s| s.to_string()).collect()
 }
