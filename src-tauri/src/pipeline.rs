@@ -4,6 +4,7 @@ use crate::{
     stt::{self, SttModels},
     error::PipelineError,
     translate::{TranslateProvider, translate_segments},
+    retime::{self, FitOpts},
 };
 
 pub struct SttResult {
@@ -268,4 +269,62 @@ pub fn run_tts_stage(
         generated,
         cached,
     })
+}
+
+#[derive(Debug)]
+pub struct RetimeResult {
+    /// Số cue đổi `length_scale` so với lượt trước.
+    pub adjusted: usize,
+    /// Số cue đã đọc nhanh hết cỡ mà vẫn tràn sang cue sau.
+    pub capped: usize,
+    pub tts: TtsResult,
+}
+
+/// Lượt hai của TTS: đọc độ dài thật từ manifest lượt một, chọn `length_scale`
+/// cho từng cue, rồi sinh lại đúng những cue tràn. `cache_key` đã băm
+/// `length_scale` nên cue không đổi tốc độ được dùng lại nguyên.
+pub fn run_retime_stage(
+    project_dir: &Path,
+    p: &dyn TtsProvider,
+    voice: &str,
+    base_scale: f32,
+    video_ms: u64,
+    opts: &FitOpts,
+    tgt: &str,
+) -> Result<RetimeResult, PipelineError> {
+    let manifest_path = project_dir.join("tts").join("manifest.json");
+    let m = tts_manifest::load(&manifest_path).ok_or_else(|| {
+        PipelineError::Io(format!(
+            "Chưa có giọng đọc — chạy Lồng tiếng trước ({})",
+            manifest_path.display()
+        ))
+    })?;
+
+    let starts: Vec<u64> = m.segments.iter().map(|s| s.start_ms).collect();
+    let bounds = retime::boundaries(&starts, video_ms);
+    let cues: Vec<retime::Cue> = m
+        .segments
+        .iter()
+        .zip(bounds.iter())
+        .map(|(s, b)| retime::Cue {
+            start_ms: s.start_ms,
+            boundary_ms: *b,
+            duration_ms: s.duration_ms,
+            scale: s.length_scale,
+        })
+        .collect();
+
+    let fits = retime::fit_scales(&cues, opts);
+    let adjusted = fits
+        .iter()
+        .zip(cues.iter())
+        .filter(|(f, c)| (f.scale - retime::quantize(c.scale)).abs() > 1e-6)
+        .count();
+    let capped = fits.iter().filter(|f| f.capped).count();
+
+    let scales: Vec<f32> = fits.iter().map(|f| f.scale).collect();
+    let plan = ScalePlan::per_cue(base_scale, scales);
+    let tts = run_tts_stage(project_dir, p, voice, &plan, tgt)?;
+
+    Ok(RetimeResult { adjusted, capped, tts })
 }
