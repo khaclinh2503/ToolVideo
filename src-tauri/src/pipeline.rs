@@ -137,6 +137,7 @@ pub fn run_tts_stage(
     scales: &ScalePlan,
     tgt: &str,
 ) -> Result<TtsResult, PipelineError> {
+    let tgt = tgt.trim();
     let srt_path = project_dir.join("subtitles").join(format!("translated.{tgt}.srt"));
     let text = std::fs::read_to_string(&srt_path).map_err(|_| {
         PipelineError::Io(format!(
@@ -292,6 +293,7 @@ pub fn run_retime_stage(
     opts: &FitOpts,
     tgt: &str,
 ) -> Result<RetimeResult, PipelineError> {
+    let tgt = tgt.trim();
     let manifest_path = project_dir.join("tts").join("manifest.json");
     let m = tts_manifest::load(&manifest_path).ok_or_else(|| {
         PipelineError::Io(format!(
@@ -389,6 +391,24 @@ pub fn run_export_stage(
     soft_subs: bool,
     on_phase: &mut dyn FnMut(&str),
 ) -> Result<ExportResult, PipelineError> {
+    // Cùng lý do trim ở run_tts_stage/run_retime_stage: hàm này tự dựng lại
+    // đường dẫn `translated.<tgt>.srt` bên dưới (cho burn/soft-subs), độc lập
+    // với tgt đã trim bên trong run_retime_stage — không trim ở đây thì cùng
+    // một lỗi "Chưa có bản dịch" chỉ dời sang muộn hơn, ngay bước mã hoá.
+    let tgt = tgt.trim();
+    // `current_dir` chỉ an toàn vì mọi đường dẫn ngoài filtergraph (video, dub,
+    // srt, output) đều tuyệt đối; một `video` tương đối sẽ bị re-root theo
+    // `subtitles/` (thư mục làm việc của ffmpeg) và cho ra lỗi ffmpeg tiếng Anh
+    // khó hiểu thay vì lỗi rõ ràng ở đây.
+    debug_assert!(video.is_absolute(), "video phải là đường dẫn tuyệt đối: {}", video.display());
+
+    if !video.exists() {
+        return Err(PipelineError::Io(format!(
+            "Không tìm thấy video gốc ({}) — chọn lại video rồi xuất",
+            video.display()
+        )));
+    }
+
     let video_ms = export::probe_duration_ms(ffprobe, video)?;
     let has_audio = export::probe_has_audio(ffprobe, video)?;
 
