@@ -8,7 +8,8 @@ import "./App.css";
 interface SttResultDto { srtPath: string; cueCount: number; projectDir: string }
 interface TranslateResultDto { srtPath: string; cueCount: number }
 interface TtsResultDto { manifestPath: string; cueCount: number; generated: number; cached: number }
-interface OpenAiConfig { base_url: string; api_key: string; model: string }
+interface OpenAiConfig { base_url: string; api_key: string; model: string; context: string }
+interface ContextDto { id: string; label: string }
 interface AppConfig { translate: { default_provider: string; target_lang: string; openai: OpenAiConfig } }
 interface ExportResultDto {
   outputPath: string; adjusted: number; capped: number;
@@ -79,6 +80,7 @@ function App() {
   const [dlPct, setDlPct] = useState<number | null>(null);
   // "" = ghi vào thư mục dự án như mặc định cũ.
   const [outDir, setOutDir] = useState("");
+  const [contexts, setContexts] = useState<ContextDto[]>([]);
 
   useEffect(() => {
     const un = listen<{ id: string; phase: string; done: number; total: number }>(
@@ -143,6 +145,7 @@ function App() {
   useEffect(() => {
     refreshTools();
     refreshProjects();
+    invoke<ContextDto[]>("translate_contexts").then(setContexts);
     invoke<string[]>("src_langs").then((ls) => {
       setSrcLangs(ls);
       setSrcLang((cur) => cur || ls[0] || "zh");
@@ -496,6 +499,23 @@ function App() {
           <input value={tgt} onChange={(e) => setTgt(e.target.value)} placeholder="Ngôn ngữ đích (vi)" className="input-lang" />
           <button type="button" className="primary" onClick={onTranslate} disabled={running || !projectDir}>Dịch</button>
         </div>
+        {provider === "openai_compat" && oa && (
+          <div className="row">
+            <label className="muted" htmlFor="ngu-canh">Ngữ cảnh</label>
+            <select
+              id="ngu-canh"
+              value={oa.context}
+              onChange={(e) => setOa({ context: e.target.value })}
+              disabled={running}
+            >
+              <option value="">Tự động (để mô hình tự đoán thể loại)</option>
+              {contexts.map((c) => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
+            </select>
+            <span className="muted">Nhớ bấm “Lưu cấu hình”.</span>
+          </div>
+        )}
         {provider === "openai_compat" && oa && (
           <div className="row col">
             <input value={oa.base_url} onChange={(e) => setOa({ base_url: e.target.value })} placeholder="base_url" />

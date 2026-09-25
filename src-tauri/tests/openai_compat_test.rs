@@ -12,6 +12,7 @@ fn p(server: &MockServer) -> OpenAiCompat {
         base_url: server.url("/v1"),
         api_key: "sk-test".into(),
         model: "gpt-4o-mini".into(),
+        context: String::new(),
     }
 }
 
@@ -157,6 +158,7 @@ fn retry_succeeds_when_second_attempt_is_valid() {
         base_url: format!("http://{addr}"),
         api_key: "sk-test".into(),
         model: "gpt-4o-mini".into(),
+        context: String::new(),
     };
     let out = provider.translate_batch(&["a", "b"], "zh", "vi").unwrap();
     assert_eq!(out, vec!["A", "B"]);
@@ -173,4 +175,60 @@ fn make_provider_requires_config() {
     cfg.openai.api_key = "k".into();
     assert_eq!(make_provider("openai_compat", &cfg).unwrap().id(), "openai_compat");
     assert_eq!(make_provider("google_free", &cfg).unwrap().id(), "google_free");
+}
+
+#[test]
+fn prompt_luon_giu_quy_dinh_dang_json() {
+    use app_lib::translate::openai_compat::{build_system_prompt, CONTEXTS, SYSTEM_PROMPT};
+    // Đây là thứ giữ cho provider chạy được: mất quy định JSON thì mọi bản dịch
+    // đều hỏng parse. Ngữ cảnh phải NỐI THÊM chứ không thay thế.
+    for ma in std::iter::once("").chain(CONTEXTS.iter().map(|(m, _, _)| *m)) {
+        let p = build_system_prompt(ma);
+        assert!(p.contains(SYSTEM_PROMPT), "ngữ cảnh {ma:?} đã nuốt mất prompt gốc: {p}");
+        assert!(p.contains("{\"items\":"), "ngữ cảnh {ma:?} mất quy định JSON: {p}");
+    }
+}
+
+#[test]
+fn moi_ngu_canh_cho_ra_huong_dan_khac_nhau() {
+    use app_lib::translate::openai_compat::{build_system_prompt, CONTEXTS};
+    let mut thay: Vec<String> = CONTEXTS.iter().map(|(m, _, _)| build_system_prompt(m)).collect();
+    let truoc = thay.len();
+    thay.sort();
+    thay.dedup();
+    assert_eq!(thay.len(), truoc, "có hai ngữ cảnh sinh ra cùng một prompt");
+}
+
+#[test]
+fn ngu_canh_rong_hoac_la_thi_ve_che_do_tu_doan() {
+    use app_lib::translate::openai_compat::build_system_prompt;
+    let tu_dong = build_system_prompt("");
+    assert!(tu_dong.contains("tự đoán"), "{tu_dong}");
+    // Mã lạ (cấu hình cũ, người dùng sửa tay) không được làm hỏng gì, cũng không
+    // được im lặng bỏ luôn phần hướng dẫn.
+    assert_eq!(build_system_prompt("khong_ton_tai_dau"), tu_dong);
+    assert_eq!(build_system_prompt("  ban_hang  "), build_system_prompt("ban_hang"));
+}
+
+#[test]
+fn ngu_canh_co_ma_thi_dung_dung_huong_dan_cua_no() {
+    use app_lib::translate::openai_compat::{build_system_prompt, CONTEXTS};
+    let (ma, _, huong_dan) = CONTEXTS[0];
+    assert!(build_system_prompt(ma).contains(huong_dan));
+}
+
+#[test]
+fn danh_sach_ngu_canh_khong_trung_ma_va_khong_rong() {
+    use app_lib::translate::openai_compat::CONTEXTS;
+    assert!(!CONTEXTS.is_empty());
+    let mut ma: Vec<&str> = CONTEXTS.iter().map(|(m, _, _)| *m).collect();
+    ma.sort();
+    let truoc = ma.len();
+    ma.dedup();
+    assert_eq!(ma.len(), truoc, "mã ngữ cảnh bị trùng");
+    for (m, nhan, h) in CONTEXTS {
+        assert!(!m.trim().is_empty(), "mã rỗng");
+        assert!(!nhan.trim().is_empty(), "nhãn rỗng: {m}");
+        assert!(!h.trim().is_empty(), "hướng dẫn rỗng: {m}");
+    }
 }

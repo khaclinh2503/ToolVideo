@@ -30,6 +30,7 @@ pub fn run() {
             commands::ensure_components,
             commands::components_ready,
             commands::download_video,
+            commands::translate_contexts,
             commands::run_tts,
             commands::run_export,
             commands::list_projects,

@@ -130,6 +130,7 @@ pub fn make_provider(
                 base_url: o.base_url.clone(),
                 api_key: o.api_key.clone(),
                 model: o.model.clone(),
+                context: o.context.clone(),
             }))
         }
         _ => Err(PipelineError::ProviderError {

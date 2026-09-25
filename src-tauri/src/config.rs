@@ -103,6 +103,11 @@ pub struct OpenAiConfig {
     pub base_url: String,
     pub api_key: String,
     pub model: String,
+    /// Mã ngữ cảnh dịch (xem `translate::CONTEXTS`). Rỗng = tự suy ra.
+    /// Chỉ nhà cung cấp LLM dùng tới — Google miễn phí không nhận hướng dẫn nào,
+    /// nên trường này nằm ở đây chứ không ở cấp TranslateConfig.
+    #[serde(default)]
+    pub context: String,
 }
 
 impl Default for OpenAiConfig {
@@ -111,6 +116,7 @@ impl Default for OpenAiConfig {
             base_url: "https://api.openai.com/v1".into(),
             api_key: String::new(),
             model: "gpt-4o-mini".into(),
+            context: String::new(),
         }
     }
 }

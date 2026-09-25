@@ -4,10 +4,71 @@ use serde::{Deserialize, Serialize};
 
 pub const SYSTEM_PROMPT: &str = "Bạn là dịch giả phụ đề. Dịch từng item sang ngôn ngữ đích, giữ nguyên số lượng và thứ tự, không thêm giải thích. Trả về JSON đúng dạng {\"items\":[{\"i\":<số>,\"text\":\"<bản dịch>\"}]}.";
 
+/// Ngữ cảnh dịch: (mã, nhãn hiện trên giao diện, câu hướng dẫn nhét vào prompt).
+///
+/// Để ở Rust thay vì ở giao diện để chỉ có một danh sách: giao diện đọc qua lệnh
+/// `translate_contexts`, nên không thể lệch với thứ prompt thật sự dùng.
+pub const CONTEXTS: &[(&str, &str, &str)] = &[
+    (
+        "ban_hang",
+        "Bán hàng, quảng cáo",
+        "Đây là video bán hàng. Dịch theo giọng chào mời tự nhiên của người Việt, giữ tên sản phẩm và con số nguyên vẹn.",
+    ),
+    (
+        "bai_giang",
+        "Bài giảng, hướng dẫn",
+        "Đây là bài giảng hoặc hướng dẫn. Ưu tiên chính xác và rõ ràng, giữ nguyên thuật ngữ chuyên ngành, xưng hô mạch lạc từ đầu đến cuối.",
+    ),
+    (
+        "phim",
+        "Phim, truyện",
+        "Đây là lời thoại phim. Dịch thoáng cho tự nhiên như người Việt nói chuyện, giữ đúng sắc thái và xưng hô giữa các nhân vật.",
+    ),
+    (
+        "tin_tuc",
+        "Tin tức, thời sự",
+        "Đây là bản tin. Dùng văn phong báo chí trung tính, giữ nguyên tên riêng, địa danh và con số.",
+    ),
+    (
+        "podcast",
+        "Podcast, phỏng vấn",
+        "Đây là hội thoại hoặc phỏng vấn. Giữ giọng nói chuyện tự nhiên, bỏ bớt từ đệm lặp mà không đổi ý.",
+    ),
+    (
+        "game",
+        "Game, giải trí",
+        "Đây là nội dung game hoặc giải trí. Giữ thuật ngữ game quen thuộc với người chơi Việt, giọng trẻ trung.",
+    ),
+    (
+        "cong_nghe",
+        "Công nghệ",
+        "Đây là nội dung công nghệ. Giữ nguyên tên sản phẩm, hãng và thuật ngữ kỹ thuật; không dịch những từ mà người Việt vẫn dùng nguyên bản.",
+    ),
+];
+
+/// Câu hướng dẫn khi người dùng để ngữ cảnh ở chế độ tự động, hoặc khi mã ngữ
+/// cảnh không nhận ra được.
+const HUONG_DAN_TU_DONG: &str = "Trước khi dịch, tự đoán xem video thuộc thể loại nào (bán hàng, bài giảng, phim, tin tức, hội thoại…) dựa trên toàn bộ các item, rồi dịch theo đúng văn phong của thể loại đó và giữ nhất quán từ đầu đến cuối.";
+
+/// Ghép hướng dẫn ngữ cảnh vào sau prompt hệ thống.
+///
+/// NỐI THÊM chứ không thay thế: phần quy định dạng JSON trong `SYSTEM_PROMPT` là
+/// thứ giữ cho cả provider chạy được, mất nó thì mọi bản dịch đều hỏng parse.
+pub fn build_system_prompt(context: &str) -> String {
+    let huong_dan = CONTEXTS
+        .iter()
+        .find(|(ma, _, _)| *ma == context.trim())
+        .map(|(_, _, h)| *h)
+        .unwrap_or(HUONG_DAN_TU_DONG);
+    format!("{SYSTEM_PROMPT} {huong_dan}")
+}
+
 pub struct OpenAiCompat {
     pub base_url: String,
     pub api_key: String,
     pub model: String,
+    /// Mã ngữ cảnh; rỗng hoặc không nhận ra ⇒ để mô hình tự suy ra thể loại.
+    pub context: String,
 }
 
 #[derive(Serialize)]
@@ -58,7 +119,7 @@ impl OpenAiCompat {
             "temperature": 0.2,
             "response_format": { "type": "json_object" },
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": build_system_prompt(&self.context)},
                 {"role": "user", "content": user.to_string()},
             ]
         });

@@ -107,6 +107,25 @@ pub async fn run_translate(
     .map_err(|e| e.to_string())?
 }
 
+#[derive(serde::Serialize)]
+pub struct ContextDto {
+    pub id: String,
+    pub label: String,
+}
+
+/// Danh sách ngữ cảnh dịch cho giao diện. Lấy thẳng từ `CONTEXTS` để màn hình
+/// không thể liệt kê một lựa chọn mà prompt không biết tới.
+#[tauri::command]
+pub fn translate_contexts() -> Vec<ContextDto> {
+    crate::translate::openai_compat::CONTEXTS
+        .iter()
+        .map(|(id, label, _)| ContextDto {
+            id: (*id).to_string(),
+            label: (*label).to_string(),
+        })
+        .collect()
+}
+
 #[tauri::command]
 pub fn get_config() -> crate::config::AppConfig {
     crate::config::load_config()
