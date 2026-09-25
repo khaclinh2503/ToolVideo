@@ -69,7 +69,7 @@ fn e2e_tts_many_cues_no_deadlock() {
 
     println!("Bắt đầu TTS {CUE_COUNT} cue thật (Piper) — nếu treo, đây là bằng chứng lỗi bế tắc ống stdin/stdout.");
     let t0 = std::time::Instant::now();
-    let r = run_tts_stage(&project, p.as_ref(), &tts_cfg.voice, tts_cfg.length_scale, "vi")
+    let r = run_tts_stage(&project, p.as_ref(), &tts_cfg.voice, &app_lib::tts::ScalePlan::uniform(tts_cfg.length_scale), "vi")
         .unwrap_or_else(|e| panic!("TTS lỗi: {e}"));
     let secs = t0.elapsed().as_secs_f32();
     println!(

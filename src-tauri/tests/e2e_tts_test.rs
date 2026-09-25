@@ -41,7 +41,7 @@ fn e2e_video_to_voiced_segments() {
         .unwrap_or_else(|e| panic!("provider TTS lỗi: {e}"));
 
     let t0 = std::time::Instant::now();
-    let r = run_tts_stage(&project, p.as_ref(), &tts_cfg.voice, tts_cfg.length_scale, "vi")
+    let r = run_tts_stage(&project, p.as_ref(), &tts_cfg.voice, &app_lib::tts::ScalePlan::uniform(tts_cfg.length_scale), "vi")
         .unwrap_or_else(|e| panic!("TTS lỗi: {e}"));
     println!(
         "TTS: {} cue, sinh {} / cache {} trong {:.1}s → {}",
@@ -59,7 +59,7 @@ fn e2e_video_to_voiced_segments() {
     }
 
     // Chạy lại: toàn bộ phải vào cache.
-    let r2 = run_tts_stage(&project, p.as_ref(), &tts_cfg.voice, tts_cfg.length_scale, "vi").unwrap();
+    let r2 = run_tts_stage(&project, p.as_ref(), &tts_cfg.voice, &app_lib::tts::ScalePlan::uniform(tts_cfg.length_scale), "vi").unwrap();
     assert_eq!(r2.generated, 0, "lần 2 không được sinh lại cue nào");
     assert_eq!(r2.cached, voiced.len());
 

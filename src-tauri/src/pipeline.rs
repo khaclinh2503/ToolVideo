@@ -118,7 +118,7 @@ pub fn run_translate_stage(
     Ok(TranslateResult { srt_path, cue_count: translated.len() })
 }
 
-use crate::tts::{self, manifest as tts_manifest, TtsJob, TtsProvider};
+use crate::tts::{self, manifest as tts_manifest, ScalePlan, TtsJob, TtsProvider};
 
 #[derive(Debug)]
 pub struct TtsResult {
@@ -133,7 +133,7 @@ pub fn run_tts_stage(
     project_dir: &Path,
     p: &dyn TtsProvider,
     voice: &str,
-    length_scale: f32,
+    scales: &ScalePlan,
     tgt: &str,
 ) -> Result<TtsResult, PipelineError> {
     let srt_path = project_dir.join("subtitles").join(format!("translated.{tgt}.srt"));
@@ -168,6 +168,7 @@ pub fn run_tts_stage(
 
     for (i, s) in segs.iter().enumerate() {
         let index = i + 1;
+        let length_scale = scales.get(index);
         if s.text.trim().is_empty() {
             entries.push(tts_manifest::SegmentEntry {
                 index,

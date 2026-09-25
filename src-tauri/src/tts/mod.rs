@@ -92,3 +92,30 @@ pub fn make_provider(
         }),
     }
 }
+
+/// `length_scale` cho từng cue. `index` đếm từ 1, khớp với `SegmentEntry::index`.
+#[derive(Debug, Clone)]
+pub struct ScalePlan {
+    base: f32,
+    per_cue: Vec<f32>,
+}
+
+impl ScalePlan {
+    /// Mọi cue dùng chung một tốc độ.
+    pub fn uniform(base: f32) -> Self {
+        Self { base, per_cue: Vec::new() }
+    }
+
+    /// Tốc độ riêng theo thứ tự cue; `base` là giá trị dự phòng.
+    pub fn per_cue(base: f32, v: Vec<f32>) -> Self {
+        Self { base, per_cue: v }
+    }
+
+    /// Ngoài phạm vi — kể cả `index == 0` — trả về `base`.
+    pub fn get(&self, index: usize) -> f32 {
+        if index == 0 {
+            return self.base;
+        }
+        self.per_cue.get(index - 1).copied().unwrap_or(self.base)
+    }
+}

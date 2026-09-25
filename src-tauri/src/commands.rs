@@ -168,7 +168,7 @@ pub async fn run_tts(project_dir: String, tgt: String) -> Result<TtsResultDto, S
             Path::new(&project_dir),
             p.as_ref(),
             &cfg.tts.voice,
-            cfg.tts.length_scale,
+            &crate::tts::ScalePlan::uniform(cfg.tts.length_scale),
             &tgt,
         )
         .map_err(|e| e.to_string())?;
