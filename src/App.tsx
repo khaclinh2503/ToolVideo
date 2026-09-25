@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open, confirm } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
 import "./App.css";
@@ -19,6 +19,30 @@ interface ProjectSummaryDto {
   hasStt: boolean; hasTranslation: boolean; hasTts: boolean;
   hasExport: boolean; videoExists: boolean;
 }
+interface CueDto {
+  index: number; startMs: number; endMs: number; text: string;
+  durationMs: number; audioPath: string | null; stale: boolean;
+}
+interface PreviewDto {
+  audioPath: string; durationMs: number; lengthScale: number; unconstrained: boolean;
+}
+
+/** 83450 -> "00:01:23,450" — cùng định dạng SRT mà người dùng đã quen. */
+function msToTime(ms: number): string {
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor(ms / 60_000) % 60;
+  const s = Math.floor(ms / 1000) % 60;
+  const mm = ms % 1000;
+  const p = (n: number, w = 2) => String(n).padStart(w, "0");
+  return `${p(h)}:${p(m)}:${p(s)},${p(mm, 3)}`;
+}
+
+/** "00:01:23,450" -> 83450; trả null nếu không đúng định dạng. */
+function timeToMs(v: string): number | null {
+  const m = v.trim().match(/^(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})$/);
+  if (!m) return null;
+  return (+m[1]) * 3_600_000 + (+m[2]) * 60_000 + (+m[3]) * 1000 + (+m[4].padEnd(3, "0"));
+}
 
 function App() {
   const [status, setStatus] = useState("");
@@ -35,6 +59,9 @@ function App() {
   const [projects, setProjects] = useState<ProjectSummaryDto[]>([]);
   const [srcLangs, setSrcLangs] = useState<string[]>([]);
   const [srcLang, setSrcLang] = useState("");
+  const [cues, setCues] = useState<CueDto[]>([]);
+  const [cueAudio, setCueAudio] = useState("");
+  const [cueNote, setCueNote] = useState("");
 
   useEffect(() => {
     const un = listen<{ id: string; phase: string; done: number; total: number }>(
@@ -186,6 +213,58 @@ function App() {
     } catch (e) { setStatus(`Lỗi: ${String(e)}`); } finally { setRunning(false); }
   }
 
+  async function onLoadCues() {
+    setRunning(true);
+    try {
+      setCues(await invoke<CueDto[]>("list_cues", { projectDir, tgt }));
+      setCueNote("");
+    } catch (e) {
+      setStatus(`Lỗi: ${String(e)}`);
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  async function onSaveCue(c: CueDto, text: string, startRaw: string, endRaw: string) {
+    const startMs = timeToMs(startRaw);
+    const endMs = timeToMs(endRaw);
+    if (startMs === null || endMs === null) {
+      setStatus("Thời điểm phải theo dạng HH:MM:SS,mmm — ví dụ 00:01:23,450");
+      return;
+    }
+    setRunning(true);
+    try {
+      await invoke("save_cue", { projectDir, tgt, index: c.index, text, startMs, endMs });
+      setCues(await invoke<CueDto[]>("list_cues", { projectDir, tgt }));
+      setStatus(`Đã lưu cue ${c.index}.`);
+    } catch (e) {
+      setStatus(`Lỗi: ${String(e)}`);
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  async function onPreviewCue(c: CueDto) {
+    setRunning(true);
+    setCueNote("");
+    try {
+      const r = await invoke<PreviewDto>("preview_cue", { projectDir, tgt, index: c.index });
+      // Thêm tham số đổi mỗi lần để webview không phát lại bản đã cache.
+      setCueAudio(`${convertFileSrc(r.audioPath)}?t=${Date.now()}`);
+      setCues(await invoke<CueDto[]>("list_cues", { projectDir, tgt }));
+      setStatus(`Nghe thử cue ${c.index}: ${r.durationMs} ms, tốc độ ${r.lengthScale}`);
+      if (r.unconstrained) {
+        setCueNote(
+          "Không tìm thấy video gốc nên cue cuối được đọc không ràng buộc — tốc độ lúc xuất có thể khác.",
+        );
+      }
+    } catch (e) {
+      setStatus(`Lỗi: ${String(e)}`);
+    } finally {
+      setRunning(false);
+    }
+  }
+
   async function onExport() {
     setRunning(true); setStatus("Đang xuất video...");
     try {
@@ -276,6 +355,19 @@ function App() {
         </div>
       )}
 
+      <h2>Sửa phụ đề</h2>
+      <div className="row">
+        <button type="button" onClick={onLoadCues} disabled={running || !projectDir}>
+          Nạp danh sách
+        </button>
+        {cues.length > 0 && <span style={{ opacity: 0.7 }}>{cues.length} cue</span>}
+      </div>
+      {cueNote && <p style={{ color: "#c60" }}>{cueNote}</p>}
+      {cueAudio && <audio src={cueAudio} controls autoPlay style={{ width: "100%" }} />}
+      {cues.map((c) => (
+        <CueRow key={c.index} cue={c} running={running} onSave={onSaveCue} onPreview={onPreviewCue} />
+      ))}
+
       <h2>Lồng tiếng</h2>
       <div className="row">
         <button type="button" onClick={onTts} disabled={running || !projectDir}>Lồng tiếng</button>
@@ -317,4 +409,53 @@ function App() {
     </main>
   );
 }
+function CueRow({
+  cue,
+  running,
+  onSave,
+  onPreview,
+}: {
+  cue: CueDto;
+  running: boolean;
+  onSave: (c: CueDto, text: string, startRaw: string, endRaw: string) => void;
+  onPreview: (c: CueDto) => void;
+}) {
+  const [text, setText] = useState(cue.text);
+  const [startRaw, setStartRaw] = useState(msToTime(cue.startMs));
+  const [endRaw, setEndRaw] = useState(msToTime(cue.endMs));
+
+  // Danh sách được nạp lại sau mỗi lần lưu hoặc nghe thử; đồng bộ lại ô nhập
+  // theo giá trị vừa về từ đĩa, nếu không người dùng sẽ thấy bản cũ của chính mình.
+  useEffect(() => {
+    setText(cue.text);
+    setStartRaw(msToTime(cue.startMs));
+    setEndRaw(msToTime(cue.endMs));
+  }, [cue.text, cue.startMs, cue.endMs]);
+
+  return (
+    <div className="row" style={{ alignItems: "flex-start" }}>
+      <span style={{ width: 32, opacity: 0.6 }}>{cue.index}</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <input value={startRaw} onChange={(e) => setStartRaw(e.target.value)} style={{ width: 120 }} />
+        <input value={endRaw} onChange={(e) => setEndRaw(e.target.value)} style={{ width: 120 }} />
+      </div>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={2}
+        style={{ flex: 1 }}
+      />
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <button type="button" onClick={() => onSave(cue, text, startRaw, endRaw)} disabled={running}>
+          Lưu
+        </button>
+        <button type="button" onClick={() => onPreview(cue)} disabled={running}>
+          Nghe thử
+        </button>
+      </div>
+      {cue.stale && <span style={{ color: "#c60", width: 110 }}>⚠ chưa nghe lại</span>}
+    </div>
+  );
+}
+
 export default App;
