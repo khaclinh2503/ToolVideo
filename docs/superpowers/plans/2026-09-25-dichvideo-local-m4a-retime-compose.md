@@ -20,7 +20,7 @@
 - Ranh giới thời gian của cue là `start_ms` của cue **kế tiếp**, không phải `end_ms` của chính nó. Cue cuối lấy `video_ms`.
 - Chỉ tăng tốc, **không bao giờ kéo chậm** cue ngắn cho đầy khe thời gian.
 - Test dùng `tempfile::tempdir()`, không được đụng `%APPDATA%` thật.
-- Kết thúc mỗi task: `cargo test` phải xanh **và không có warning**. Kho hiện ở mốc 107 passed / 5 ignored / 0 failed / 0 warnings.
+- Kết thúc mỗi task: `cargo test` phải xanh **và không có warning**. Kho hiện ở mốc **109 passed / 5 ignored** / 0 failed / 0 warnings (114 hàm `#[test]`, 5 trong số đó `#[ignore]`).
 - Không push lên remote. Chỉ commit tại chỗ.
 
 ## Sai khác có chủ ý so với spec
@@ -1388,7 +1388,7 @@ Kỳ vọng: 4 passed.
 ```
 $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"; cargo test --manifest-path src-tauri/Cargo.toml
 ```
-Kỳ vọng: tất cả xanh, **0 warning**, 5 ignored (các test E2E có cổng môi trường). Số test tăng đúng 35 so với mốc M3 là 107: 3 (`ScalePlan`) + 2 (pipeline per-cue) + 11 (retime) + 7 (wav) + 8 (compose) + 4 (retime pipeline). Thiếu test nào so với con số này nghĩa là một bước ở trên chưa làm xong — đối chiếu từng file chứ đừng bỏ qua.
+Kỳ vọng: tất cả xanh, **0 warning**, 5 ignored (các test E2E có cổng môi trường). Số test tăng đúng 35 so với mốc M3 là 109, tức 144 passed: 3 (`ScalePlan`) + 2 (pipeline per-cue) + 11 (retime) + 7 (wav) + 8 (compose) + 4 (retime pipeline). Thiếu test nào so với con số này nghĩa là một bước ở trên chưa làm xong — đối chiếu từng file chứ đừng bỏ qua.
 
 Nếu `cargo` báo warning "unused import" ở `pipeline.rs`, đó là do `use crate::retime::{self, FitOpts};` đặt trùng — gộp vào khối `use` sẵn có thay vì thêm dòng mới.
 
