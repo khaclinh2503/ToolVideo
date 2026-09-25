@@ -389,6 +389,9 @@ pub fn run_export_stage(
     cfg: &ComposeConfig,
     burn_subs: bool,
     soft_subs: bool,
+    // `None` ⇒ ghi vào `<dự án>/output/final.mp4` như trước. `Some(d)` ⇒ ghi vào
+    // thư mục người dùng chọn, tên lấy theo video gốc và không đè file sẵn có.
+    out_dir: Option<&Path>,
     on_phase: &mut dyn FnMut(&str),
 ) -> Result<ExportResult, PipelineError> {
     // Cùng lý do trim ở run_tts_stage/run_retime_stage: hàm này tự dựng lại
@@ -435,9 +438,17 @@ pub fn run_export_stage(
         export::prepare_burn_srt(&sub_dir, &translated)?;
     }
 
-    let out_dir = project_dir.join("output");
-    std::fs::create_dir_all(&out_dir).map_err(|e| PipelineError::Io(e.to_string()))?;
-    let output_path = out_dir.join("final.mp4");
+    let output_path = match out_dir {
+        Some(d) => {
+            std::fs::create_dir_all(d).map_err(|e| PipelineError::Io(e.to_string()))?;
+            export::unique_path(d, &export::output_name(video, tgt))
+        }
+        None => {
+            let d = project_dir.join("output");
+            std::fs::create_dir_all(&d).map_err(|e| PipelineError::Io(e.to_string()))?;
+            d.join("final.mp4")
+        }
+    };
 
     let export_opts = export::ExportOpts {
         burn_subs,

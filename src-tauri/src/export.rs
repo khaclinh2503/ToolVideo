@@ -257,3 +257,47 @@ pub fn run_export(ffmpeg: &Path, work_dir: &Path, args: &[OsString]) -> Result<(
         &stderr,
     ))
 }
+
+/// Tên file xuất khi ghi vào thư mục do người dùng chọn: `<tên video>-<tgt>.mp4`.
+///
+/// Không dùng `final.mp4` như khi ghi trong thư mục dự án: ở đó mỗi dự án có
+/// thư mục riêng nên trùng tên vô hại, còn thư mục của người dùng thì mọi dự án
+/// đổ chung một chỗ và sẽ đè lên nhau.
+pub fn output_name(video: &Path, tgt: &str) -> String {
+    let goc = video
+        .file_stem()
+        .map(|s| s.to_string_lossy().to_string())
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "video".to_string());
+    let t = tgt.trim();
+    if t.is_empty() {
+        format!("{goc}.mp4")
+    } else {
+        format!("{goc}-{t}.mp4")
+    }
+}
+
+/// Đường dẫn còn trống trong `dir`: giữ nguyên `name` nếu chưa có, nếu đã có thì
+/// thêm ` (2)`, ` (3)`…
+///
+/// Ghi đè im lặng một file sẵn có trong thư mục của người dùng là mất dữ liệu
+/// không hoàn lại — họ có thể đã xuất bản cũ và còn cần nó.
+pub fn unique_path(dir: &Path, name: &str) -> PathBuf {
+    let p = dir.join(name);
+    if !p.exists() {
+        return p;
+    }
+    let (than, duoi) = match name.rsplit_once('.') {
+        Some((a, b)) => (a.to_string(), format!(".{b}")),
+        None => (name.to_string(), String::new()),
+    };
+    // Dừng ở 999 thay vì lặp vô hạn: tới mức đó thì thư mục đã hỏng theo nghĩa
+    // nào đó, và trả về đường dẫn cuối còn hơn treo cứng.
+    for i in 2..1000 {
+        let p = dir.join(format!("{than} ({i}){duoi}"));
+        if !p.exists() {
+            return p;
+        }
+    }
+    dir.join(format!("{than} (1000){duoi}"))
+}

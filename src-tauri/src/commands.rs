@@ -242,6 +242,7 @@ pub async fn run_export(
     tgt: String,
     burn_subs: bool,
     soft_subs: bool,
+    out_dir: Option<String>,
 ) -> Result<ExportResultDto, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<ExportResultDto, String> {
         use tauri::Emitter;
@@ -264,13 +265,18 @@ pub async fn run_export(
             &cfg.compose,
             burn_subs,
             soft_subs,
+            out_dir.as_deref().map(Path::new),
             &mut |phase| {
                 let _ = app.emit("export_progress", ExportProgressEvent { phase: phase.to_string() });
             },
         )
         .map_err(|e| e.to_string())?;
 
-        touch_project(&project_dir, |_| {});
+        // Ghi lại đúng đường dẫn vừa xuất: status() và nút "Mở thư mục" đều đọc
+        // từ đây, nếu không thì xuất ra thư mục riêng xong dự án vẫn báo là
+        // chưa có bản xuất.
+        let da_xuat = r.output_path.display().to_string();
+        touch_project(&project_dir, move |m| m.export_path = Some(da_xuat));
 
         Ok(ExportResultDto {
             output_path: r.output_path.display().to_string(),
@@ -327,6 +333,9 @@ pub struct ProjectSummaryDto {
     pub has_tts: bool,
     pub has_export: bool,
     pub video_exists: bool,
+    /// Đường dẫn bản xuất, để nút "Mở thư mục" trỏ đúng chỗ kể cả khi người dùng
+    /// đã xuất ra thư mục riêng. `None` nếu chưa xuất lần nào.
+    pub export_path: Option<String>,
 }
 
 pub fn summary_to_dto(s: &crate::project::ProjectSummary) -> ProjectSummaryDto {
@@ -344,6 +353,15 @@ pub fn summary_to_dto(s: &crate::project::ProjectSummary) -> ProjectSummaryDto {
         has_translation: s.status.has_translation,
         has_tts: s.status.has_tts,
         has_export: s.status.has_export,
+        export_path: if s.status.has_export {
+            // Dự án cũ chưa có trường này trong metadata vẫn phải mở được thư
+            // mục, nên lùi về đúng chỗ mà status() đã kiểm.
+            Some(s.meta.export_path.clone().unwrap_or_else(|| {
+                s.project_dir.join("output").join("final.mp4").display().to_string()
+            }))
+        } else {
+            None
+        },
         video_exists: s.status.video_exists,
     }
 }

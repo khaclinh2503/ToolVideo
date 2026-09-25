@@ -77,6 +77,7 @@ fn chay(burn: bool, soft: bool, ten: &str) {
         &project, &ffmpeg, &ffprobe, Path::new(&clip),
         p.as_ref(), &cfg.tts.voice, cfg.tts.length_scale, "vi",
         &cfg.compose, burn, soft,
+        None, // ghi vào thư mục dự án như mặc định
         &mut |ph| println!("  [{ph}] {:.1}s", t0.elapsed().as_secs_f32()),
     )
     .unwrap_or_else(|e| panic!("Xuất lỗi: {e}"));

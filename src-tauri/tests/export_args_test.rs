@@ -213,3 +213,35 @@ fn thieu_ffmpeg_tra_ve_engine_missing() {
     .unwrap_err();
     assert!(matches!(e, app_lib::error::PipelineError::EngineMissing(_)));
 }
+
+#[test]
+fn ten_file_xuat_lay_tu_ten_video_va_ngon_ngu() {
+    use app_lib::export::output_name;
+    assert_eq!(output_name(std::path::Path::new(r"E:\phim\clip.mp4"), "vi"), "clip-vi.mp4");
+    assert_eq!(output_name(std::path::Path::new("/a/b/bai giang.mkv"), "vi"), "bai giang-vi.mp4");
+    // tgt rỗng hoặc toàn khoảng trắng thì không để lại dấu gạch cụt lủn
+    assert_eq!(output_name(std::path::Path::new("/a/clip.mp4"), "  "), "clip.mp4");
+}
+
+#[test]
+fn ten_file_xuat_khong_bao_gio_rong() {
+    use app_lib::export::output_name;
+    // Đường dẫn không có phần tên file (hiếm nhưng có thật với thư mục gốc ổ đĩa)
+    assert_eq!(output_name(std::path::Path::new("/"), "vi"), "video-vi.mp4");
+}
+
+#[test]
+fn khong_de_len_file_da_co_trong_thu_muc_nguoi_dung() {
+    use app_lib::export::unique_path;
+    let d = tempfile::tempdir().unwrap();
+    // chưa có gì ⇒ dùng đúng tên
+    assert_eq!(unique_path(d.path(), "clip-vi.mp4"), d.path().join("clip-vi.mp4"));
+    // đã có ⇒ phải né sang tên khác, KHÔNG được trả về đường dẫn cũ
+    std::fs::write(d.path().join("clip-vi.mp4"), b"ban cu").unwrap();
+    let p2 = unique_path(d.path(), "clip-vi.mp4");
+    assert_eq!(p2, d.path().join("clip-vi (2).mp4"));
+    std::fs::write(&p2, b"ban 2").unwrap();
+    assert_eq!(unique_path(d.path(), "clip-vi.mp4"), d.path().join("clip-vi (3).mp4"));
+    // bản cũ vẫn còn nguyên
+    assert_eq!(std::fs::read(d.path().join("clip-vi.mp4")).unwrap(), b"ban cu");
+}

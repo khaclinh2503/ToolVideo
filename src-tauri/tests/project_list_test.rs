@@ -9,6 +9,7 @@ fn meta(video: &str, tgt: &str, updated: u64) -> ProjectMeta {
         tgt_lang: tgt.to_string(),
         created_at: 1,
         updated_at: updated,
+        export_path: None,
     }
 }
 

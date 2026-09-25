@@ -101,6 +101,7 @@ fn project_summary_dto_serialize_ra_camel_case() {
             tgt_lang: "vi".into(),
             created_at: 1,
             updated_at: 2,
+            export_path: None,
         },
         status: app_lib::project::ProjectStatus {
             has_stt: true,
@@ -134,6 +135,7 @@ fn video_name_roi_ve_ca_duong_dan_khi_khong_tach_duoc_ten_file() {
             tgt_lang: "vi".into(),
             created_at: 1,
             updated_at: 2,
+            export_path: None,
         },
         status: app_lib::project::ProjectStatus {
             has_stt: false,

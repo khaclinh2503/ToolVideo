@@ -21,6 +21,10 @@ pub struct ProjectMeta {
     /// ngày tháng; phía UI đã có sẵn `new Date(ms)`.
     pub created_at: u64,
     pub updated_at: u64,
+    /// Đường dẫn bản xuất gần nhất. `None` với dự án tạo trước khi có tính năng
+    /// chọn thư mục xuất — khi đó `status()` lùi về chỗ cũ `<dự án>/output/final.mp4`.
+    #[serde(default)]
+    pub export_path: Option<String>,
 }
 
 pub fn meta_path(project_dir: &Path) -> PathBuf {
@@ -42,6 +46,7 @@ pub fn new_project_meta(video: &Path, src_lang: &str, tgt_lang: &str, now: u64) 
         tgt_lang: tgt_lang.trim().to_string(),
         created_at: now,
         updated_at: now,
+        export_path: None,
     }
 }
 
@@ -113,7 +118,12 @@ pub fn status(project_dir: &Path, m: &ProjectMeta) -> ProjectStatus {
             .join(format!("translated.{}.srt", m.tgt_lang))
             .exists(),
         has_tts: project_dir.join("tts").join("manifest.json").exists(),
-        has_export: project_dir.join("output").join("final.mp4").exists(),
+        // Ưu tiên đường dẫn đã ghi trong metadata vì người dùng có thể đã xuất
+        // ra thư mục riêng; chỉ lùi về chỗ mặc định cho dự án cũ chưa có trường này.
+        has_export: match m.export_path.as_deref() {
+            Some(p) => Path::new(p).exists(),
+            None => project_dir.join("output").join("final.mp4").exists(),
+        },
         video_exists: Path::new(&m.video_path).exists(),
     }
 }

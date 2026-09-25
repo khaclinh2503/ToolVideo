@@ -19,6 +19,7 @@ interface ProjectSummaryDto {
   srcLang: string; tgtLang: string; updatedAt: number;
   hasStt: boolean; hasTranslation: boolean; hasTts: boolean;
   hasExport: boolean; videoExists: boolean;
+  exportPath: string | null;
 }
 interface CueDto {
   index: number; startMs: number; endMs: number; text: string;
@@ -31,17 +32,6 @@ interface PreviewDto {
 /** Chỉ lấy tên file để hiện lên màn hình; đường dẫn đầy đủ quá dài. */
 function baseName(p: string): string {
   return p.split(/[\\/]/).pop() ?? p;
-}
-
-/**
- * Đường dẫn file đã xuất của một dự án. Nguồn sự thật là
- * `pipeline.rs::run_export_stage` (ghi vào `<dự án>/output/final.mp4`) và
- * `project.rs::status` (dựa vào đúng file đó để đặt `hasExport`) — sửa một
- * trong hai chỗ đó thì phải sửa cả đây.
- */
-function exportPathOf(projectDir: string): string {
-  const sep = projectDir.includes("\\") ? "\\" : "/";
-  return [projectDir, "output", "final.mp4"].join(sep);
 }
 
 /** 83450 -> "00:01:23,450" — cùng định dạng SRT mà người dùng đã quen. */
@@ -87,6 +77,8 @@ function App() {
   const [exported, setExported] = useState("");
   const [url, setUrl] = useState("");
   const [dlPct, setDlPct] = useState<number | null>(null);
+  // "" = ghi vào thư mục dự án như mặc định cũ.
+  const [outDir, setOutDir] = useState("");
 
   useEffect(() => {
     const un = listen<{ id: string; phase: string; done: number; total: number }>(
@@ -214,7 +206,7 @@ function App() {
       setProjectDir(d.projectDir);
       setVideoPath(d.videoPath);
       setPickedVideo("");
-      setExported(d.hasExport ? exportPathOf(d.projectDir) : "");
+      setExported(d.exportPath ?? "");
       setTgt(d.tgtLang);
       setSrcLang(d.srcLang);
       setStatus(
@@ -344,6 +336,7 @@ function App() {
     try {
       const r = await invoke<ExportResultDto>("run_export", {
         projectDir, videoPath, tgt, burnSubs, softSubs,
+        outDir: outDir || null,
       });
       const canhBao = r.capped > 0
         ? ` (${r.capped} câu phải đọc nhanh hết cỡ mà vẫn tràn)`
@@ -356,6 +349,12 @@ function App() {
     } finally {
       setRunning(false); setExportPhase("");
     }
+  }
+
+  async function onPickOutDir() {
+    const d = await open({ directory: true });
+    if (!d) return;
+    setOutDir(d as string);
   }
 
   async function onReveal(path: string) {
@@ -419,8 +418,8 @@ function App() {
               )}
             </span>
             <button type="button" onClick={() => onOpenProject(p)} disabled={running}>Mở</button>
-            {p.hasExport && (
-              <button type="button" onClick={() => onReveal(exportPathOf(p.projectDir))}>
+            {p.exportPath && (
+              <button type="button" onClick={() => onReveal(p.exportPath!)}>
                 Mở thư mục
               </button>
             )}
@@ -552,6 +551,19 @@ function App() {
           />
           Kèm phụ đề bật/tắt được
         </label>
+        <div className="row">
+          <button type="button" onClick={onPickOutDir} disabled={running}>
+            Thư mục lưu…
+          </button>
+          <span className="muted">
+            {outDir || "mặc định: trong thư mục dự án"}
+          </span>
+          {outDir && (
+            <button type="button" onClick={() => setOutDir("")} disabled={running}>
+              Dùng mặc định
+            </button>
+          )}
+        </div>
         <div className="row">
           <button
             type="button"
