@@ -252,7 +252,7 @@ function App() {
             <option key={l} value={l}>{l === "" ? "(tự nhận dạng)" : l}</option>
           ))}
         </select>
-        <button type="button" onClick={onRun} disabled={running}>
+        <button type="button" onClick={onRun} disabled={running || srcLangs.length === 0}>
           {running ? "Đang chạy..." : "Chạy STT"}
         </button>
       </div>
