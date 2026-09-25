@@ -129,6 +129,19 @@ fn sua_mot_cue_roi_nghe_thu_chi_doi_wav_cua_cue_do() {
         );
     } else {
         println!("chạm trần MIN_LENGTH_SCALE={MIN_LENGTH_SCALE} — đúng hành vi capped của retime::fit_scale, không phải lỗi");
+        // Chỗ hở đã để lọt lỗi task 3b: 1837 so với 1895ms (ngắn 3%, thuần
+        // nhiễu suy diễn của Piper) vẫn thoả `r2.duration_ms < r.duration_ms`
+        // ở trên. Ngưỡng 15% (xem task-3b-brief.md) đủ xa cả nhiễu (~3%) lẫn
+        // hành vi ép tốc độ thật (~27% ở length_scale 0.6) để phân biệt được
+        // "xanh nhờ nhiễu" với "xanh nhờ engine thật sự ép tốc độ".
+        let nguong = r.duration_ms * 85 / 100;
+        assert!(
+            r2.duration_ms < nguong,
+            "chạm trần MIN_LENGTH_SCALE thì bản ép phải ngắn hơn ít nhất 15% so với bản nền: {} so với ngưỡng {} (nền {})",
+            r2.duration_ms,
+            nguong,
+            r.duration_ms
+        );
     }
 
     let _ = std::fs::remove_dir_all(&project);
