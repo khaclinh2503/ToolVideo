@@ -148,3 +148,26 @@ fn thieu_ban_dich_bao_loi_neu_dung_buoc_con_thieu() {
     let e = list(d.path(), "vi").unwrap_err();
     assert!(e.to_string().contains("Dịch"), "{e}");
 }
+
+#[test]
+fn so_theo_vi_tri_khong_phai_theo_index_field_trong_manifest() {
+    let d = tempfile::tempdir().unwrap();
+    write_srt(d.path(), "vi", &[("Một", 0, 1000), ("Hai", 2000, 3000)]);
+    // Manifest có 2 entry ở position 0 và 1, nhưng index field bị sai (7 và 9)
+    // Text và start_ms khớp với SRT, nên nếu so theo position sẽ không lệch
+    write_manifest(
+        d.path(),
+        vec![
+            entry(7, 0, "Một", Some("segments/cue-0001.wav"), 900),
+            entry(9, 2000, "Hai", Some("segments/cue-0002.wav"), 800),
+        ],
+    );
+    touch_wav(d.path(), "segments/cue-0001.wav");
+    touch_wav(d.path(), "segments/cue-0002.wav");
+
+    let got = list(d.path(), "vi").unwrap();
+    assert!(
+        !got[0].stale && !got[1].stale,
+        "so theo vi tri giong run_retime_stage guard, khong so theo index field trong manifest"
+    );
+}

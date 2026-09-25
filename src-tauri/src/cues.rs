@@ -55,9 +55,10 @@ pub fn list(project_dir: &Path, tgt: &str) -> Result<Vec<CueView>, PipelineError
         .enumerate()
         .map(|(i, s)| {
             let index = i + 1;
-            let entry = m
-                .as_ref()
-                .and_then(|m| m.segments.iter().find(|e| e.index == index));
+            // Match by position, not by index field in manifest — mirrors run_retime_stage's
+            // positional guard exactly, so the on-screen staleness marker and export-time
+            // refusal can never disagree when Task 3 writes to manifest entries by position.
+            let entry = m.as_ref().and_then(|m| m.segments.get(i));
             match entry {
                 Some(e) => CueView {
                     index,
