@@ -1,4 +1,4 @@
-use app_lib::wav::duration_ms;
+use app_lib::wav::{duration_ms, read_info, read_pcm16_mono, write_pcm16_mono};
 use std::io::Write;
 
 /// Dựng 1 file WAV PCM hợp lệ; `extra_chunk` cho phép chèn 1 chunk lạ trước `data`.
@@ -151,4 +151,76 @@ fn twenty_four_bit_depth_is_handled() {
 #[test]
 fn missing_file_is_error() {
     assert!(duration_ms(std::path::Path::new("khong-ton-tai.wav")).is_err());
+}
+
+#[test]
+fn read_info_khop_voi_header() {
+    let d = tempfile::tempdir().unwrap();
+    let p = d.path().join("a.wav");
+    make_wav(&p, 22050, 1, 100, 16, false);
+    let i = read_info(&p).unwrap();
+    assert_eq!(i.sample_rate, 22050);
+    assert_eq!(i.channels, 1);
+    assert_eq!(i.bits, 16);
+    assert_eq!(i.data_len, 200, "100 frame × 2 byte");
+}
+
+#[test]
+fn read_info_bo_qua_chunk_la_truoc_data() {
+    let d = tempfile::tempdir().unwrap();
+    let p = d.path().join("b.wav");
+    make_wav(&p, 16000, 1, 50, 16, true); // có chunk LIST chen vào
+    let i = read_info(&p).unwrap();
+    assert_eq!(i.sample_rate, 16000);
+    assert_eq!(i.data_len, 100);
+}
+
+#[test]
+fn ghi_roi_doc_lai_ra_dung_mau() {
+    let d = tempfile::tempdir().unwrap();
+    let p = d.path().join("rt.wav");
+    let src: Vec<i16> = vec![0, 1, -1, 32767, -32768, 1234];
+    write_pcm16_mono(&p, 22050, &src).unwrap();
+
+    let (rate, got) = read_pcm16_mono(&p).unwrap();
+    assert_eq!(rate, 22050);
+    assert_eq!(got, src);
+}
+
+#[test]
+fn ghi_roi_doc_lai_bang_duration_ms_cu() {
+    // Bộ ghi phải tạo ra wav mà bộ duyệt chunk sẵn có đọc được
+    let d = tempfile::tempdir().unwrap();
+    let p = d.path().join("dur.wav");
+    write_pcm16_mono(&p, 1000, &vec![0i16; 2500]).unwrap();
+    assert_eq!(app_lib::wav::duration_ms(&p).unwrap(), 2500);
+}
+
+#[test]
+fn tu_choi_stereo() {
+    let d = tempfile::tempdir().unwrap();
+    let p = d.path().join("st.wav");
+    make_wav(&p, 22050, 2, 100, 16, false);
+    let e = read_pcm16_mono(&p).unwrap_err();
+    let msg = e.to_string();
+    assert!(msg.contains("st.wav"), "lỗi phải nêu tên file: {msg}");
+    assert!(msg.contains("mono"), "lỗi phải nói rõ cần mono: {msg}");
+}
+
+#[test]
+fn tu_choi_24_bit() {
+    let d = tempfile::tempdir().unwrap();
+    let p = d.path().join("b24.wav");
+    make_wav(&p, 22050, 1, 100, 24, false);
+    let e = read_pcm16_mono(&p).unwrap_err();
+    assert!(e.to_string().contains("16"), "lỗi phải nói rõ cần 16-bit");
+}
+
+#[test]
+fn doc_file_rong_bao_loi_chu_khong_panic() {
+    let d = tempfile::tempdir().unwrap();
+    let p = d.path().join("empty.wav");
+    std::fs::write(&p, b"").unwrap();
+    assert!(read_pcm16_mono(&p).is_err());
+    assert!(read_info(&p).is_err());
 }
