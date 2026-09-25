@@ -65,14 +65,7 @@ pub async fn run_stt(video_path: String, lang: String) -> Result<SttResultDto, S
         let now = crate::project::now_ms();
         crate::project::save(
             &project_dir,
-            &crate::project::ProjectMeta {
-                version: 1,
-                video_path: video.display().to_string(),
-                src_lang: lang.clone(),
-                tgt_lang: cfg.translate.target_lang.clone(),
-                created_at: now,
-                updated_at: now,
-            },
+            &crate::project::new_project_meta(video, &lang, &cfg.translate.target_lang, now),
         )
         .map_err(|e| e.to_string())?;
 
@@ -99,7 +92,11 @@ pub async fn run_translate(
         let p = crate::translate::make_provider(&provider, &cfg.translate).map_err(|e| e.to_string())?;
         let r = crate::pipeline::run_translate_stage(Path::new(&project_dir), p.as_ref(), &src, &tgt)
             .map_err(|e| e.to_string())?;
-        let tgt_luu = tgt.clone();
+        // Trim khớp với run_translate_stage: nó đã trim `tgt` trước khi dựng
+        // tên file translated.<tgt>.srt, nên metadata phải trim y hệt — nếu
+        // không, status() tra theo tên file còn khoảng trắng và has_translation
+        // kẹt ở false dù bản dịch đã nằm trên đĩa.
+        let tgt_luu = tgt.trim().to_string();
         touch_project(&project_dir, move |m| m.tgt_lang = tgt_luu);
         Ok(TranslateResultDto {
             srt_path: r.srt_path.display().to_string(),

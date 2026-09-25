@@ -141,3 +141,44 @@ fn src_langs_khong_rong_va_co_gia_tri_mac_dinh_o_dau() {
     // UI lấy phần tử đầu làm mặc định cho ô chọn.
     assert!(!app_lib::stt::SRC_LANGS.is_empty());
 }
+
+#[test]
+fn new_project_meta_khong_hoan_doi_src_va_tgt() {
+    let m = app_lib::project::new_project_meta(
+        std::path::Path::new(r"E:\phim\clip.mp4"),
+        "ja",
+        "vi",
+        123,
+    );
+    assert_eq!(m.src_lang, "ja");
+    assert_eq!(m.tgt_lang, "vi");
+}
+
+#[test]
+fn new_project_meta_video_path_tu_tham_so_video_chu_khong_phai_tu_dau_khac() {
+    let m = app_lib::project::new_project_meta(
+        std::path::Path::new(r"E:\phim\clip.mp4"),
+        "ja",
+        "vi",
+        123,
+    );
+    assert_eq!(m.video_path, r"E:\phim\clip.mp4");
+}
+
+#[test]
+fn new_project_meta_created_va_updated_bang_nhau_luc_tao() {
+    let m = app_lib::project::new_project_meta(std::path::Path::new("v.mp4"), "ja", "vi", 999);
+    assert_eq!(m.created_at, 999);
+    assert_eq!(m.updated_at, 999);
+    assert_eq!(m.created_at, m.updated_at);
+}
+
+#[test]
+fn new_project_meta_trim_khoang_trang_quanh_ma_ngon_ngu() {
+    // I1: một `tgt_lang` còn khoảng trắng thừa sẽ không khớp tên file
+    // `translated.<tgt>.srt` mà `run_translate_stage` sinh ra (nó tự trim),
+    // khiến `status()` không bao giờ tìm thấy bản dịch đã có trên đĩa.
+    let m = app_lib::project::new_project_meta(std::path::Path::new("v.mp4"), " ja ", "vi ", 1);
+    assert_eq!(m.src_lang, "ja");
+    assert_eq!(m.tgt_lang, "vi");
+}

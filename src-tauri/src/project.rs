@@ -27,6 +27,24 @@ pub fn meta_path(project_dir: &Path) -> PathBuf {
     project_dir.join("project.json")
 }
 
+/// Dựng metadata cho một dự án mới tạo (dùng bởi `run_stt`).
+///
+/// `src_lang`/`tgt_lang` được trim trước khi lưu: `run_translate_stage` trim
+/// `tgt` trước khi dựng tên file `translated.<tgt>.srt`, nên nếu metadata giữ
+/// nguyên khoảng trắng thừa, `status()` sẽ tra theo tên file sai (còn khoảng
+/// trắng) và không bao giờ tìm thấy file đã dịch — `has_translation` kẹt ở
+/// `false` vĩnh viễn dù bản dịch đã có trên đĩa.
+pub fn new_project_meta(video: &Path, src_lang: &str, tgt_lang: &str, now: u64) -> ProjectMeta {
+    ProjectMeta {
+        version: 1,
+        video_path: video.display().to_string(),
+        src_lang: src_lang.trim().to_string(),
+        tgt_lang: tgt_lang.trim().to_string(),
+        created_at: now,
+        updated_at: now,
+    }
+}
+
 /// Thiếu file hoặc JSON hỏng ⇒ `None`, không phải lỗi. Cùng quy ước với
 /// `tts::manifest::load`: một dự án không đọc được chỉ đơn giản là không hiện
 /// trong danh sách, chứ không làm hỏng cả lần liệt kê.
