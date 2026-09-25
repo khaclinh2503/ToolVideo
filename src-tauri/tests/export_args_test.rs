@@ -55,8 +55,14 @@ fn amix_phai_tat_normalize() {
     // tỉ lệ 0.18/3.0. Đây là bất biến quan trọng nhất của cả module.
     let f = build_filter_complex(&opts(false, false, true));
     assert!(f.contains("normalize=0"), "filtergraph: {f}");
-    assert!(f.contains("volume=0.18"), "filtergraph: {f}");
-    assert!(f.contains("volume=3"), "filtergraph: {f}");
+    assert!(
+        f.contains("[0:a]volume=0.18[bg]"),
+        "tiếng gốc phải gắn với volume 0.18: {f}"
+    );
+    assert!(
+        f.contains("[1:a]volume=3[vo]"),
+        "tiếng lồng phải gắn với volume 3.0: {f}"
+    );
     assert!(f.contains("alimiter"), "phải chặn đỉnh sau khi nhân 3.0: {f}");
 }
 
@@ -66,7 +72,7 @@ fn khong_co_tieng_goc_thi_khong_nhan_3_lan() {
     let f = build_filter_complex(&opts(false, false, false));
     assert!(!f.contains("[0:a]"), "video câm không có luồng audio để lấy: {f}");
     assert!(!f.contains("amix"), "một nguồn thì không trộn: {f}");
-    assert!(f.contains("volume=1"), "filtergraph: {f}");
+    assert!(f.contains("[1:a]volume=1[mx]"), "filtergraph: {f}");
     assert!(f.contains("alimiter"), "filtergraph: {f}");
 }
 
