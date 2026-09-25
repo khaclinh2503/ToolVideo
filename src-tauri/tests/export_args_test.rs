@@ -1,4 +1,4 @@
-use app_lib::export::parse_duration_ms;
+use app_lib::export::{parse_duration_ms, prepare_burn_srt};
 
 #[test]
 fn doc_thoi_luong_ffprobe() {
@@ -142,4 +142,53 @@ fn luon_ket_bang_duong_dan_dau_ra_va_co_faststart() {
     assert!(a.windows(2).any(|w| w[0] == "-movflags" && w[1] == "+faststart"));
     assert!(a.windows(2).any(|w| w[0] == "-c:a" && w[1] == "aac"));
     assert!(a.contains(&"-y".to_string()), "phải ghi đè file cũ, không treo chờ trả lời");
+}
+
+#[test]
+fn burn_srt_duoc_chep_sang_ten_ascii_canh_ban_dich() {
+    let d = tempfile::tempdir().unwrap();
+    let sub = d.path().join("subtitles");
+    std::fs::create_dir_all(&sub).unwrap();
+    let src = sub.join("translated.vi.srt");
+    std::fs::write(&src, "1\r\n00:00:00,000 --> 00:00:01,000\r\nXin chào\r\n\r\n").unwrap();
+
+    let burn = prepare_burn_srt(&sub, &src).unwrap();
+
+    assert_eq!(burn.file_name().unwrap(), "burn.srt");
+    assert_eq!(burn.parent().unwrap(), sub);
+    assert_eq!(std::fs::read_to_string(&burn).unwrap(), std::fs::read_to_string(&src).unwrap());
+}
+
+#[test]
+fn burn_srt_ghi_de_ban_cu() {
+    let d = tempfile::tempdir().unwrap();
+    let sub = d.path().join("subtitles");
+    std::fs::create_dir_all(&sub).unwrap();
+    std::fs::write(sub.join("burn.srt"), "rác cũ").unwrap();
+    let src = sub.join("translated.vi.srt");
+    std::fs::write(&src, "mới").unwrap();
+
+    let burn = prepare_burn_srt(&sub, &src).unwrap();
+    assert_eq!(std::fs::read_to_string(&burn).unwrap(), "mới");
+}
+
+#[test]
+fn thieu_ban_dich_thi_bao_loi() {
+    let d = tempfile::tempdir().unwrap();
+    let sub = d.path().join("subtitles");
+    std::fs::create_dir_all(&sub).unwrap();
+    let e = prepare_burn_srt(&sub, &sub.join("khong-co.srt")).unwrap_err();
+    assert!(e.to_string().contains("Dịch"), "thông báo phải chỉ ra bước còn thiếu: {e}");
+}
+
+#[test]
+fn thieu_ffmpeg_tra_ve_engine_missing() {
+    let d = tempfile::tempdir().unwrap();
+    let e = app_lib::export::run_export(
+        Path::new("khong_co_ffmpeg.exe"),
+        d.path(),
+        &[std::ffi::OsString::from("-version")],
+    )
+    .unwrap_err();
+    assert!(matches!(e, app_lib::error::PipelineError::EngineMissing(_)));
 }

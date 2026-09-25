@@ -359,3 +359,84 @@ pub fn run_retime_stage(
 
     Ok(RetimeResult { adjusted, capped, tts })
 }
+
+use crate::compose::{self, DubStats};
+use crate::config::ComposeConfig;
+use crate::export;
+
+#[derive(Debug)]
+pub struct ExportResult {
+    pub output_path: PathBuf,
+    pub retime: RetimeResult,
+    pub dub: DubStats,
+}
+
+/// Điều kiện trước: đã chạy Lồng tiếng (có `tts/manifest.json`). Hàm này KHÔNG
+/// tự chạy lượt TTS đầu — người dùng bấm "Xuất video" không nên bất ngờ chờ
+/// vài phút sinh cả bộ giọng.
+#[allow(clippy::too_many_arguments)]
+pub fn run_export_stage(
+    project_dir: &Path,
+    ffmpeg: &Path,
+    ffprobe: &Path,
+    video: &Path,
+    p: &dyn TtsProvider,
+    voice: &str,
+    base_scale: f32,
+    tgt: &str,
+    cfg: &ComposeConfig,
+    burn_subs: bool,
+    soft_subs: bool,
+    on_phase: &mut dyn FnMut(&str),
+) -> Result<ExportResult, PipelineError> {
+    let video_ms = export::probe_duration_ms(ffprobe, video)?;
+    let has_audio = export::probe_has_audio(ffprobe, video)?;
+
+    on_phase("retime");
+    let fit_opts = FitOpts { guard_ms: cfg.guard_ms, min_scale: cfg.min_length_scale };
+    let retimed = run_retime_stage(project_dir, p, voice, base_scale, video_ms, &fit_opts, tgt)?;
+
+    on_phase("dub");
+    let tts_dir = project_dir.join("tts");
+    let m = tts_manifest::load(&retimed.tts.manifest_path).ok_or_else(|| {
+        PipelineError::Io(format!(
+            "không đọc lại được manifest vừa ghi ({})",
+            retimed.tts.manifest_path.display()
+        ))
+    })?;
+    let dub_path = tts_dir.join("dub.wav");
+    let dub = compose::build_dub_track(&tts_dir, &m, video_ms, &dub_path)?;
+
+    on_phase("encode");
+    let sub_dir = project_dir.join("subtitles");
+    std::fs::create_dir_all(&sub_dir).map_err(|e| PipelineError::Io(e.to_string()))?;
+    let translated = sub_dir.join(format!("translated.{tgt}.srt"));
+    if burn_subs {
+        export::prepare_burn_srt(&sub_dir, &translated)?;
+    }
+
+    let out_dir = project_dir.join("output");
+    std::fs::create_dir_all(&out_dir).map_err(|e| PipelineError::Io(e.to_string()))?;
+    let output_path = out_dir.join("final.mp4");
+
+    let export_opts = export::ExportOpts {
+        burn_subs,
+        soft_subs,
+        has_audio,
+        volume_original: cfg.volume_original,
+        volume_dub: cfg.volume_dub,
+        crf: cfg.crf,
+        preset: cfg.preset.clone(),
+    };
+    let args = export::build_export_args(
+        video,
+        &dub_path,
+        if soft_subs && !burn_subs { Some(translated.as_path()) } else { None },
+        &output_path,
+        &export_opts,
+    );
+    export::run_export(ffmpeg, &sub_dir, &args)?;
+
+    on_phase("done");
+    Ok(ExportResult { output_path, retime: retimed, dub })
+}

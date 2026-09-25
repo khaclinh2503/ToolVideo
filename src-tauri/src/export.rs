@@ -198,3 +198,45 @@ pub fn build_export_args(
     a.push(out.into());
     a
 }
+
+use std::path::PathBuf;
+
+/// Chép bản dịch sang `burn.srt` cạnh nó. Trả về đường dẫn tuyệt đối, nhưng
+/// filtergraph chỉ dùng tên `BURN_SRT_NAME` — xem chú thích ở hằng số đó.
+pub fn prepare_burn_srt(subtitles_dir: &Path, translated: &Path) -> Result<PathBuf, PipelineError> {
+    let text = std::fs::read(translated).map_err(|_| {
+        PipelineError::Io(format!(
+            "Chưa có bản dịch — chạy Dịch trước ({})",
+            translated.display()
+        ))
+    })?;
+    std::fs::create_dir_all(subtitles_dir).map_err(|e| PipelineError::Io(e.to_string()))?;
+    let dst = subtitles_dir.join(BURN_SRT_NAME);
+    std::fs::write(&dst, text)
+        .map_err(|e| PipelineError::Io(format!("không ghi được {}: {e}", dst.display())))?;
+    Ok(dst)
+}
+
+/// Chạy ffmpeg với thư mục làm việc đặt ở `work_dir` — đó là cách filtergraph
+/// tham chiếu `burn.srt` bằng tên tương đối mà không phải escape đường dẫn.
+pub fn run_export(ffmpeg: &Path, work_dir: &Path, args: &[OsString]) -> Result<(), PipelineError> {
+    let mut cmd = Command::new(ffmpeg);
+    cmd.current_dir(work_dir).args(args);
+    no_window(&mut cmd);
+    let out = cmd.output().map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            PipelineError::EngineMissing("ffmpeg".into())
+        } else {
+            PipelineError::Io(e.to_string())
+        }
+    })?;
+    if out.status.success() {
+        return Ok(());
+    }
+    let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+    Err(crate::ffmpeg::classify_ffmpeg_failure(
+        "export",
+        out.status.code().unwrap_or(-1),
+        &stderr,
+    ))
+}
