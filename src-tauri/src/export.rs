@@ -135,7 +135,11 @@ pub fn build_filter_complex(o: &ExportOpts) -> String {
 
     // Nhân 3.0 lên một giọng Piper vốn gần full-scale sẽ cắt đỉnh thô; limiter
     // giữ đỉnh dưới 0 dBFS.
-    parts.push("[mx]alimiter=limit=0.98[aout]".into());
+    // level=disabled bắt buộc: mặc định alimiter tự bật "auto level", tự động
+    // khuếch đại lại đầu ra về 0 dB — xoá sạch chính cái limit vừa đặt, y hệt
+    // cái bẫy normalize=1 của amix ở trên. Thiếu cờ này, đỉnh âm đo được sau
+    // khi mux vượt cả 0 dBFS dù limit=0.98.
+    parts.push("[mx]alimiter=limit=0.98:level=disabled[aout]".into());
     parts.join(";")
 }
 
