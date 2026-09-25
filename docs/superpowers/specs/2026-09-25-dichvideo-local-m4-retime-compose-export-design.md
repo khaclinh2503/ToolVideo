@@ -228,9 +228,14 @@ filter kết thúc bằng `alimiter=limit=0.98` để chặn. Plan phải kiểm
 Có tiếng gốc, không burn:
 ```
 [0:a]volume=0.18[bg];[1:a]volume=3.0[vo];
-[bg][vo]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[mx];
+[bg][vo]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[mx];
 [mx]alimiter=limit=0.98[aout]
 ```
+
+`duration=longest` chứ không phải `first`: dải tiếng dịch (`[1:a]`) được dựng
+dài đúng bằng thời lượng container (`video_ms`), trong khi tiếng gốc (`[0:a]`)
+có thể ngắn hơn hình — ăn theo `first` sẽ cắt cụt đuôi dải tiếng dịch bất cứ
+khi nào luồng tiếng gốc ngắn hơn hình.
 
 Có burn: thêm `[0:v]subtitles=burn.srt[v]` và `-map "[v]"`.
 

@@ -56,6 +56,12 @@ fn amix_phai_tat_normalize() {
     let f = build_filter_complex(&opts(false, false, true));
     assert!(f.contains("normalize=0"), "filtergraph: {f}");
     assert!(
+        f.contains("duration=longest"),
+        "phải ăn theo luồng dài hơn: dải tiếng dịch dài bằng container, tiếng \
+         gốc có thể ngắn hơn (stream copy cắt, hoặc tiếng dừng trước hình) — \
+         duration=first sẽ cắt cụt đuôi dải tiếng dịch: {f}"
+    );
+    assert!(
         f.contains("[0:a]volume=0.18[bg]"),
         "tiếng gốc phải gắn với volume 0.18: {f}"
     );

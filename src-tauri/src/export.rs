@@ -125,8 +125,16 @@ pub fn build_filter_complex(o: &ExportOpts) -> String {
         parts.push(format!("[1:a]volume={}[vo]", fmt_vol(o.volume_dub)));
         // normalize=0 bắt buộc: mặc định amix chia lại biên độ theo số input,
         // xoá sạch tỉ lệ vừa đặt ở hai dòng trên.
+        // duration=longest chứ không phải first: `[0:a]` là tiếng GỐC, có thể
+        // ngắn hơn hình (stream copy bị cắt, hoặc file gốc tiếng dừng trước
+        // hình) trong khi dải tiếng dịch `[1:a]` luôn được dựng dài đúng bằng
+        // `video_ms` (thời lượng container). Nếu ăn theo tiếng gốc ngắn hơn,
+        // amix cắt cụt đúng phần đuôi dải tiếng dịch mà không cue/thống kê nào
+        // phát hiện. Cả hai input đã bị chặn trần ở `video_ms` nên `longest`
+        // không kéo dài mix ra ngoài hình; normalize=0 vẫn còn nên không có
+        // hiện tượng khuếch đại lại khi một nhánh im lặng ở đuôi.
         parts.push(
-            "[bg][vo]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[mx]".into(),
+            "[bg][vo]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[mx]".into(),
         );
     } else {
         // Video câm: hệ số nhân 3.0 vô nghĩa vì không có nền nào để nổi lên trên.
