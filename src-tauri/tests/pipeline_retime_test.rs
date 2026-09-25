@@ -126,3 +126,73 @@ fn chua_chay_long_tieng_thi_bao_loi_ro_rang() {
     let msg = e.to_string();
     assert!(msg.contains("Lồng tiếng"), "thông báo phải chỉ ra bước còn thiếu: {msg}");
 }
+
+// --- I1: manifest phải khớp đúng phụ đề hiện tại, không chỉ đếm suông ---
+
+#[test]
+fn them_cue_sau_khi_long_tieng_thi_bao_loi() {
+    let dir = tempfile::tempdir().unwrap();
+    write_translated(dir.path(), &[("A", 0, 1000), ("B", 5000, 6000)]);
+
+    let p1 = ScaledTts::new(vec![1000, 1000]);
+    run_tts_stage(dir.path(), &p1, "v", &ScalePlan::uniform(1.0), "vi").unwrap();
+
+    // Dịch lại: chèn thêm 1 cue -> số cue tăng, mọi vị trí sau nó lệch.
+    write_translated(dir.path(), &[("A", 0, 1000), ("moi", 2000, 2500), ("B", 5000, 6000)]);
+
+    let p2 = ScaledTts::new(vec![1000, 1000, 1000]);
+    let e = run_retime_stage(dir.path(), &p2, "v", 1.0, 10_000, &FitOpts::default(), "vi").unwrap_err();
+    let msg = e.to_string();
+    assert!(msg.contains("Lồng tiếng"), "thông báo phải chỉ ra bước cần chạy lại: {msg}");
+}
+
+#[test]
+fn doi_text_cue_sau_khi_long_tieng_thi_bao_loi() {
+    let dir = tempfile::tempdir().unwrap();
+    write_translated(dir.path(), &[("A", 0, 1000), ("B", 5000, 6000)]);
+
+    let p1 = ScaledTts::new(vec![1000, 1000]);
+    run_tts_stage(dir.path(), &p1, "v", &ScalePlan::uniform(1.0), "vi").unwrap();
+
+    // Sửa nội dung dịch của cue 1, giữ nguyên start_ms.
+    write_translated(dir.path(), &[("A sua roi", 0, 1000), ("B", 5000, 6000)]);
+
+    let p2 = ScaledTts::new(vec![1000, 1000]);
+    let e = run_retime_stage(dir.path(), &p2, "v", 1.0, 10_000, &FitOpts::default(), "vi").unwrap_err();
+    assert!(e.to_string().contains("Lồng tiếng"));
+}
+
+#[test]
+fn doi_start_ms_cue_sau_khi_long_tieng_thi_bao_loi() {
+    let dir = tempfile::tempdir().unwrap();
+    write_translated(dir.path(), &[("A", 0, 1000), ("B", 5000, 6000)]);
+
+    let p1 = ScaledTts::new(vec![1000, 1000]);
+    run_tts_stage(dir.path(), &p1, "v", &ScalePlan::uniform(1.0), "vi").unwrap();
+
+    // Dời mốc bắt đầu của cue 2, giữ nguyên text.
+    write_translated(dir.path(), &[("A", 0, 1000), ("B", 5200, 6000)]);
+
+    let p2 = ScaledTts::new(vec![1000, 1000]);
+    let e = run_retime_stage(dir.path(), &p2, "v", 1.0, 10_000, &FitOpts::default(), "vi").unwrap_err();
+    assert!(e.to_string().contains("Lồng tiếng"));
+}
+
+#[test]
+fn doi_end_ms_khong_bao_loi_retime_van_chay_binh_thuong() {
+    let dir = tempfile::tempdir().unwrap();
+    write_translated(dir.path(), &[("Câu dài", 0, 3000), ("Câu ngắn", 5000, 6000)]);
+
+    let p1 = ScaledTts::new(vec![6000, 2000]);
+    run_tts_stage(dir.path(), &p1, "v", &ScalePlan::uniform(1.0), "vi").unwrap();
+
+    // Chỉ đổi end_ms của cue 1 (phụ đề hiển thị lâu hơn) — start_ms và text giữ nguyên.
+    write_translated(dir.path(), &[("Câu dài", 0, 4500), ("Câu ngắn", 5000, 6000)]);
+
+    let p2 = ScaledTts::new(vec![6000, 2000]);
+    let r = run_retime_stage(dir.path(), &p2, "v", 1.0, 10_000, &FitOpts::default(), "vi").unwrap();
+
+    assert_eq!(r.adjusted, 1, "chỉ cue 1 đổi tốc độ, như trước khi sửa end_ms");
+    assert_eq!(r.tts.generated, 1);
+    assert_eq!(r.tts.cached, 1);
+}

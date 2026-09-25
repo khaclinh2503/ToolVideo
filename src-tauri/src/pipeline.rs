@@ -300,6 +300,37 @@ pub fn run_retime_stage(
         ))
     })?;
 
+    // `run_tts_stage` sẽ đọc lại đúng file này và áp `scales` theo VỊ TRÍ
+    // (index trong SRT). Nếu phụ đề đã bị sửa (thêm/bớt/sửa cue) kể từ lần
+    // Lồng tiếng ghi manifest, thì cue boundary/scale tính từ manifest cũ sẽ
+    // bị lệch khỏi cue thật ở vị trí đó — không có gì phát hiện việc này nếu
+    // không đối chiếu ở đây. So khớp `text` và `start_ms`, KHÔNG so `end_ms`:
+    // `run_retime_stage` chưa từng dùng `end_ms` (boundary lấy từ `start_ms`
+    // của cue kế tiếp), nên chỉ đổi `end_ms` không phải dấu hiệu phụ đề đã
+    // "đổi" theo nghĩa ảnh hưởng tới retime.
+    let srt_path = project_dir.join("subtitles").join(format!("translated.{tgt}.srt"));
+    let srt_text = std::fs::read_to_string(&srt_path).map_err(|_| {
+        PipelineError::Io(format!(
+            "Chưa có bản dịch — chạy Dịch trước ({})",
+            srt_path.display()
+        ))
+    })?;
+    let current_segs = srt::parse_srt(&srt_text)?;
+    let stale = || {
+        PipelineError::Io(format!(
+            "Phụ đề đã thay đổi sau khi lồng tiếng — chạy lại Lồng tiếng trước khi xuất ({})",
+            srt_path.display()
+        ))
+    };
+    if current_segs.len() != m.segments.len() {
+        return Err(stale());
+    }
+    for (seg, entry) in current_segs.iter().zip(m.segments.iter()) {
+        if seg.text != entry.text || seg.start_ms != entry.start_ms {
+            return Err(stale());
+        }
+    }
+
     let starts: Vec<u64> = m.segments.iter().map(|s| s.start_ms).collect();
     let bounds = retime::boundaries(&starts, video_ms);
     let cues: Vec<retime::Cue> = m
