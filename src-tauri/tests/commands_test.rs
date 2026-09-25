@@ -112,11 +112,14 @@ fn project_summary_dto_serialize_ra_camel_case() {
 
 #[test]
 fn video_name_roi_ve_ca_duong_dan_khi_khong_tach_duoc_ten_file() {
+    // ".." không có `file_name()` (tra ve None), nhung fallback dung phai la
+    // chinh chuoi video_path (khong rong) -- phan biet duoc voi mot fallback
+    // sai kieu `.unwrap_or_default()` cung tra ve "" nhu ca tren duong dan rong.
     let s = app_lib::project::ProjectSummary {
         project_dir: std::path::PathBuf::from("p"),
         meta: app_lib::project::ProjectMeta {
             version: 1,
-            video_path: "".into(),
+            video_path: "..".into(),
             src_lang: "zh".into(),
             tgt_lang: "vi".into(),
             created_at: 1,
@@ -130,7 +133,7 @@ fn video_name_roi_ve_ca_duong_dan_khi_khong_tach_duoc_ten_file() {
             video_exists: false,
         },
     };
-    assert_eq!(app_lib::commands::summary_to_dto(&s).video_name, "");
+    assert_eq!(app_lib::commands::summary_to_dto(&s).video_name, "..");
 }
 
 #[test]
