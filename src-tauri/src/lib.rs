@@ -7,6 +7,7 @@ pub mod error;
 pub mod export;
 pub mod ffmpeg;
 pub mod pipeline;
+pub mod project;
 pub mod retime;
 pub mod srt;
 pub mod stt;
