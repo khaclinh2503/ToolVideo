@@ -175,3 +175,89 @@ fn index_ngoai_pham_vi_bao_loi() {
     let p = ScaledTts::new(1000);
     assert!(preview(d.path(), &p, "v", 1.0, "vi", 5, None, &FitOpts::default()).is_err());
 }
+
+/// Provider giả lỗi đúng vào lượt tổng hợp thứ hai (dùng đếm lượt gọi
+/// `synthesize`), để kiểm ca "lượt hai hỏng giữa chừng" mà F2 nêu.
+struct FailSecondPass {
+    base_ms: u64,
+    calls: RefCell<usize>,
+}
+
+impl FailSecondPass {
+    fn new(base_ms: u64) -> Self {
+        FailSecondPass { base_ms, calls: RefCell::new(0) }
+    }
+}
+
+impl TtsProvider for FailSecondPass {
+    fn id(&self) -> &'static str { "failsecond" }
+    fn sample_rate(&self) -> u32 { 1000 }
+    fn synthesize(&self, jobs: &[TtsJob], on_done: &mut dyn FnMut(usize)) -> Result<(), PipelineError> {
+        let mut c = self.calls.borrow_mut();
+        *c += 1;
+        if *c == 2 {
+            return Err(PipelineError::Io("piper lỗi giả lập ở lượt hai".into()));
+        }
+        for j in jobs {
+            let ms = (self.base_ms as f32 * j.length_scale).round() as usize;
+            app_lib::wav::write_pcm16_mono(&j.out, 1000, &vec![0i16; ms]).unwrap();
+            on_done(j.index);
+        }
+        Ok(())
+    }
+}
+
+/// F1 — manifest thiếu entry ở đúng vị trí cue đang nghe thử (ví dụ Dịch lại
+/// sinh thêm cue sau khi đã Lồng tiếng): `preview` phải từ chối theo VỊ TRÍ,
+/// giống hệt cách `cues::list` và guard xuất ghép manifest với SRT — không
+/// được tự vá bằng cách chèn thêm entry (việc đó phá bất biến vị trí ↔ cue).
+#[test]
+fn manifest_thieu_entry_o_vi_tri_do_thi_bao_loi_chu_khong_tu_vien() {
+    let d = tempfile::tempdir().unwrap();
+    write_srt(d.path(), &[("Một", 0, 1000), ("Hai", 2000, 3000)]);
+    // Chỉ có entry cho cue 1 — cue 2 chưa từng được Lồng tiếng.
+    write_manifest(d.path(), vec![entry(1, 0, "Một")]);
+
+    let manifest_path = d.path().join("tts").join("manifest.json");
+    let manifest_truoc = std::fs::read_to_string(&manifest_path).unwrap();
+
+    let p = ScaledTts::new(1000);
+    let e = preview(d.path(), &p, "v", 1.0, "vi", 2, None, &FitOpts::default()).unwrap_err();
+    assert!(e.to_string().contains("Lồng tiếng"), "{e}");
+    assert!(p.calls().is_empty(), "vị trí không có trong manifest thì không được gọi engine");
+
+    let manifest_sau = std::fs::read_to_string(&manifest_path).unwrap();
+    assert_eq!(manifest_truoc, manifest_sau, "manifest không được đổi khi từ chối");
+}
+
+/// F2 — lượt hai lỗi giữa chừng (Piper chết, hết đĩa, đóng app...) không được
+/// để lại wav thật đã bị ghi đè trong khi manifest vẫn ghi thông tin cũ: đó là
+/// trạng thái "manifest nói dối" mà cache lúc Xuất sẽ tin nhầm.
+#[test]
+fn loi_o_luot_hai_thi_wav_va_manifest_cu_con_nguyen() {
+    let d = tempfile::tempdir().unwrap();
+    // Ca tràn ngân sách y hệt test đầu file: cue 1 ở 0, cue 2 ở 5000 ⇒ ngân
+    // sách 4920; giọng gốc 6000 ⇒ cần ép về 0.82 ⇒ bắt buộc phải có lượt hai.
+    write_srt(d.path(), &[("Câu dài", 0, 3000), ("Câu sau", 5000, 6000)]);
+    write_manifest(d.path(), vec![entry(1, 0, "Câu dài"), entry(2, 5000, "Câu sau")]);
+
+    // Wav "cũ" đã có trên đĩa trước khi nghe thử (ví dụ từ lần Xuất trước) —
+    // phải còn nguyên byte nếu lượt hai lỗi.
+    let out = d.path().join("tts").join("segments").join("cue-0001.wav");
+    std::fs::create_dir_all(out.parent().unwrap()).unwrap();
+    app_lib::wav::write_pcm16_mono(&out, 1000, &vec![7i16; 321]).unwrap();
+    let wav_truoc = std::fs::read(&out).unwrap();
+
+    let manifest_path = d.path().join("tts").join("manifest.json");
+    let manifest_truoc = std::fs::read_to_string(&manifest_path).unwrap();
+
+    let p = FailSecondPass::new(6000);
+    let e = preview(d.path(), &p, "v", 1.0, "vi", 1, None, &FitOpts::default()).unwrap_err();
+    assert!(e.to_string().contains("lỗi"), "{e}");
+
+    let wav_sau = std::fs::read(&out).unwrap();
+    assert_eq!(wav_truoc, wav_sau, "wav thật không được đổi khi lượt hai lỗi");
+
+    let manifest_sau = std::fs::read_to_string(&manifest_path).unwrap();
+    assert_eq!(manifest_truoc, manifest_sau, "manifest không được đổi khi lượt hai lỗi");
+}

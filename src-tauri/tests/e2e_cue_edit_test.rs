@@ -6,7 +6,7 @@
 use app_lib::config::{load_config, models_dir, projects_dir};
 use app_lib::cues;
 use app_lib::pipeline::{run_stt_pipeline, run_translate_stage, run_tts_stage, EngineCtx};
-use app_lib::retime::FitOpts;
+use app_lib::retime::{FitOpts, MIN_LENGTH_SCALE};
 use app_lib::stt::SttModels;
 use app_lib::tts::ScalePlan;
 use std::path::Path;
@@ -87,4 +87,49 @@ fn sua_mot_cue_roi_nghe_thu_chi_doi_wav_cua_cue_do() {
             assert_eq!(h_truoc, h_sau, "wav của cue {i} không được đụng tới");
         }
     }
+
+    // F3: lượt vừa rồi rơi vào ca vừa khung (budget mặc định > độ dài đo được)
+    // nên chỉ chạy một lượt tổng hợp — đường "ép tốc độ" rủi ro nhất chưa từng
+    // chạm Piper thật. Ép ngân sách nhỏ hơn hẳn `r.duration_ms` đã đo, tính từ
+    // đúng số liệu thật của clip (không chép hằng số của ai khác), để buộc
+    // lượt hai phải chạy trên engine thật.
+    let boundary_ms = sau[1].start_ms;
+    let start_ms = sau[0].start_ms;
+    let full_gap = boundary_ms.saturating_sub(start_ms);
+    let target_budget = r.duration_ms / 2; // ép còn một nửa ⇒ chắc chắn cần lượt hai
+    let guard_ms = full_gap.saturating_sub(target_budget);
+    let budget = full_gap.saturating_sub(guard_ms);
+    let chat = FitOpts { guard_ms, ..FitOpts::default() };
+    println!(
+        "ép ngân sách: full_gap={full_gap} guard_ms={guard_ms} ngân sách={budget} (đo lượt trước={} ms)",
+        r.duration_ms
+    );
+
+    let r2 = cues::preview(&project, p.as_ref(), &cfg.tts.voice, cfg.tts.length_scale, "vi", 1, None, &chat).unwrap();
+    println!("nghe thử (ép tốc độ, lượt hai bắt buộc): {} ms, tốc độ {}", r2.duration_ms, r2.length_scale);
+
+    assert!(
+        r2.length_scale < cfg.tts.length_scale,
+        "ngân sách hẹp hơn hẳn độ dài đo được thì phải bị ép chậm lại: {}",
+        r2.length_scale
+    );
+    assert!(
+        r2.duration_ms < r.duration_ms,
+        "wav sau khi ép phải ngắn hơn wav đo ở tốc độ nền: {} so với {}",
+        r2.duration_ms,
+        r.duration_ms
+    );
+    if (r2.length_scale - MIN_LENGTH_SCALE).abs() > 1e-6 {
+        // Không chạm trần tốc độ ⇒ phải thực sự vừa đúng ngân sách vừa ép.
+        assert!(
+            r2.duration_ms <= budget,
+            "không chạm trần MIN_LENGTH_SCALE thì phải vừa ngân sách: {} <= {}",
+            r2.duration_ms,
+            budget
+        );
+    } else {
+        println!("chạm trần MIN_LENGTH_SCALE={MIN_LENGTH_SCALE} — đúng hành vi capped của retime::fit_scale, không phải lỗi");
+    }
+
+    let _ = std::fs::remove_dir_all(&project);
 }

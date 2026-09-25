@@ -185,6 +185,21 @@ pub fn preview(
         ))
     })?;
 
+    // Ghép manifest với SRT theo VỊ TRÍ, giống hệt `cues::list` (`m.segments.get(i)`)
+    // và guard của `run_export_stage` (`current_segs.iter().zip(m.segments.iter())`)
+    // — ba bên đọc cùng một manifest thì phải khớp do cấu tạo, không phải do
+    // trùng hợp. Từ chối sớm, TRƯỚC KHI động tới engine hay đĩa, khi vị trí này
+    // không tồn tại (ví dụ Dịch lại thêm cue sau khi đã Lồng tiếng): không được
+    // tự vá bằng cách chèn thêm entry, vì việc đó phá đúng bất biến vị trí ↔ cue
+    // mà `list` và guard xuất đang dựa vào.
+    if index - 1 >= m.segments.len() {
+        return Err(PipelineError::Io(format!(
+            "Giọng đọc không khớp phụ đề ({} cue nhưng {} đoạn giọng) — chạy lại Lồng tiếng",
+            segs.len(),
+            m.segments.len()
+        )));
+    }
+
     // Ranh giới đúng quy tắc retime: start của cue kế; cue cuối lấy độ dài video.
     let (boundary_ms, unconstrained) = if index < segs.len() {
         (segs[index].start_ms, false)
@@ -200,18 +215,24 @@ pub fn preview(
     if let Some(dir) = out.parent() {
         std::fs::create_dir_all(dir).map_err(|e| PipelineError::Io(e.to_string()))?;
     }
+    // Tổng hợp vào tệp tạm cạnh đích: wav thật chỉ bị thay ở dòng `rename` cuối
+    // hàm, sau khi MỌI lượt tổng hợp đã xong. Một lỗi giữa chừng (Piper chết,
+    // hết đĩa, đóng app) thì để nguyên wav thật cũ — người dùng không mất giọng
+    // đã sinh trước đó, và manifest (chỉ lưu sau rename) không thể nói dối về
+    // một wav chưa từng tồn tại.
+    let tmp = out.with_extension("wav.tmp");
 
     let synth = |scale: f32| -> Result<u64, PipelineError> {
         p.synthesize(
             &[TtsJob {
                 index,
                 text: seg.text.clone(),
-                out: out.clone(),
+                out: tmp.clone(),
                 length_scale: scale,
             }],
             &mut |_| {},
         )?;
-        crate::wav::duration_ms(&out)
+        crate::wav::duration_ms(&tmp)
     };
 
     // Lượt 1: đo độ dài thật ở tốc độ nền.
@@ -233,32 +254,20 @@ pub fn preview(
         dur = synth(scale)?;
     }
 
-    // Cập nhật manifest ⇒ cue này hết lệch với SRT.
+    // Mọi lượt tổng hợp đã xong và không lỗi ⇒ giờ mới thay wav thật, atomically.
+    std::fs::rename(&tmp, &out).map_err(|e| PipelineError::Io(e.to_string()))?;
+
+    // Cập nhật manifest ⇒ cue này hết lệch với SRT. Vị trí đã được xác nhận tồn
+    // tại ở trên nên đây là chỉ số hợp lệ.
     let key = tts::cache_key(p.id(), voice, scale, &seg.text);
-    match m.segments.iter_mut().find(|e| e.index == index) {
-        Some(e) => {
-            e.start_ms = seg.start_ms;
-            e.end_ms = seg.end_ms;
-            e.text = seg.text.clone();
-            e.audio_path = Some(rel.clone());
-            e.cache_key = Some(key);
-            e.length_scale = scale;
-            e.duration_ms = dur;
-        }
-        None => {
-            m.segments.push(tts_manifest::SegmentEntry {
-                index,
-                start_ms: seg.start_ms,
-                end_ms: seg.end_ms,
-                text: seg.text.clone(),
-                audio_path: Some(rel.clone()),
-                cache_key: Some(key),
-                length_scale: scale,
-                duration_ms: dur,
-            });
-            m.segments.sort_by_key(|e| e.index);
-        }
-    }
+    let e = &mut m.segments[index - 1];
+    e.start_ms = seg.start_ms;
+    e.end_ms = seg.end_ms;
+    e.text = seg.text.clone();
+    e.audio_path = Some(rel.clone());
+    e.cache_key = Some(key);
+    e.length_scale = scale;
+    e.duration_ms = dur;
     tts_manifest::save(&manifest_path, &m)?;
 
     Ok(PreviewResult {
