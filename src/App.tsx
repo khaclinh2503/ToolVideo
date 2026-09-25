@@ -73,11 +73,11 @@ function App() {
   async function onRun() {
     const selected = await open({ filters: [{ name: "Video", extensions: ["mp4", "mkv", "mov"] }] });
     if (!selected) return;
-    setVideoPath(selected as string);
+    setProjectDir(""); setVideoPath("");
     setRunning(true); setStatus("Đang chạy STT...");
     try {
       const r = await invoke<SttResultDto>("run_stt", { videoPath: selected, lang: "zh" });
-      setProjectDir(r.projectDir);
+      setProjectDir(r.projectDir); setVideoPath(selected as string);
       setStatus(`STT xong: ${r.cueCount} cue → ${r.srtPath}`);
     } catch (e) { setStatus(`Lỗi: ${String(e)}`); } finally { setRunning(false); }
   }
