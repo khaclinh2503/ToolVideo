@@ -109,6 +109,7 @@ function App() {
   }
 
   async function onOpenProject(p: ProjectSummaryDto) {
+    setRunning(true);
     try {
       const d = await invoke<ProjectSummaryDto>("open_project", { projectDir: p.projectDir });
       setProjectDir(d.projectDir);
@@ -122,6 +123,8 @@ function App() {
       );
     } catch (e) {
       setStatus(`Lỗi: ${String(e)}`);
+    } finally {
+      setRunning(false);
     }
   }
 
@@ -131,6 +134,7 @@ function App() {
       { title: "Xoá dự án", kind: "warning" },
     );
     if (!ok) return;
+    setRunning(true);
     try {
       await invoke("delete_project", { projectDir: p.projectDir });
       // Nếu đang mở chính dự án vừa xoá thì phải xoá trạng thái đi, nếu không
@@ -143,6 +147,8 @@ function App() {
       setStatus(`Đã xoá dự án: ${p.videoName}`);
     } catch (e) {
       setStatus(`Lỗi: ${String(e)}`);
+    } finally {
+      setRunning(false);
     }
   }
 
