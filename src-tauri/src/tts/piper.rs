@@ -128,8 +128,11 @@ impl TtsProvider for Piper {
         // trả lỗi I/O trần trụi ở đây.
         let _ = writer_handle.join();
 
-        let status = child.wait().map_err(|e| PipelineError::Io(e.to_string()))?;
+        let wait_res = child.wait();
+        // Join stderr trước khi propagate lỗi wait(): mọi luồng phải được join
+        // trên MỌI nhánh thoát, kể cả khi wait() chính nó lỗi.
         let stderr_tail = err_handle.join().unwrap_or_default();
+        let status = wait_res.map_err(|e| PipelineError::Io(e.to_string()))?;
 
         if !status.success() || done < jobs.len() {
             let failed_index = jobs.get(done).map(|j| j.index).unwrap_or(0);
