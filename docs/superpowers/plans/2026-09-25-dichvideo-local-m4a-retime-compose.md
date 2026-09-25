@@ -1388,7 +1388,7 @@ Kỳ vọng: 4 passed.
 ```
 $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"; cargo test --manifest-path src-tauri/Cargo.toml
 ```
-Kỳ vọng: tất cả xanh, **0 warning**, 5 ignored (các test E2E có cổng môi trường). Số test tăng đúng 35 so với mốc M3 là 109, tức 144 passed: 3 (`ScalePlan`) + 2 (pipeline per-cue) + 11 (retime) + 7 (wav) + 8 (compose) + 4 (retime pipeline). Thiếu test nào so với con số này nghĩa là một bước ở trên chưa làm xong — đối chiếu từng file chứ đừng bỏ qua.
+Kỳ vọng: tất cả xanh, **0 warning**, 5 ignored (các test E2E có cổng môi trường). Số test tăng đúng 37 so với mốc M3 là 109, tức 146 passed: 3 (`ScalePlan`) + 2 (pipeline per-cue) + 11 (retime) + 7 (wav) + 10 (compose) + 4 (retime pipeline) — compose ra 10 thay vì 8 dự kiến ban đầu (2 test ceiling-buffer thêm ở vòng sửa lỗi). Thiếu test nào so với con số này nghĩa là một bước ở trên chưa làm xong — đối chiếu từng file chứ đừng bỏ qua.
 
 Nếu `cargo` báo warning "unused import" ở `pipeline.rs`, đó là do `use crate::retime::{self, FitOpts};` đặt trùng — gộp vào khối `use` sẵn có thay vì thêm dòng mới.
 
