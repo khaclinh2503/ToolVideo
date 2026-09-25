@@ -9,6 +9,10 @@ interface TranslateResultDto { srtPath: string; cueCount: number }
 interface TtsResultDto { manifestPath: string; cueCount: number; generated: number; cached: number }
 interface OpenAiConfig { base_url: string; api_key: string; model: string }
 interface AppConfig { translate: { default_provider: string; target_lang: string; openai: OpenAiConfig } }
+interface ExportResultDto {
+  outputPath: string; adjusted: number; capped: number;
+  placed: number; truncated: number; saturated: number;
+}
 
 function App() {
   const [status, setStatus] = useState("");
@@ -18,6 +22,10 @@ function App() {
   const [provider, setProvider] = useState("google_free");
   const [tgt, setTgt] = useState("vi");
   const [dl, setDl] = useState("");
+  const [videoPath, setVideoPath] = useState("");
+  const [burnSubs, setBurnSubs] = useState(false);
+  const [softSubs, setSoftSubs] = useState(true);
+  const [exportPhase, setExportPhase] = useState("");
 
   useEffect(() => {
     const un = listen<{ id: string; phase: string; done: number; total: number }>(
@@ -38,6 +46,19 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const un = listen<{ phase: string }>("export_progress", (e) => {
+      const ten: Record<string, string> = {
+        retime: "Đang khớp giọng vào phụ đề...",
+        dub: "Đang ghép dải tiếng dịch...",
+        encode: "Đang xuất video...",
+        done: "",
+      };
+      setExportPhase(ten[e.payload.phase] ?? e.payload.phase);
+    });
+    return () => { un.then((f) => f()); };
+  }, []);
+
+  useEffect(() => {
     invoke<AppConfig>("get_config").then((c) => { setCfg(c); setProvider(c.translate.default_provider); setTgt(c.translate.target_lang); });
   }, []);
 
@@ -52,6 +73,7 @@ function App() {
   async function onRun() {
     const selected = await open({ filters: [{ name: "Video", extensions: ["mp4", "mkv", "mov"] }] });
     if (!selected) return;
+    setVideoPath(selected as string);
     setRunning(true); setStatus("Đang chạy STT...");
     try {
       const r = await invoke<SttResultDto>("run_stt", { videoPath: selected, lang: "zh" });
@@ -92,6 +114,23 @@ function App() {
     } catch (e) { setStatus(`Lỗi: ${String(e)}`); } finally { setRunning(false); }
   }
 
+  async function onExport() {
+    setRunning(true); setStatus("Đang xuất video...");
+    try {
+      const r = await invoke<ExportResultDto>("run_export", {
+        projectDir, videoPath, tgt, burnSubs, softSubs,
+      });
+      const canhBao = r.capped > 0
+        ? ` (${r.capped} câu phải đọc nhanh hết cỡ mà vẫn tràn)`
+        : "";
+      setStatus(`Xuất xong: ${r.outputPath} — ${r.placed} câu lồng tiếng${canhBao}`);
+    } catch (e) {
+      setStatus(`Lỗi: ${String(e)}`);
+    } finally {
+      setRunning(false); setExportPhase("");
+    }
+  }
+
   const oa = cfg?.translate.openai;
   const setOa = (patch: Partial<OpenAiConfig>) => cfg && setCfg({ ...cfg, translate: { ...cfg.translate, openai: { ...cfg.translate.openai, ...patch } } });
 
@@ -125,6 +164,39 @@ function App() {
       <h2>Lồng tiếng</h2>
       <div className="row">
         <button type="button" onClick={onTts} disabled={running || !projectDir}>Lồng tiếng</button>
+      </div>
+
+      <h2>Xuất video</h2>
+      <div className="row">
+        <label>
+          <input
+            type="checkbox"
+            checked={burnSubs}
+            onChange={(e) => setBurnSubs(e.target.checked)}
+          />
+          Ghi phụ đề vào hình (burn-in, phải mã hoá lại video nên lâu hơn nhiều)
+        </label>
+      </div>
+      <div className="row">
+        <label>
+          <input
+            type="checkbox"
+            checked={softSubs}
+            disabled={burnSubs}
+            onChange={(e) => setSoftSubs(e.target.checked)}
+          />
+          Kèm phụ đề bật/tắt được
+        </label>
+      </div>
+      <div className="row">
+        <button
+          type="button"
+          onClick={onExport}
+          disabled={running || !projectDir || !videoPath}
+        >
+          Xuất video
+        </button>
+        {exportPhase && <span>{exportPhase}</span>}
       </div>
       {status && <p>{status}</p>}
     </main>
