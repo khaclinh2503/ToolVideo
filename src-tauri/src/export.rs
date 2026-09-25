@@ -84,3 +84,117 @@ pub fn probe_has_audio(ffprobe: &Path, video: &Path) -> Result<bool, PipelineErr
     )?;
     Ok(!s.trim().is_empty())
 }
+
+use std::ffi::OsString;
+
+/// Tên file phụ đề dùng trong filtergraph. Luôn là tên ASCII **tương đối**:
+/// ffmpeg chạy với `current_dir` đặt ở thư mục chứa nó, nên filtergraph không
+/// bao giờ phải mang đường dẫn tuyệt đối. Trên Windows, dấu hai chấm ổ đĩa kết
+/// thúc tham số filter, dấu gạch ngược bị nuốt, và `[ ] , ;` trong tên thư mục
+/// phá luôn graph — tên người dùng có dấu tiếng Việt làm mọi thứ tệ hơn.
+pub const BURN_SRT_NAME: &str = "burn.srt";
+
+#[derive(Debug, Clone)]
+pub struct ExportOpts {
+    pub burn_subs: bool,
+    /// Chỉ có tác dụng khi `burn_subs == false`.
+    pub soft_subs: bool,
+    pub has_audio: bool,
+    pub volume_original: f32,
+    pub volume_dub: f32,
+    pub crf: u32,
+    pub preset: String,
+}
+
+/// `0.18` chứ không phải `0.180`; `3` chứ không phải `3.000`.
+fn fmt_vol(v: f32) -> String {
+    let s = format!("{v:.3}");
+    let s = s.trim_end_matches('0');
+    s.trim_end_matches('.').to_string()
+}
+
+pub fn build_filter_complex(o: &ExportOpts) -> String {
+    let mut parts: Vec<String> = Vec::new();
+
+    if o.burn_subs {
+        parts.push(format!("[0:v]subtitles={BURN_SRT_NAME}[v]"));
+    }
+
+    if o.has_audio {
+        parts.push(format!("[0:a]volume={}[bg]", fmt_vol(o.volume_original)));
+        parts.push(format!("[1:a]volume={}[vo]", fmt_vol(o.volume_dub)));
+        // normalize=0 bắt buộc: mặc định amix chia lại biên độ theo số input,
+        // xoá sạch tỉ lệ vừa đặt ở hai dòng trên.
+        parts.push(
+            "[bg][vo]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[mx]".into(),
+        );
+    } else {
+        // Video câm: hệ số nhân 3.0 vô nghĩa vì không có nền nào để nổi lên trên.
+        parts.push("[1:a]volume=1[mx]".into());
+    }
+
+    // Nhân 3.0 lên một giọng Piper vốn gần full-scale sẽ cắt đỉnh thô; limiter
+    // giữ đỉnh dưới 0 dBFS.
+    parts.push("[mx]alimiter=limit=0.98[aout]".into());
+    parts.join(";")
+}
+
+pub fn build_export_args(
+    video: &Path,
+    dub: &Path,
+    srt: Option<&Path>,
+    out: &Path,
+    o: &ExportOpts,
+) -> Vec<OsString> {
+    let soft = o.soft_subs && !o.burn_subs;
+    let soft_srt = if soft { srt } else { None };
+
+    let mut a: Vec<OsString> = vec!["-hide_banner".into(), "-y".into()];
+    a.push("-i".into());
+    a.push(video.into());
+    a.push("-i".into());
+    a.push(dub.into());
+    if let Some(s) = soft_srt {
+        a.push("-i".into());
+        a.push(s.into());
+    }
+
+    a.push("-filter_complex".into());
+    a.push(build_filter_complex(o).into());
+
+    a.push("-map".into());
+    a.push(OsString::from(if o.burn_subs { "[v]" } else { "0:v:0" }));
+    a.push("-map".into());
+    a.push("[aout]".into());
+    if soft_srt.is_some() {
+        a.push("-map".into());
+        a.push("2:0".into());
+        a.push("-c:s".into());
+        a.push("mov_text".into());
+        a.push("-metadata:s:s:0".into());
+        a.push("language=vie".into());
+    }
+
+    if o.burn_subs {
+        a.push("-c:v".into());
+        a.push("libx264".into());
+        a.push("-preset".into());
+        a.push(o.preset.as_str().into());
+        a.push("-crf".into());
+        a.push(o.crf.to_string().into());
+        a.push("-pix_fmt".into());
+        a.push("yuv420p".into());
+    } else {
+        a.push("-c:v".into());
+        a.push("copy".into());
+    }
+
+    a.push("-c:a".into());
+    a.push("aac".into());
+    a.push("-b:a".into());
+    a.push("192k".into());
+    a.push("-movflags".into());
+    a.push("+faststart".into());
+    a.push(out.into());
+    a
+}
