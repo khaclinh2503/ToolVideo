@@ -27,6 +27,11 @@ interface PreviewDto {
   audioPath: string; durationMs: number; lengthScale: number; unconstrained: boolean;
 }
 
+/** Chỉ lấy tên file để hiện lên màn hình; đường dẫn đầy đủ quá dài. */
+function baseName(p: string): string {
+  return p.split(/[\\/]/).pop() ?? p;
+}
+
 /** 83450 -> "00:01:23,450" — cùng định dạng SRT mà người dùng đã quen. */
 function msToTime(ms: number): string {
   const h = Math.floor(ms / 3_600_000);
@@ -65,6 +70,7 @@ function App() {
   // null = chưa biết; chỉ hiện mục "Bộ công cụ" khi đã biết chắc là CHƯA đủ,
   // để nó không nhấp nháy rồi biến mất mỗi lần mở app.
   const [toolsReady, setToolsReady] = useState<boolean | null>(null);
+  const [pickedVideo, setPickedVideo] = useState("");
 
   useEffect(() => {
     const un = listen<{ id: string; phase: string; done: number; total: number }>(
@@ -137,15 +143,26 @@ function App() {
     } catch (e) { setStatus(`Lỗi: ${String(e)}`); } finally { setRunning(false); }
   }
 
-  async function onRun() {
+  async function onPickVideo() {
     const selected = await open({ filters: [{ name: "Video", extensions: ["mp4", "mkv", "mov"] }] });
     if (!selected) return;
-    setProjectDir(""); setVideoPath("");
+    // Chọn video khác nghĩa là bắt đầu một dự án khác: bỏ hết trạng thái của dự
+    // án đang mở, nếu không các bước sau vẫn trỏ vào dự án cũ.
+    setProjectDir(""); setVideoPath(""); setCues([]); setCueAudio(""); setCueNote("");
+    setPickedVideo(selected as string);
+    setStatus(`Đã chọn video: ${baseName(selected as string)}`);
+  }
+
+  async function onStt() {
+    if (!pickedVideo) { setStatus("Chọn video ở Bước 1 trước."); return; }
     setRunning(true); setStatus("Đang nhận dạng lời thoại trong video…");
     try {
-      const r = await invoke<SttResultDto>("run_stt", { videoPath: selected, lang: srcLang });
-      setProjectDir(r.projectDir); setVideoPath(selected as string);
-      setStatus(`Đã tạo phụ đề gốc: ${r.cueCount} câu → ${r.srtPath}`);
+      const r = await invoke<SttResultDto>("run_stt", { videoPath: pickedVideo, lang: srcLang });
+      setProjectDir(r.projectDir); setVideoPath(pickedVideo);
+      // Đã thành dự án thật rồi thì không còn là "video vừa chọn" nữa — nút nhận
+      // dạng phải tắt đi, kẻo bấm lần nữa là đẻ thêm một dự án trùng.
+      setPickedVideo("");
+      setStatus(`Đã lấy lời thoại gốc: ${r.cueCount} câu → ${r.srtPath}`);
       await refreshProjects();
     } catch (e) { setStatus(`Lỗi: ${String(e)}`); } finally { setRunning(false); }
   }
@@ -156,6 +173,7 @@ function App() {
       const d = await invoke<ProjectSummaryDto>("open_project", { projectDir: p.projectDir });
       setProjectDir(d.projectDir);
       setVideoPath(d.videoPath);
+      setPickedVideo("");
       setTgt(d.tgtLang);
       setSrcLang(d.srcLang);
       setStatus(
@@ -200,7 +218,7 @@ function App() {
   }
 
   async function onTranslate() {
-    if (!projectDir) { setStatus("Chọn video ở Bước 1 trước."); return; }
+    if (!projectDir) { setStatus("Lấy lời thoại ở Bước 2 trước."); return; }
     setRunning(true); setStatus(`Đang dịch bằng ${provider}...`);
     try {
       if (provider === "openai_compat" && cfg) {
@@ -219,7 +237,7 @@ function App() {
   }
 
   async function onTts() {
-    if (!projectDir) { setStatus("Làm Bước 1 và Bước 2 trước."); return; }
+    if (!projectDir) { setStatus("Làm Bước 2 và Bước 3 trước."); return; }
     setRunning(true); setStatus("Đang lồng tiếng...");
     try {
       const r = await invoke<TtsResultDto>("run_tts", { projectDir, tgt });
@@ -355,7 +373,23 @@ function App() {
       </section>
 
       <section>
-        <h2>Bước 1 · Chọn video và tạo phụ đề</h2>
+        <h2>Bước 1 · Chọn video</h2>
+        <div className="row">
+          <button type="button" className="primary" onClick={onPickVideo} disabled={running}>
+            Chọn video…
+          </button>
+        </div>
+        {pickedVideo ? (
+          <p className="muted">Đã chọn: {baseName(pickedVideo)} — sang Bước 2 để lấy lời thoại.</p>
+        ) : videoPath ? (
+          <p className="muted">Dự án đang mở: {baseName(videoPath)}</p>
+        ) : (
+          <p className="muted">Mở một file mp4, mkv hoặc mov.</p>
+        )}
+      </section>
+
+      <section>
+        <h2>Bước 2 · Lấy lời thoại gốc</h2>
         <div className="row">
           <label className="muted" htmlFor="src-lang">Tiếng nói trong video</label>
           <select
@@ -368,22 +402,24 @@ function App() {
               <option key={l} value={l}>{l === "" ? "(tự nhận dạng)" : l}</option>
             ))}
           </select>
-          <button type="button" className="primary" onClick={onRun} disabled={running || srcLangs.length === 0}>
-            {running ? "Đang chạy..." : "Chọn video…"}
+          <button
+            type="button"
+            className="primary"
+            onClick={onStt}
+            disabled={running || !pickedVideo || srcLangs.length === 0}
+          >
+            {running ? "Đang chạy…" : "Nhận dạng lời thoại"}
           </button>
         </div>
-        {videoPath ? (
-          <p className="muted">Video đang mở: {videoPath.split(/[\\/]/).pop()}</p>
-        ) : (
-          <p className="muted">
-            Bấm “Chọn video…” để mở một file mp4/mkv/mov. Phụ đề gốc được tạo ngay
-            sau khi chọn.
-          </p>
-        )}
+        <p className="muted">
+          {pickedVideo
+            ? "Nghe video và chép lại thành phụ đề theo đúng tiếng gốc. Chưa dịch gì ở bước này."
+            : "Chọn video ở Bước 1 trước. Mở lại một dự án cũ thì lời thoại đã có sẵn, không cần chạy lại."}
+        </p>
       </section>
 
       <section>
-        <h2>Bước 2 · Dịch phụ đề</h2>
+        <h2>Bước 3 · Dịch phụ đề</h2>
         <div className="row">
           <select value={provider} onChange={(e) => setProvider(e.target.value)}>
             <option value="google_free">Google (miễn phí)</option>
@@ -403,7 +439,7 @@ function App() {
       </section>
 
       <section>
-        <h2>Bước 3 · Sửa phụ đề và nghe thử (tuỳ chọn)</h2>
+        <h2>Bước 4 · Sửa phụ đề và nghe thử (tuỳ chọn)</h2>
         <div className="row">
           <button type="button" onClick={onLoadCues} disabled={running || !projectDir}>
             Nạp danh sách
@@ -422,14 +458,14 @@ function App() {
       </section>
 
       <section>
-        <h2>Bước 4 · Lồng tiếng</h2>
+        <h2>Bước 5 · Lồng tiếng</h2>
         <div className="row">
           <button type="button" className="primary" onClick={onTts} disabled={running || !projectDir}>Lồng tiếng</button>
         </div>
       </section>
 
       <section>
-        <h2>Bước 5 · Xuất video</h2>
+        <h2>Bước 6 · Xuất video</h2>
         <label>
           <input
             type="checkbox"
