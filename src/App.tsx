@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open, confirm } from "@tauri-apps/plugin-dialog";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { listen } from "@tauri-apps/api/event";
 import "./App.css";
 
@@ -30,6 +31,17 @@ interface PreviewDto {
 /** Chỉ lấy tên file để hiện lên màn hình; đường dẫn đầy đủ quá dài. */
 function baseName(p: string): string {
   return p.split(/[\\/]/).pop() ?? p;
+}
+
+/**
+ * Đường dẫn file đã xuất của một dự án. Nguồn sự thật là
+ * `pipeline.rs::run_export_stage` (ghi vào `<dự án>/output/final.mp4`) và
+ * `project.rs::status` (dựa vào đúng file đó để đặt `hasExport`) — sửa một
+ * trong hai chỗ đó thì phải sửa cả đây.
+ */
+function exportPathOf(projectDir: string): string {
+  const sep = projectDir.includes("\\") ? "\\" : "/";
+  return [projectDir, "output", "final.mp4"].join(sep);
 }
 
 /** 83450 -> "00:01:23,450" — cùng định dạng SRT mà người dùng đã quen. */
@@ -71,6 +83,8 @@ function App() {
   // để nó không nhấp nháy rồi biến mất mỗi lần mở app.
   const [toolsReady, setToolsReady] = useState<boolean | null>(null);
   const [pickedVideo, setPickedVideo] = useState("");
+  // Đường dẫn file vừa xuất, để mở thẳng thư mục chứa nó.
+  const [exported, setExported] = useState("");
 
   useEffect(() => {
     const un = listen<{ id: string; phase: string; done: number; total: number }>(
@@ -148,7 +162,7 @@ function App() {
     if (!selected) return;
     // Chọn video khác nghĩa là bắt đầu một dự án khác: bỏ hết trạng thái của dự
     // án đang mở, nếu không các bước sau vẫn trỏ vào dự án cũ.
-    setProjectDir(""); setVideoPath(""); setCues([]); setCueAudio(""); setCueNote("");
+    setProjectDir(""); setVideoPath(""); setCues([]); setCueAudio(""); setCueNote(""); setExported("");
     setPickedVideo(selected as string);
     setStatus(`Đã chọn video: ${baseName(selected as string)}`);
   }
@@ -174,6 +188,7 @@ function App() {
       setProjectDir(d.projectDir);
       setVideoPath(d.videoPath);
       setPickedVideo("");
+      setExported(d.hasExport ? exportPathOf(d.projectDir) : "");
       setTgt(d.tgtLang);
       setSrcLang(d.srcLang);
       setStatus(
@@ -299,7 +314,7 @@ function App() {
   }
 
   async function onExport() {
-    setRunning(true); setStatus("Đang xuất video...");
+    setRunning(true); setExported(""); setStatus("Đang xuất video...");
     try {
       const r = await invoke<ExportResultDto>("run_export", {
         projectDir, videoPath, tgt, burnSubs, softSubs,
@@ -307,12 +322,23 @@ function App() {
       const canhBao = r.capped > 0
         ? ` (${r.capped} câu phải đọc nhanh hết cỡ mà vẫn tràn)`
         : "";
-      setStatus(`Xuất xong: ${r.outputPath} — ${r.placed} câu lồng tiếng${canhBao}`);
+      setExported(r.outputPath);
+      setStatus(`Xuất xong: ${baseName(r.outputPath)} — ${r.placed} câu lồng tiếng${canhBao}`);
       await refreshProjects();
     } catch (e) {
       setStatus(`Lỗi: ${String(e)}`);
     } finally {
       setRunning(false); setExportPhase("");
+    }
+  }
+
+  async function onReveal(path: string) {
+    if (!path) return;
+    try {
+      await revealItemInDir(path);
+    } catch (e) {
+      // File có thể đã bị đổi tên hoặc xoá sau khi xuất; báo rõ thay vì im lặng.
+      setStatus(`Không mở được thư mục: ${String(e)}`);
     }
   }
 
@@ -367,6 +393,11 @@ function App() {
               )}
             </span>
             <button type="button" onClick={() => onOpenProject(p)} disabled={running}>Mở</button>
+            {p.hasExport && (
+              <button type="button" onClick={() => onReveal(exportPathOf(p.projectDir))}>
+                Mở thư mục
+              </button>
+            )}
             <button type="button" className="danger" onClick={() => onDeleteProject(p)} disabled={running}>Xoá</button>
           </div>
         ))}
@@ -494,6 +525,12 @@ function App() {
           </button>
           {exportPhase && <span className="muted">{exportPhase}</span>}
         </div>
+        {exported && (
+          <div className="row">
+            <button type="button" onClick={() => onReveal(exported)}>Mở thư mục chứa file</button>
+            <span className="muted">{baseName(exported)}</span>
+          </div>
+        )}
       </section>
 
       {status && <p className="status">{status}</p>}
