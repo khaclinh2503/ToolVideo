@@ -76,11 +76,31 @@ impl TtsProvider for Piper {
         })?;
 
         // stderr đọc song song để tiến trình con không nghẽn ống.
+        //
+        // Đọc theo byte (read_until) rồi decode lossy: `.lines()` trả `Err` ngay khi
+        // gặp byte không phải UTF-8 hợp lệ và `map_while(Result::ok)` dừng hẳn tại đó
+        // — một byte hỏng là đủ để luồng rút ống này ngừng vĩnh viễn, ống đầy lại,
+        // và treo y hệt lỗi mà driver này được viết ra để tránh. Piper in đường dẫn
+        // `output_file` (bắt nguồn từ %APPDATA%) theo codepage hệ thống chứ không phải
+        // UTF-8, nên tên người dùng có dấu là đủ để kích hoạt.
         let stderr = child.stderr.take().expect("đã piped");
         let err_handle = std::thread::spawn(move || {
             let mut tail: Vec<String> = Vec::new();
-            for line in BufReader::new(stderr).lines().map_while(Result::ok) {
-                tail.push(line);
+            let mut reader = BufReader::new(stderr);
+            let mut buf: Vec<u8> = Vec::new();
+            loop {
+                buf.clear();
+                match reader.read_until(b'\n', &mut buf) {
+                    Ok(0) | Err(_) => break,
+                    Ok(_) => {}
+                }
+                if buf.last() == Some(&b'\n') {
+                    buf.pop();
+                    if buf.last() == Some(&b'\r') {
+                        buf.pop();
+                    }
+                }
+                tail.push(String::from_utf8_lossy(&buf).into_owned());
                 if tail.len() > 100 {
                     tail.remove(0);
                 }
@@ -111,9 +131,26 @@ impl TtsProvider for Piper {
             // `stdin` bị drop ở cuối closure ⇒ báo hết đầu vào cho Piper.
         });
 
+        // Cùng lý do như stderr ở trên: đọc theo byte + decode lossy để một byte
+        // không phải UTF-8 trong đường dẫn output_file không thể chặn đứng việc rút
+        // ống stdout (và qua đó gây treo writer_handle.join() bên dưới).
         let stdout = child.stdout.take().expect("đã piped");
+        let mut reader = BufReader::new(stdout);
+        let mut buf: Vec<u8> = Vec::new();
         let mut done = 0usize;
-        for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+        loop {
+            buf.clear();
+            match reader.read_until(b'\n', &mut buf) {
+                Ok(0) | Err(_) => break,
+                Ok(_) => {}
+            }
+            if buf.last() == Some(&b'\n') {
+                buf.pop();
+                if buf.last() == Some(&b'\r') {
+                    buf.pop();
+                }
+            }
+            let line = String::from_utf8_lossy(&buf);
             if line.trim().is_empty() {
                 continue;
             }

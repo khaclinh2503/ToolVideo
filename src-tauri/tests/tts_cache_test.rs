@@ -81,9 +81,62 @@ fn make_provider_builds_piper_when_files_exist() {
     std::fs::create_dir_all(&piper_dir).unwrap();
     std::fs::write(piper_dir.join("piper.exe"), b"x").unwrap();
     std::fs::write(piper_dir.join("vi_VN-vais1000-medium.onnx"), b"x").unwrap();
+    std::fs::write(
+        piper_dir.join("vi_VN-vais1000-medium.onnx.json"),
+        br#"{"audio": {"sample_rate": 22050, "quality": "medium"}}"#,
+    )
+    .unwrap();
 
     let cfg = app_lib::config::TtsConfig::default();
     let p = app_lib::tts::make_provider("piper", &cfg, dir.path()).unwrap();
     assert_eq!(p.id(), "piper");
     assert_eq!(p.sample_rate(), 22050);
+}
+
+#[test]
+fn make_provider_missing_onnx_json_is_engine_missing() {
+    // Piper cần cả `<voice>.onnx.json` để chạy (và để biết tần số lấy mẫu thật) —
+    // thiếu file này phải báo lỗi rõ ràng, không được âm thầm rơi về mặc định.
+    let dir = tempfile::tempdir().unwrap();
+    let piper_dir = dir.path().join("piper");
+    std::fs::create_dir_all(&piper_dir).unwrap();
+    std::fs::write(piper_dir.join("piper.exe"), b"x").unwrap();
+    std::fs::write(piper_dir.join("vi_VN-vais1000-medium.onnx"), b"x").unwrap();
+    // Cố ý không tạo file .onnx.json.
+
+    let cfg = app_lib::config::TtsConfig::default();
+    match app_lib::tts::make_provider("piper", &cfg, dir.path()) {
+        Err(e @ PipelineError::EngineMissing(_)) => {
+            assert_eq!(e.code(), "engine_missing", "{e}");
+        }
+        Ok(_) => panic!("expected EngineMissing when .onnx.json is absent, got Ok"),
+        Err(_) => panic!("expected EngineMissing when .onnx.json is absent, got a different error"),
+    }
+}
+
+#[test]
+fn make_provider_reads_sample_rate_from_voice_config_not_a_constant() {
+    // Giọng x_low của Piper là 16000 Hz, khác hằng số 22050 Hz đã bị hardcode
+    // trước đây. Test này phải FAIL nếu make_provider quay lại hardcode 22050 —
+    // dùng 22050 ở đây sẽ không phân biệt được hai cách cài đặt.
+    let dir = tempfile::tempdir().unwrap();
+    let piper_dir = dir.path().join("piper");
+    std::fs::create_dir_all(&piper_dir).unwrap();
+    std::fs::write(piper_dir.join("piper.exe"), b"x").unwrap();
+    std::fs::write(piper_dir.join("vi_VN-vivos-x_low.onnx"), b"x").unwrap();
+    std::fs::write(
+        piper_dir.join("vi_VN-vivos-x_low.onnx.json"),
+        br#"{"audio": {"sample_rate": 16000, "quality": "x_low"}}"#,
+    )
+    .unwrap();
+
+    let mut cfg = app_lib::config::TtsConfig::default();
+    cfg.voice = "vi_VN-vivos-x_low".into();
+
+    let p = app_lib::tts::make_provider("piper", &cfg, dir.path()).unwrap();
+    assert_eq!(
+        p.sample_rate(),
+        16000,
+        "sample_rate phải đến từ file .onnx.json của giọng, không phải hằng số"
+    );
 }

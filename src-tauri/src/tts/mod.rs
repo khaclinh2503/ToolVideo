@@ -43,6 +43,27 @@ pub fn cache_key(provider: &str, voice: &str, length_scale: f32, text: &str) -> 
 use crate::config::TtsConfig;
 use std::path::Path;
 
+/// Đọc `audio.sample_rate` từ file `<voice>.onnx.json` cạnh model.
+/// Piper cài kèm file này (Phase A); nó khai báo tần số lấy mẫu thật của giọng
+/// (vd. các giọng `x_low` là 16000 Hz, `medium` thường là 22050 Hz) — không được
+/// suy ra tần số này từ hằng số, phải đọc đúng file mà Piper dùng.
+fn read_piper_sample_rate(path: &Path) -> Result<u32, PipelineError> {
+    let missing = |detail: &str| {
+        PipelineError::EngineMissing(format!(
+            "piper ({}) — {detail}, bấm 'Tải bộ công cụ' để cài lại",
+            path.display()
+        ))
+    };
+    let bytes = std::fs::read(path).map_err(|_| missing("không đọc được file cấu hình giọng nói"))?;
+    let json: serde_json::Value =
+        serde_json::from_slice(&bytes).map_err(|_| missing("file cấu hình giọng nói không hợp lệ"))?;
+    json.get("audio")
+        .and_then(|a| a.get("sample_rate"))
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32)
+        .ok_or_else(|| missing("thiếu audio.sample_rate trong cấu hình giọng nói"))
+}
+
 pub fn make_provider(
     id: &str,
     cfg: &TtsConfig,
@@ -52,7 +73,8 @@ pub fn make_provider(
         "piper" => {
             let exe = models.join("piper").join("piper.exe");
             let model = models.join("piper").join(format!("{}.onnx", cfg.voice));
-            for p in [&exe, &model] {
+            let model_cfg = models.join("piper").join(format!("{}.onnx.json", cfg.voice));
+            for p in [&exe, &model, &model_cfg] {
                 if !p.exists() {
                     return Err(PipelineError::EngineMissing(format!(
                         "piper ({}) — bấm 'Tải bộ công cụ' để cài",
@@ -60,7 +82,8 @@ pub fn make_provider(
                     )));
                 }
             }
-            Ok(Box::new(piper::Piper { exe, model, sample_rate: 22050 }))
+            let sample_rate = read_piper_sample_rate(&model_cfg)?;
+            Ok(Box::new(piper::Piper { exe, model, sample_rate }))
         }
         _ => Err(PipelineError::ProviderError {
             provider: id.into(),
