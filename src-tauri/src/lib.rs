@@ -27,6 +27,7 @@ pub fn run() {
             commands::get_config,
             commands::save_config,
             commands::ensure_components,
+            commands::components_ready,
             commands::run_tts,
             commands::run_export,
             commands::list_projects,

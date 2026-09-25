@@ -277,6 +277,14 @@ pub fn is_installed(spec: &ComponentSpec, models: &Path) -> bool {
         })
 }
 
+/// Đã cài đủ chưa — dùng để ẩn mục "Bộ công cụ offline" khi không còn việc gì
+/// để làm. Danh sách rỗng coi là **chưa** đủ: nếu không đọc nổi spec nào thì
+/// nói "xong" là nói dối, và người dùng sẽ mất luôn nút tải duy nhất.
+pub fn all_installed(models: &Path) -> Result<bool, PipelineError> {
+    let specs = specs()?;
+    Ok(!specs.is_empty() && specs.iter().all(|s| is_installed(s, models)))
+}
+
 pub fn install_component(
     spec: &ComponentSpec,
     models: &Path,

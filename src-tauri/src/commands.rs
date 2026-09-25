@@ -137,6 +137,11 @@ pub struct ComponentProgressEvent {
 }
 
 #[tauri::command]
+pub fn components_ready() -> Result<bool, String> {
+    crate::components::all_installed(&crate::config::models_dir()).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn ensure_components(app: tauri::AppHandle) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         use tauri::Emitter;

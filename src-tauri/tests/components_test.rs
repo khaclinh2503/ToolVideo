@@ -433,3 +433,25 @@ fn install_specs_rejects_unpinned_sha256_before_any_network_call() {
     }
     m.assert_hits(0);
 }
+
+/// Thư mục trống ⇒ chưa cài gì ⇒ phải trả false, nếu không giao diện sẽ ẩn mất
+/// nút tải duy nhất trên một máy chưa có engine nào.
+#[test]
+fn all_installed_false_khi_chua_cai_gi() {
+    let d = tempfile::tempdir().unwrap();
+    assert!(!app_lib::components::all_installed(d.path()).unwrap());
+}
+
+/// Sổ `.state` hỏng (đúng tên tệp nhưng không phải JSON hợp lệ) cũng phải ra
+/// false chứ không được nổ — đây là trạng thái có thật khi lần tải trước bị
+/// cắt ngang.
+#[test]
+fn all_installed_false_khi_state_hong() {
+    let d = tempfile::tempdir().unwrap();
+    let st = d.path().join(".state");
+    std::fs::create_dir_all(&st).unwrap();
+    for s in app_lib::components::specs().unwrap() {
+        std::fs::write(st.join(format!("{}.json", s.id)), "{ khong phai json").unwrap();
+    }
+    assert!(!app_lib::components::all_installed(d.path()).unwrap());
+}

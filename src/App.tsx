@@ -62,6 +62,9 @@ function App() {
   const [cues, setCues] = useState<CueDto[]>([]);
   const [cueAudio, setCueAudio] = useState("");
   const [cueNote, setCueNote] = useState("");
+  // null = chưa biết; chỉ hiện mục "Bộ công cụ" khi đã biết chắc là CHƯA đủ,
+  // để nó không nhấp nháy rồi biến mất mỗi lần mở app.
+  const [toolsReady, setToolsReady] = useState<boolean | null>(null);
 
   useEffect(() => {
     const un = listen<{ id: string; phase: string; done: number; total: number }>(
@@ -106,7 +109,18 @@ function App() {
     }
   }
 
+  async function refreshTools() {
+    try {
+      setToolsReady(await invoke<boolean>("components_ready"));
+    } catch {
+      // Không đọc được trạng thái thì cứ hiện mục tải — thà thừa một mục còn
+      // hơn giấu mất nút tải duy nhất.
+      setToolsReady(false);
+    }
+  }
+
   useEffect(() => {
+    refreshTools();
     refreshProjects();
     invoke<string[]>("src_langs").then((ls) => {
       setSrcLangs(ls);
@@ -119,6 +133,7 @@ function App() {
     try {
       await invoke("ensure_components");
       setStatus("Đã cài đủ bộ công cụ."); setDl("");
+      await refreshTools();
     } catch (e) { setStatus(`Lỗi: ${String(e)}`); } finally { setRunning(false); }
   }
 
@@ -290,6 +305,7 @@ function App() {
     <main className="container">
       <h1>DichVideo-Local</h1>
 
+      {toolsReady === false && (
       <section>
         <h2>Bộ công cụ offline</h2>
         <div className="row">
@@ -301,6 +317,7 @@ function App() {
         </div>
         {dl && <p className="muted">{dl}</p>}
       </section>
+      )}
 
       <section>
         <h2>Dự án gần đây</h2>
