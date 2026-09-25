@@ -128,3 +128,41 @@ pub fn list(projects_root: &Path) -> Vec<ProjectSummary> {
     out.sort_by(|a, b| b.meta.updated_at.cmp(&a.meta.updated_at));
     out
 }
+
+/// Xoá cả thư mục dự án.
+///
+/// Đây là hàm duy nhất trong ứng dụng gọi `remove_dir_all` lên dữ liệu người
+/// dùng. Mọi ràng buộc được kiểm **sau** `canonicalize` cả hai phía, để `..` và
+/// symlink không lách qua được: chuỗi ký tự có thể nói dối, đường dẫn đã chuẩn
+/// hoá thì không.
+pub fn delete(projects_root: &Path, project_dir: &Path) -> Result<(), PipelineError> {
+    let root = projects_root.canonicalize().map_err(|e| {
+        PipelineError::Io(format!(
+            "không đọc được thư mục dự án gốc {}: {e}",
+            projects_root.display()
+        ))
+    })?;
+    let dir = project_dir.canonicalize().map_err(|e| {
+        PipelineError::Io(format!("không tìm thấy dự án {}: {e}", project_dir.display()))
+    })?;
+
+    let refuse = |d: &Path| {
+        PipelineError::Io(format!(
+            "Đường dẫn không nằm trong thư mục dự án — từ chối xoá ({})",
+            d.display()
+        ))
+    };
+
+    if !dir.is_dir() {
+        return Err(refuse(&dir));
+    }
+    if dir == root {
+        return Err(refuse(&dir));
+    }
+    if dir.parent() != Some(root.as_path()) {
+        return Err(refuse(&dir));
+    }
+
+    std::fs::remove_dir_all(&dir)
+        .map_err(|e| PipelineError::Io(format!("không xoá được {}: {e}", dir.display())))
+}
