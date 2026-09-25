@@ -102,15 +102,34 @@ fn chay(burn: bool, soft: bool, ten: &str) {
     assert!(kinds.contains("audio"));
     if soft && !burn {
         assert!(kinds.contains("subtitle"), "chọn phụ đề mềm mà không có luồng subtitle");
+
+        let lang = ffprobe_ra(&ffprobe, &["-v","error","-select_streams","s:0",
+            "-show_entries","stream_tags=language","-of","csv=p=0"], out);
+        assert_eq!(lang, "vie", "thiếu thẻ ngôn ngữ trên luồng phụ đề");
+
+        let n = ffprobe_ra(&ffprobe, &["-v","error","-select_streams","s:0",
+            "-count_frames","-show_entries","stream=nb_read_frames","-of","csv=p=0"], out);
+        assert!(n.parse::<u32>().unwrap_or(0) > 0, "luồng phụ đề rỗng");
     }
     if burn {
         assert!(!kinds.contains("subtitle"), "burn thì không kèm luồng subtitle");
+        // Nhánh burn chỉ kiểm HÌNH DẠNG (không có luồng subtitle riêng, video
+        // đã mã hoá lại). Không có assertion nào ở đây chứng minh phụ đề thật
+        // sự được VẼ lên hình — phân biệt một khung hình có chữ với một khung
+        // hình mà filter `subtitles` âm thầm lỗi cần soi pixel, ngoài phạm vi
+        // của phép kiểm này.
     }
 
-    // Không vỡ tiếng
+    // Không vỡ tiếng, VÀ có tiếng lồng thật (không phải im lặng/pass-through).
+    // Tiếng gốc đơn độc bị hạ còn 0.18 = -14.9 dBFS; bất kỳ cue nào đủ to để
+    // limiter phải ghìm sẽ neo đỉnh quanh -1.0 dBFS (xem limit=0.89 ở
+    // export.rs) — biên ~6 dB mỗi phía quanh mốc -6 dB, không phụ thuộc nội
+    // dung dịch của ngày hôm đó.
     let peak = dinh_am_dbfs(&ffmpeg, out);
     println!("đỉnh âm: {peak} dBFS");
     assert!(peak <= 0.0, "âm thanh bị cắt đỉnh: {peak} dBFS");
+    assert!(peak > -6.0, "không nghe thấy tiếng lồng trong bản xuất: {peak} dBFS");
+    assert!(r.dub.placed > 0, "không cue nào được đặt vào dải tiếng dịch");
 }
 
 #[test]
