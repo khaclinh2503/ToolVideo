@@ -106,6 +106,14 @@ pub fn save(
         ));
     }
 
+    // Normalize line endings and check for blank lines that would corrupt the SRT file
+    let normalized = text.replace("\r\n", "\n");
+    if normalized.contains("\n\n") {
+        return Err(PipelineError::Io(
+            "Cue không thể chứa dòng trống".into(),
+        ));
+    }
+
     let mut segs = read_segments(project_dir, tgt)?;
     if index == 0 || index > segs.len() {
         return Err(PipelineError::Io(format!(

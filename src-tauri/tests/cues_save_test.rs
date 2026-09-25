@@ -100,3 +100,23 @@ fn thieu_ban_dich_bao_loi_neu_dung_buoc_con_thieu() {
     let e = save(d.path(), "vi", 1, "X", 0, 500).unwrap_err();
     assert!(e.to_string().contains("Dịch"), "{e}");
 }
+
+#[test]
+fn dung_cho_text_co_dong_trong_va_file_khong_doi() {
+    let d = tempfile::tempdir().unwrap();
+    write_srt(d.path(), "vi", &[("Một", 0, 1000)]);
+    let truoc = std::fs::read_to_string(srt_path(d.path(), "vi")).unwrap();
+
+    // Test with \n\n (Unix newlines)
+    for text in ["A\n\nB", "Dòng một\n\nDòng hai"] {
+        let e = save(d.path(), "vi", 1, text, 0, 1000).unwrap_err();
+        assert!(e.to_string().contains("trống"), "{e}");
+    }
+
+    // Test with \r\n\r\n (Windows newlines)
+    let e = save(d.path(), "vi", 1, "A\r\n\r\nB", 0, 1000).unwrap_err();
+    assert!(e.to_string().contains("trống"), "{e}");
+
+    let sau = std::fs::read_to_string(srt_path(d.path(), "vi")).unwrap();
+    assert_eq!(truoc, sau, "lời gọi bị từ chối KHÔNG được đụng vào file");
+}
