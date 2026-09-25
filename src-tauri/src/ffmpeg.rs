@@ -2,12 +2,12 @@ use std::path::Path;
 use std::process::Command;
 use crate::error::PipelineError;
 
-pub fn classify_ffmpeg_failure(code: i32, stderr: &str) -> PipelineError {
+pub fn classify_ffmpeg_failure(stage: &str, code: i32, stderr: &str) -> PipelineError {
     if stderr.contains("does not contain any stream") || stderr.contains("matches no streams") {
         PipelineError::NoAudioStream
     } else {
         PipelineError::EngineFailed {
-            stage: "extract_audio".into(),
+            stage: stage.to_string(),
             code,
             stderr: stderr.to_string(),
         }
@@ -42,5 +42,5 @@ pub fn extract_audio(ffmpeg: &Path, input: &Path, out_wav: &Path) -> Result<(), 
     }
 
     let stderr = String::from_utf8_lossy(&out.stderr).to_string();
-    Err(classify_ffmpeg_failure(out.status.code().unwrap_or(-1), &stderr))
+    Err(classify_ffmpeg_failure("extract_audio", out.status.code().unwrap_or(-1), &stderr))
 }

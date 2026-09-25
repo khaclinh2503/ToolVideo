@@ -4,6 +4,7 @@ pub mod components;
 pub mod compose;
 pub mod config;
 pub mod error;
+pub mod export;
 pub mod ffmpeg;
 pub mod pipeline;
 pub mod retime;

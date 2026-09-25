@@ -16,20 +16,29 @@ fn missing_ffmpeg_returns_engine_missing() {
 #[test]
 fn classify_no_audio_stream() {
     let stderr = "Stream map '0:a:0' matches no streams.\nTo ignore this, add the -ignore_unknown option.";
-    let err = classify_ffmpeg_failure(1, stderr);
+    let err = classify_ffmpeg_failure("extract_audio", 1, stderr);
     assert!(matches!(err, PipelineError::NoAudioStream));
 }
 
 #[test]
 fn classify_other_failure_as_engine_failed() {
     let stderr = "Unknown encoder 'foo'";
-    let err = classify_ffmpeg_failure(2, stderr);
+    let err = classify_ffmpeg_failure("extract_audio", 2, stderr);
     match err {
         PipelineError::EngineFailed { stage, code, stderr } => {
             assert_eq!(stage, "extract_audio");
             assert_eq!(code, 2);
             assert!(stderr.contains("Unknown encoder"));
         }
+        _ => panic!("expected EngineFailed"),
+    }
+}
+
+#[test]
+fn stage_di_theo_tham_so_chu_khong_gan_cung() {
+    let err = classify_ffmpeg_failure("export", 3, "Conversion failed!");
+    match err {
+        PipelineError::EngineFailed { stage, .. } => assert_eq!(stage, "export"),
         _ => panic!("expected EngineFailed"),
     }
 }
