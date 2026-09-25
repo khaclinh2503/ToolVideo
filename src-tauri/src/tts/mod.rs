@@ -15,7 +15,7 @@ pub struct TtsJob {
     pub length_scale: f32,
 }
 
-pub trait TtsProvider {
+pub trait TtsProvider: std::fmt::Debug {
     fn id(&self) -> &'static str;
     fn sample_rate(&self) -> u32;
     /// Sinh wav cho từng job theo thứ tự; `on_done(index)` gọi sau mỗi cue ghi xong.
@@ -38,4 +38,34 @@ pub fn cache_key(provider: &str, voice: &str, length_scale: f32, text: &str) -> 
         h.update(field.as_bytes());
     }
     format!("{:x}", h.finalize())
+}
+
+use crate::config::TtsConfig;
+use std::path::Path;
+
+pub fn make_provider(
+    id: &str,
+    cfg: &TtsConfig,
+    models: &Path,
+) -> Result<Box<dyn TtsProvider>, PipelineError> {
+    match id {
+        "piper" => {
+            let exe = models.join("piper").join("piper.exe");
+            let model = models.join("piper").join(format!("{}.onnx", cfg.voice));
+            for p in [&exe, &model] {
+                if !p.exists() {
+                    return Err(PipelineError::EngineMissing(format!(
+                        "piper ({}) — bấm 'Tải bộ công cụ' để cài",
+                        p.display()
+                    )));
+                }
+            }
+            Ok(Box::new(piper::Piper { exe, model, sample_rate: 22050 }))
+        }
+        _ => Err(PipelineError::ProviderError {
+            provider: id.into(),
+            status: None,
+            msg: "provider TTS chưa hỗ trợ".into(),
+        }),
+    }
 }

@@ -35,3 +35,14 @@ fn broken_json_falls_back_to_default() {
     assert!(v.is_err()); // load_config phải bắt lỗi này và trả Default (kiểm tra qua hàm helper bên dưới)
     assert_eq!(app_lib::config::parse_config_or_default("{not json").translate.default_provider, "google_free");
 }
+
+#[test]
+fn tts_config_defaults_and_backward_compat() {
+    // config.json cũ của M2 (không có khối "tts") vẫn đọc được, dùng mặc định.
+    let old = r#"{"translate":{"default_provider":"google_free","target_lang":"vi",
+        "openai":{"base_url":"https://api.openai.com/v1","api_key":"","model":"gpt-4o-mini"}}}"#;
+    let cfg = app_lib::config::parse_config_or_default(old);
+    assert_eq!(cfg.tts.default_provider, "piper");
+    assert_eq!(cfg.tts.voice, "vi_VN-vais1000-medium");
+    assert!((cfg.tts.length_scale - 1.0).abs() < 1e-6);
+}

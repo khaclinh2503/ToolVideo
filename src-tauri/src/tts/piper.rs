@@ -6,6 +6,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+#[derive(Debug)]
 pub struct Piper {
     pub exe: PathBuf,
     /// File `.onnx` của giọng; Piper tự tìm `<model>.json` cạnh nó.

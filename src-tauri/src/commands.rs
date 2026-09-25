@@ -147,3 +147,38 @@ pub async fn ensure_components(app: tauri::AppHandle) -> Result<(), String> {
     .await
     .map_err(|e| e.to_string())?
 }
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TtsResultDto {
+    pub manifest_path: String,
+    pub cue_count: usize,
+    pub generated: usize,
+    pub cached: usize,
+}
+
+#[tauri::command]
+pub async fn run_tts(project_dir: String, tgt: String) -> Result<TtsResultDto, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<TtsResultDto, String> {
+        let cfg = crate::config::load_config();
+        let models = models_dir();
+        let p = crate::tts::make_provider(&cfg.tts.default_provider, &cfg.tts, &models)
+            .map_err(|e| e.to_string())?;
+        let r = crate::pipeline::run_tts_stage(
+            Path::new(&project_dir),
+            p.as_ref(),
+            &cfg.tts.voice,
+            cfg.tts.length_scale,
+            &tgt,
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(TtsResultDto {
+            manifest_path: r.manifest_path.display().to_string(),
+            cue_count: r.cue_count,
+            generated: r.generated,
+            cached: r.cached,
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

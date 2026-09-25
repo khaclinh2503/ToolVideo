@@ -30,6 +30,8 @@ pub fn projects_dir() -> PathBuf {
 pub struct AppConfig {
     #[serde(default)]
     pub translate: TranslateConfig,
+    #[serde(default)]
+    pub tts: TtsConfig,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -46,6 +48,23 @@ impl Default for TranslateConfig {
             default_provider: "google_free".into(),
             target_lang: "vi".into(),
             openai: OpenAiConfig::default(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TtsConfig {
+    pub default_provider: String,
+    pub voice: String,
+    pub length_scale: f32,
+}
+
+impl Default for TtsConfig {
+    fn default() -> Self {
+        Self {
+            default_provider: "piper".into(),
+            voice: "vi_VN-vais1000-medium".into(),
+            length_scale: 1.0,
         }
     }
 }

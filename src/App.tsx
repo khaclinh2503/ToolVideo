@@ -6,6 +6,7 @@ import "./App.css";
 
 interface SttResultDto { srtPath: string; cueCount: number; projectDir: string }
 interface TranslateResultDto { srtPath: string; cueCount: number }
+interface TtsResultDto { manifestPath: string; cueCount: number; generated: number; cached: number }
 interface OpenAiConfig { base_url: string; api_key: string; model: string }
 interface AppConfig { translate: { default_provider: string; target_lang: string; openai: OpenAiConfig } }
 
@@ -82,6 +83,15 @@ function App() {
     } catch (e) { setStatus(`Lỗi: ${String(e)}`); } finally { setRunning(false); }
   }
 
+  async function onTts() {
+    if (!projectDir) { setStatus("Chạy STT và Dịch trước."); return; }
+    setRunning(true); setStatus("Đang lồng tiếng...");
+    try {
+      const r = await invoke<TtsResultDto>("run_tts", { projectDir, tgt });
+      setStatus(`Lồng tiếng xong: ${r.cueCount} cue (sinh mới ${r.generated}, dùng lại ${r.cached}) → ${r.manifestPath}`);
+    } catch (e) { setStatus(`Lỗi: ${String(e)}`); } finally { setRunning(false); }
+  }
+
   const oa = cfg?.translate.openai;
   const setOa = (patch: Partial<OpenAiConfig>) => cfg && setCfg({ ...cfg, translate: { ...cfg.translate, openai: { ...cfg.translate.openai, ...patch } } });
 
@@ -111,6 +121,11 @@ function App() {
           <button type="button" onClick={onSaveCfg}>Lưu cấu hình</button>
         </div>
       )}
+
+      <h2>Lồng tiếng</h2>
+      <div className="row">
+        <button type="button" onClick={onTts} disabled={running || !projectDir}>Lồng tiếng</button>
+      </div>
       {status && <p>{status}</p>}
     </main>
   );

@@ -48,3 +48,30 @@ fn text_cannot_forge_field_boundary() {
         "0x1F trong provider không được làm nhoè ranh giới provider/voice"
     );
 }
+
+#[test]
+fn make_provider_rejects_unknown_id_and_missing_exe() {
+    let cfg = app_lib::config::TtsConfig::default();
+    let dir = tempfile::tempdir().unwrap();
+
+    let err = app_lib::tts::make_provider("khong-co", &cfg, dir.path()).unwrap_err();
+    assert!(format!("{err}").contains("chưa hỗ trợ"), "{err}");
+
+    // piper.exe chưa cài ⇒ báo engine_missing kèm gợi ý tải bộ công cụ
+    let err = app_lib::tts::make_provider("piper", &cfg, dir.path()).unwrap_err();
+    assert_eq!(err.code(), "engine_missing", "{err}");
+}
+
+#[test]
+fn make_provider_builds_piper_when_files_exist() {
+    let dir = tempfile::tempdir().unwrap();
+    let piper_dir = dir.path().join("piper");
+    std::fs::create_dir_all(&piper_dir).unwrap();
+    std::fs::write(piper_dir.join("piper.exe"), b"x").unwrap();
+    std::fs::write(piper_dir.join("vi_VN-vais1000-medium.onnx"), b"x").unwrap();
+
+    let cfg = app_lib::config::TtsConfig::default();
+    let p = app_lib::tts::make_provider("piper", &cfg, dir.path()).unwrap();
+    assert_eq!(p.id(), "piper");
+    assert_eq!(p.sample_rate(), 22050);
+}
