@@ -3,6 +3,7 @@ pub mod commands;
 pub mod components;
 pub mod compose;
 pub mod config;
+pub mod cues;
 pub mod error;
 pub mod export;
 pub mod ffmpeg;
