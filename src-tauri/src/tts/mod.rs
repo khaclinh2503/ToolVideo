@@ -15,7 +15,7 @@ pub struct TtsJob {
     pub length_scale: f32,
 }
 
-pub trait TtsProvider: std::fmt::Debug {
+pub trait TtsProvider {
     fn id(&self) -> &'static str;
     fn sample_rate(&self) -> u32;
     /// Sinh wav cho từng job theo thứ tự; `on_done(index)` gọi sau mỗi cue ghi xong.

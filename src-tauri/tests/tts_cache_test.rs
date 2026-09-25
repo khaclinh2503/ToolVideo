@@ -1,3 +1,4 @@
+use app_lib::error::PipelineError;
 use app_lib::tts::cache_key;
 
 #[test]
@@ -54,12 +55,23 @@ fn make_provider_rejects_unknown_id_and_missing_exe() {
     let cfg = app_lib::config::TtsConfig::default();
     let dir = tempfile::tempdir().unwrap();
 
-    let err = app_lib::tts::make_provider("khong-co", &cfg, dir.path()).unwrap_err();
-    assert!(format!("{err}").contains("chưa hỗ trợ"), "{err}");
+    // id không tồn tại ⇒ ProviderError, chưa chạm tới việc kiểm tra file trên đĩa.
+    match app_lib::tts::make_provider("khong-co", &cfg, dir.path()) {
+        Err(PipelineError::ProviderError { msg, .. }) => {
+            assert!(msg.contains("chưa hỗ trợ"), "{msg}");
+        }
+        Ok(_) => panic!("expected ProviderError for unknown id, got Ok"),
+        Err(_) => panic!("expected ProviderError for unknown id, got a different error"),
+    }
 
-    // piper.exe chưa cài ⇒ báo engine_missing kèm gợi ý tải bộ công cụ
-    let err = app_lib::tts::make_provider("piper", &cfg, dir.path()).unwrap_err();
-    assert_eq!(err.code(), "engine_missing", "{err}");
+    // id hợp lệ nhưng piper.exe chưa cài ⇒ engine_missing kèm gợi ý tải bộ công cụ.
+    match app_lib::tts::make_provider("piper", &cfg, dir.path()) {
+        Err(e @ PipelineError::EngineMissing(_)) => {
+            assert_eq!(e.code(), "engine_missing", "{e}");
+        }
+        Ok(_) => panic!("expected EngineMissing when piper.exe is absent, got Ok"),
+        Err(_) => panic!("expected EngineMissing when piper.exe is absent, got a different error"),
+    }
 }
 
 #[test]

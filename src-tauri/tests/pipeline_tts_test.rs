@@ -5,7 +5,6 @@ use std::cell::RefCell;
 use std::path::Path;
 
 /// Provider giả: ghi 1 file WAV PCM hợp lệ dài đúng 1 giây, đếm số lần được gọi.
-#[derive(Debug)]
 struct FakeTts {
     calls: RefCell<Vec<usize>>,
 }
