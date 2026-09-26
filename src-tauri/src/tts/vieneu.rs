@@ -44,6 +44,73 @@ pub fn ensure_bridge_script(models: &Path) -> Result<PathBuf, PipelineError> {
     Ok(path)
 }
 
+
+/// Một giọng dựng sẵn của VieNeu-TTS.
+///
+/// `ten` là **giá trị truyền thẳng cho `voice=`** của SDK — tên hiển thị có
+/// dấu, KHÔNG phải slug. Truyền slug (`mai_anh`) vào là SDK báo
+/// `Voice 'mai_anh' not found`; đã gặp thật khi chạy thử.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Voice {
+    pub ten: &'static str,
+    pub gioi: &'static str,
+    pub mien: &'static str,
+    pub phong_cach: &'static str,
+    /// Tác giả SDK khuyên dùng — giao diện xếp nhóm này lên đầu.
+    pub khuyen_dung: bool,
+}
+
+/// Giọng mặc định khi người dùng chưa chọn. Nằm trong nhóm khuyên dùng.
+pub const GIONG_MAC_DINH: &str = "Hải Đăng";
+
+/// 25 giọng dựng sẵn, lấy từ `list_preset_voices()` của SDK đã cài
+/// (`vieneu 3.8.3`, đọc ngày 2026-09-26) và **sinh máy** từ kết quả đó —
+/// không chép tay, vì 25 tên tiếng Việt có dấu chép tay là chắc chắn sai ít
+/// nhất một chỗ, mà sai tên thì chỉ lộ ra lúc chạy.
+///
+/// KHÔNG lấy từ `gguf/voices/manifest.json` trên HuggingFace: bộ giọng đường
+/// GGUF khác bộ đường ONNX/Python. Manifest có `Anh Khôi`, `Minh Quân Pro`,
+/// `Mạnh Dũng` mà SDK không có; SDK có `Thiện Minh` và `Quốc Tuấn` mà manifest
+/// không có.
+pub const VOICES: &[Voice] = &[
+    Voice { ten: "Adam bựa", gioi: "Nam", mien: "Bắc", phong_cach: "tự nhiên", khuyen_dung: true },
+    Voice { ten: "Trúc Ly", gioi: "Nữ", mien: "Bắc", phong_cach: "tự nhiên", khuyen_dung: true },
+    Voice { ten: "Thiện Minh", gioi: "Nam", mien: "Bắc", phong_cach: "kể chuyện", khuyen_dung: true },
+    Voice { ten: "Mai Anh", gioi: "Nữ", mien: "Bắc", phong_cach: "tin tức", khuyen_dung: true },
+    Voice { ten: "Hải Đăng", gioi: "Nam", mien: "Bắc", phong_cach: "tự nhiên", khuyen_dung: true },
+    Voice { ten: "Thùy Dung", gioi: "Nữ", mien: "Nam", phong_cach: "tin tức", khuyen_dung: true },
+    Voice { ten: "Thiền Tâm Đức", gioi: "Nam", mien: "Bắc", phong_cach: "kể chuyện", khuyen_dung: true },
+    Voice { ten: "Ngọc Huyền", gioi: "Nữ", mien: "Bắc", phong_cach: "tự nhiên", khuyen_dung: true },
+    Voice { ten: "Quang Sơn", gioi: "Nam", mien: "Trung", phong_cach: "tự nhiên", khuyen_dung: true },
+    Voice { ten: "Ngọc Trân", gioi: "Nữ", mien: "Trung", phong_cach: "tự nhiên", khuyen_dung: true },
+    Voice { ten: "Minh Đức", gioi: "Nam", mien: "Bắc", phong_cach: "tin tức", khuyen_dung: false },
+    Voice { ten: "Phạm Tuyên", gioi: "Nam", mien: "Bắc", phong_cach: "tự nhiên", khuyen_dung: false },
+    Voice { ten: "Thái Sơn", gioi: "Nam", mien: "Nam", phong_cach: "kể chuyện", khuyen_dung: false },
+    Voice { ten: "Xuân Vĩnh", gioi: "Nam", mien: "Bắc", phong_cach: "tự nhiên", khuyen_dung: false },
+    Voice { ten: "Thanh Bình", gioi: "Nam", mien: "Bắc", phong_cach: "kể chuyện", khuyen_dung: false },
+    Voice { ten: "Ngọc Linh", gioi: "Nữ", mien: "Bắc", phong_cach: "kể chuyện", khuyen_dung: false },
+    Voice { ten: "Đoan Trang", gioi: "Nữ", mien: "Bắc", phong_cach: "tự nhiên", khuyen_dung: false },
+    Voice { ten: "Thục Đoan", gioi: "Nữ", mien: "Nam", phong_cach: "kể chuyện", khuyen_dung: false },
+    Voice { ten: "Minh Triết", gioi: "Nam", mien: "Nam", phong_cach: "tin tức", khuyen_dung: false },
+    Voice { ten: "Mỹ Duyên", gioi: "Nữ", mien: "Nam", phong_cach: "đọc truyện", khuyen_dung: false },
+    Voice { ten: "Quỳnh Anh", gioi: "Nữ", mien: "Bắc", phong_cach: "đọc truyện", khuyen_dung: false },
+    Voice { ten: "Đức Trí", gioi: "Nam", mien: "Nam", phong_cach: "đọc truyện", khuyen_dung: false },
+    Voice { ten: "Kim Thanh", gioi: "Nữ", mien: "Nam", phong_cach: "đọc truyện", khuyen_dung: false },
+    Voice { ten: "Adam", gioi: "Nam", mien: "Nam", phong_cach: "tự nhiên", khuyen_dung: false },
+    Voice { ten: "Quốc Tuấn", gioi: "Nam", mien: "Bắc", phong_cach: "tự nhiên", khuyen_dung: false },
+];
+
+/// Tra một giọng theo tên. Tên lạ ⇒ lỗi tiếng Việt chỉ rõ phải làm gì, thay vì
+/// để SDK báo `Voice not found` giữa lúc lồng tiếng.
+pub fn tra_giong(ten: &str) -> Result<&'static Voice, PipelineError> {
+    VOICES.iter().find(|v| v.ten == ten.trim()).ok_or_else(|| {
+        PipelineError::Io(format!(
+            "Không có giọng '{}' — chọn lại trong danh sách",
+            ten.trim()
+        ))
+    })
+}
+
 /// Provider VieNeu-TTS.
 pub struct VieNeu {
     pub python: PathBuf,

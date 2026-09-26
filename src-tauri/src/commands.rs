@@ -126,6 +126,48 @@ pub fn translate_contexts() -> Vec<ContextDto> {
         .collect()
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoiceDto {
+    /// Giá trị truyền thẳng cho provider — với VieNeu là tên hiển thị có dấu.
+    pub id: String,
+    pub ten: String,
+    pub gioi: String,
+    pub mien: String,
+    pub phong_cach: String,
+    pub khuyen_dung: bool,
+}
+
+/// Danh sách giọng của một nhà cung cấp, cho giao diện.
+///
+/// Lấy thẳng từ `vieneu::VOICES` (sinh máy từ `list_preset_voices()` của SDK)
+/// để màn hình không thể bày ra một giọng mà engine không nhận.
+#[tauri::command]
+pub fn tts_voices(provider: String) -> Vec<VoiceDto> {
+    match provider.as_str() {
+        "vieneu" => crate::tts::vieneu::VOICES
+            .iter()
+            .map(|v| VoiceDto {
+                id: v.ten.to_string(),
+                ten: v.ten.to_string(),
+                gioi: v.gioi.to_string(),
+                mien: v.mien.to_string(),
+                phong_cach: v.phong_cach.to_string(),
+                khuyen_dung: v.khuyen_dung,
+            })
+            .collect(),
+        // Piper chỉ có đúng một giọng tiếng Việt được pin trong components.json.
+        _ => vec![VoiceDto {
+            id: "vi_VN-vais1000-medium".into(),
+            ten: "vais1000".into(),
+            gioi: "Nữ".into(),
+            mien: "Bắc".into(),
+            phong_cach: "tự nhiên".into(),
+            khuyen_dung: true,
+        }],
+    }
+}
+
 #[tauri::command]
 pub fn get_config() -> crate::config::AppConfig {
     crate::config::load_config()

@@ -32,6 +32,7 @@ pub fn run() {
             commands::components_ready,
             commands::download_video,
             commands::translate_contexts,
+            commands::tts_voices,
             commands::run_tts,
             commands::run_export,
             commands::list_projects,

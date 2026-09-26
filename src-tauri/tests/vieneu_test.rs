@@ -140,3 +140,64 @@ fn tham_so_ffmpeg_mang_dung_he_so_va_giu_dinh_dang() {
     let vi_tri_vao = args.iter().position(|s| s == "vao.wav").unwrap();
     assert!(vi_tri_vao < args.len() - 1, "đầu vào phải trước đầu ra: {args:?}");
 }
+
+// ---------- danh sách 25 giọng ----------
+
+#[test]
+fn du_25_giong_khong_trung_ten() {
+    use app_lib::tts::vieneu::VOICES;
+    assert_eq!(VOICES.len(), 25, "SDK vieneu 3.8.3 có đúng 25 giọng dựng sẵn");
+    let mut ten: Vec<&str> = VOICES.iter().map(|v| v.ten).collect();
+    ten.sort();
+    let truoc = ten.len();
+    ten.dedup();
+    assert_eq!(ten.len(), truoc, "tên giọng bị trùng");
+}
+
+#[test]
+fn giong_mac_dinh_nam_trong_danh_sach() {
+    use app_lib::tts::vieneu::{GIONG_MAC_DINH, VOICES};
+    // Mặc định trỏ vào một giọng không tồn tại thì lần lồng tiếng đầu tiên của
+    // người dùng mới hỏng, và hỏng ở tận trong engine.
+    assert!(
+        VOICES.iter().any(|v| v.ten == GIONG_MAC_DINH),
+        "giọng mặc định '{GIONG_MAC_DINH}' không có trong danh sách"
+    );
+}
+
+#[test]
+fn co_du_ba_mien_va_ca_hai_gioi() {
+    use app_lib::tts::vieneu::VOICES;
+    for m in ["Bắc", "Trung", "Nam"] {
+        assert!(VOICES.iter().any(|v| v.mien == m), "thiếu giọng miền {m}");
+    }
+    for g in ["Nam", "Nữ"] {
+        assert!(VOICES.iter().any(|v| v.gioi == g), "thiếu giọng {g}");
+    }
+}
+
+#[test]
+fn ten_giong_la_thi_bao_loi_chi_ro_phai_lam_gi() {
+    use app_lib::tts::vieneu::tra_giong;
+    let err = tra_giong("mai_anh").unwrap_err();
+    // Đúng cái slug từng làm SDK báo "Voice not found" lúc chạy — nay chặn sớm.
+    assert!(err.to_string().contains("chọn lại"), "nhận: {err}");
+    assert!(err.to_string().contains("mai_anh"), "phải nêu tên đã nhập: {err}");
+}
+
+#[test]
+fn tra_giong_bo_qua_khoang_trang_thua() {
+    use app_lib::tts::vieneu::tra_giong;
+    assert_eq!(tra_giong("  Mai Anh  ").unwrap().ten, "Mai Anh");
+}
+
+#[test]
+fn moi_giong_deu_co_du_thong_tin_hien_thi() {
+    use app_lib::tts::vieneu::VOICES;
+    for v in VOICES {
+        assert!(!v.ten.trim().is_empty());
+        assert!(!v.gioi.trim().is_empty(), "{}: thiếu giới", v.ten);
+        assert!(!v.mien.trim().is_empty(), "{}: thiếu miền", v.ten);
+        assert!(!v.phong_cach.trim().is_empty(), "{}: thiếu phong cách", v.ten);
+    }
+}
