@@ -185,6 +185,22 @@ pub fn preview(
         ))
     })?;
 
+    // Đổi giọng (hoặc đổi hẳn nhà cung cấp) rồi bấm Nghe thử là ghi một WAV
+    // tần số khác vào một manifest ghi tần số cũ. `compose.rs` so tần số TỪNG
+    // wav với header manifest và từ chối nếu lệch — nhưng nó chỉ chạy lúc Xuất,
+    // nên lỗi lộ ra rất muộn và người dùng không hiểu vì sao. Piper 22050 Hz,
+    // VieNeu 48000 Hz, nên đây là đường rất dễ đi vào.
+    //
+    // Chặn ngay tại điểm vào, TRƯỚC khi gọi engine hay chạm đĩa — cùng triết lý
+    // đã dùng cho dòng trống ở M6.
+    if m.sample_rate != p.sample_rate() {
+        return Err(PipelineError::Io(format!(
+            "Giọng đọc đã đổi ({} Hz so với {} Hz trong bản lồng tiếng hiện có) — chạy lại Lồng tiếng trước",
+            p.sample_rate(),
+            m.sample_rate
+        )));
+    }
+
     // Ghép manifest với SRT theo VỊ TRÍ, giống hệt `cues::list` (`m.segments.get(i)`)
     // và guard của `run_export_stage` (`current_segs.iter().zip(m.segments.iter())`)
     // — ba bên đọc cùng một manifest thì phải khớp do cấu tạo, không phải do

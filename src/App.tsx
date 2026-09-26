@@ -10,7 +10,20 @@ interface TranslateResultDto { srtPath: string; cueCount: number }
 interface TtsResultDto { manifestPath: string; cueCount: number; generated: number; cached: number }
 interface OpenAiConfig { base_url: string; api_key: string; model: string; context: string }
 interface ContextDto { id: string; label: string }
-interface AppConfig { translate: { default_provider: string; target_lang: string; openai: OpenAiConfig } }
+interface TtsConfig { default_provider: string; voice: string; length_scale: number }
+interface AppConfig {
+  translate: { default_provider: string; target_lang: string; openai: OpenAiConfig };
+  tts: TtsConfig;
+}
+/** Một giọng đọc mà một nhà cung cấp TTS hỗ trợ (trả về từ lệnh `tts_voices`). */
+interface VoiceDto {
+  id: string;
+  ten: string;
+  gioi: string;
+  mien: string;
+  phongCach: string;
+  khuyenDung: boolean;
+}
 interface ExportResultDto {
   outputPath: string; adjusted: number; capped: number;
   placed: number; truncated: number; saturated: number;
@@ -52,6 +65,12 @@ function timeToMs(v: string): number | null {
   return (+m[1]) * 3_600_000 + (+m[2]) * 60_000 + (+m[3]) * 1000 + (+m[4].padEnd(3, "0"));
 }
 
+/** Nhãn hiển thị cho một giọng trong ô chọn: "⭐ Tên — Giới · Miền · phong cách". */
+function voiceLabel(v: VoiceDto): string {
+  const sao = v.khuyenDung ? "⭐ " : "";
+  return `${sao}${v.ten} — ${v.gioi} · ${v.mien} · ${v.phongCach}`;
+}
+
 function App() {
   const [status, setStatus] = useState("");
   const [running, setRunning] = useState(false);
@@ -81,6 +100,9 @@ function App() {
   // "" = ghi vào thư mục dự án như mặc định cũ.
   const [outDir, setOutDir] = useState("");
   const [contexts, setContexts] = useState<ContextDto[]>([]);
+  // Danh sách giọng của nhà cung cấp TTS đang chọn (Bước 5); nạp lại mỗi khi
+  // đổi nhà cung cấp.
+  const [voices, setVoices] = useState<VoiceDto[]>([]);
 
   useEffect(() => {
     const un = listen<{ id: string; phase: string; done: number; total: number }>(
@@ -123,6 +145,32 @@ function App() {
   useEffect(() => {
     invoke<AppConfig>("get_config").then((c) => { setCfg(c); setProvider(c.translate.default_provider); setTgt(c.translate.target_lang); });
   }, []);
+
+  // Nạp lại danh sách giọng mỗi khi nhà cung cấp TTS (Bước 5) đổi. Giọng của
+  // hai nhà cung cấp là hai không gian tên khác nhau ("Hải Đăng" vs.
+  // "vi_VN-vais1000-medium"), nên nếu giọng đang chọn không còn nằm trong danh
+  // sách mới thì phải đặt lại về mục đầu tiên — giữ nguyên là truyền một tên
+  // vô nghĩa xuống engine.
+  useEffect(() => {
+    if (!cfg) return;
+    let cancelled = false;
+    const p = cfg.tts.default_provider;
+    invoke<VoiceDto[]>("tts_voices", { provider: p })
+      .then((vs) => {
+        if (cancelled) return;
+        // Sắp giọng ⭐ (khuyên dùng) lên đầu; sort ổn định nên trong mỗi nhóm
+        // vẫn giữ đúng thứ tự backend trả về.
+        const sorted = [...vs].sort((a, b) => Number(b.khuyenDung) - Number(a.khuyenDung));
+        setVoices(sorted);
+        setCfg((cur) => {
+          if (!cur || cur.tts.default_provider !== p) return cur;
+          if (sorted.some((v) => v.id === cur.tts.voice)) return cur;
+          return { ...cur, tts: { ...cur.tts, voice: sorted[0]?.id ?? "" } };
+        });
+      })
+      .catch((e) => setStatus(`Lỗi nạp danh sách giọng: ${String(e)}`));
+    return () => { cancelled = true; };
+  }, [cfg?.tts.default_provider]);
 
   async function refreshProjects() {
     try {
@@ -372,6 +420,8 @@ function App() {
 
   const oa = cfg?.translate.openai;
   const setOa = (patch: Partial<OpenAiConfig>) => cfg && setCfg({ ...cfg, translate: { ...cfg.translate, openai: { ...cfg.translate.openai, ...patch } } });
+  const tts = cfg?.tts;
+  const setTts = (patch: Partial<TtsConfig>) => cfg && setCfg({ ...cfg, tts: { ...cfg.tts, ...patch } });
 
   return (
     <main className="container">
@@ -547,9 +597,46 @@ function App() {
 
       <section>
         <h2>Bước 5 · Lồng tiếng</h2>
-        <div className="row">
-          <button type="button" className="primary" onClick={onTts} disabled={running || !projectDir}>Lồng tiếng</button>
-        </div>
+        {tts && (
+          <div className="row">
+            <label className="muted" htmlFor="tts-provider">Nhà cung cấp</label>
+            <select
+              id="tts-provider"
+              value={tts.default_provider}
+              onChange={(e) => setTts({ default_provider: e.target.value })}
+              disabled={running}
+            >
+              <option value="piper">Piper</option>
+              <option value="vieneu">VieNeu</option>
+            </select>
+            <label className="muted" htmlFor="tts-voice">Giọng</label>
+            <select
+              id="tts-voice"
+              value={tts.voice}
+              onChange={(e) => setTts({ voice: e.target.value })}
+              disabled={running || voices.length === 0}
+            >
+              {voices.map((v) => (
+                <option key={v.id} value={v.id}>{voiceLabel(v)}</option>
+              ))}
+            </select>
+            <button type="button" className="primary" onClick={onTts} disabled={running || !projectDir}>Lồng tiếng</button>
+            <button type="button" onClick={onSaveCfg}>Lưu cấu hình</button>
+          </div>
+        )}
+        {tts?.default_provider === "vieneu" && (
+          <p className="muted">
+            VieNeu chậm hơn Piper khoảng 8 lần (đo thật: RTF 0.60 so với 0.07)
+            — một video 10 phút Piper mất khoảng 45 giây, VieNeu mất khoảng 6
+            phút. Đừng tưởng app bị treo, cứ để nó chạy.
+          </p>
+        )}
+        <p className="muted">
+          Nhớ bấm "Lưu cấu hình" thì nhà cung cấp/giọng mới chọn mới được dùng.
+          VieNeu xuất giọng 48 kHz, Piper 22 kHz — sau khi đổi nhà cung cấp
+          hoặc đổi giọng phải bấm "Lồng tiếng" lại cho cả dự án; nghe thử một
+          cue ở Bước 4 sẽ không dùng được vì hai mức tần số không khớp nhau.
+        </p>
       </section>
 
       <section>

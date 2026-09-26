@@ -261,3 +261,57 @@ fn loi_o_luot_hai_thi_wav_va_manifest_cu_con_nguyen() {
     let manifest_sau = std::fs::read_to_string(&manifest_path).unwrap();
     assert_eq!(manifest_truoc, manifest_sau, "manifest không được đổi khi lượt hai lỗi");
 }
+
+/// Provider giả có tần số KHÁC manifest — mô phỏng người dùng đổi từ Piper
+/// (22050 Hz) sang VieNeu (48000 Hz) rồi bấm Nghe thử.
+struct KhacTanSo {
+    calls: RefCell<Vec<f32>>,
+}
+
+impl TtsProvider for KhacTanSo {
+    fn id(&self) -> &'static str { "khac" }
+    fn sample_rate(&self) -> u32 { 48_000 }
+    fn synthesize(&self, jobs: &[TtsJob], _on_done: &mut dyn FnMut(usize)) -> Result<(), PipelineError> {
+        for j in jobs {
+            self.calls.borrow_mut().push(j.length_scale);
+            app_lib::wav::write_pcm16_mono(&j.out, 48_000, &vec![0i16; 100]).unwrap();
+        }
+        Ok(())
+    }
+}
+
+#[test]
+fn doi_giong_khac_tan_so_thi_tu_choi_truoc_khi_goi_engine() {
+    // Ghi một wav 48 kHz vào manifest ghi 1000 Hz thì compose.rs sẽ từ chối —
+    // nhưng chỉ lúc Xuất, rất muộn và khó hiểu. Phải chặn ngay ở Nghe thử.
+    let d = tempfile::tempdir().unwrap();
+    write_srt(d.path(), &[("Câu một", 0, 1000), ("Câu hai", 2000, 3000)]);
+    write_manifest(d.path(), vec![entry(1, 0, "Câu một"), entry(2, 2000, "Câu hai")]);
+
+    let wav = d.path().join("tts").join("segments").join("cue-0001.wav");
+    std::fs::create_dir_all(wav.parent().unwrap()).unwrap();
+    app_lib::wav::write_pcm16_mono(&wav, 1000, &vec![7i16; 42]).unwrap();
+    let truoc = std::fs::read(&wav).unwrap();
+
+    let p = KhacTanSo { calls: RefCell::new(Vec::new()) };
+    let err = preview(d.path(), &p, "v", 1.0, "vi", 1, None, &FitOpts::default()).unwrap_err();
+
+    assert!(err.to_string().contains("chạy lại Lồng tiếng"), "nhận: {err}");
+    assert!(err.to_string().contains("48000"), "phải nêu tần số của giọng mới: {err}");
+    assert!(err.to_string().contains("1000"), "phải nêu tần số đang có: {err}");
+    // Phân biệt "chặn trước" với "gọi engine rồi mới từ chối".
+    assert!(p.calls.borrow().is_empty(), "không được gọi engine rồi mới từ chối");
+    assert_eq!(std::fs::read(&wav).unwrap(), truoc, "wav cũ phải còn nguyên");
+}
+
+#[test]
+fn cung_tan_so_thi_van_nghe_thu_duoc() {
+    // Mặt kia của guard: đúng tần số thì không được chặn nhầm.
+    let d = tempfile::tempdir().unwrap();
+    write_srt(d.path(), &[("Câu một", 0, 1000), ("Câu hai", 2000, 3000)]);
+    write_manifest(d.path(), vec![entry(1, 0, "Câu một"), entry(2, 2000, "Câu hai")]);
+    let p = ScaledTts::new(300);
+    preview(d.path(), &p, "v", 1.0, "vi", 1, None, &FitOpts::default())
+        .expect("cùng tần số thì phải chạy được");
+    assert!(!p.calls().is_empty(), "engine phải được gọi");
+}
