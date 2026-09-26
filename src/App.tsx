@@ -97,6 +97,11 @@ function App() {
   const [exported, setExported] = useState("");
   const [url, setUrl] = useState("");
   const [dlPct, setDlPct] = useState<number | null>(null);
+  // "" = tải vào chỗ mặc định trong thư mục dữ liệu của app.
+  const [dlDir, setDlDir] = useState("");
+  // Câu demo của giọng đang chọn, để nghe thử trước khi lồng tiếng cả video.
+  const [demoAudio, setDemoAudio] = useState("");
+  const [demoBusy, setDemoBusy] = useState(false);
   // "" = ghi vào thư mục dự án như mặc định cũ.
   const [outDir, setOutDir] = useState("");
   const [contexts, setContexts] = useState<ContextDto[]>([]);
@@ -213,7 +218,7 @@ function App() {
     if (!url.trim()) { setStatus("Dán link video vào đã."); return; }
     setRunning(true); setDlPct(0); setStatus("Đang tải video từ link…");
     try {
-      const path = await invoke<string>("download_video", { url });
+      const path = await invoke<string>("download_video", { url, outDir: dlDir || null });
       // Tải xong thì coi như vừa chọn file đó ở Bước 1 — cùng đường với
       // onPickVideo, nên phải xoá trạng thái dự án cũ y hệt.
       setProjectDir(""); setVideoPath(""); setCues([]); setCueAudio(""); setCueNote(""); setExported("");
@@ -402,6 +407,33 @@ function App() {
     }
   }
 
+  async function onNgheThuGiong() {
+    if (!tts) return;
+    setDemoBusy(true);
+    setDemoAudio("");
+    setStatus("Đang tạo câu đọc thử…");
+    try {
+      const path = await invoke<string>("preview_voice", {
+        provider: tts.default_provider,
+        voice: tts.voice,
+      });
+      // Thêm dấu thời gian để webview không phát lại bản cũ trong cache khi
+      // người dùng nghe đi nghe lại cùng một giọng.
+      setDemoAudio(`${convertFileSrc(path)}?t=${Date.now()}`);
+      setStatus("");
+    } catch (e) {
+      setStatus(`Lỗi nghe thử giọng: ${String(e)}`);
+    } finally {
+      setDemoBusy(false);
+    }
+  }
+
+  async function onPickDlDir() {
+    const d = await open({ directory: true });
+    if (!d) return;
+    setDlDir(d as string);
+  }
+
   async function onPickOutDir() {
     const d = await open({ directory: true });
     if (!d) return;
@@ -498,6 +530,19 @@ function App() {
           <button type="button" onClick={onDownload} disabled={running || !url.trim()}>
             Tải về
           </button>
+        </div>
+        <div className="row">
+          <button type="button" onClick={onPickDlDir} disabled={running}>
+            Thư mục tải về…
+          </button>
+          <span className="muted">
+            {dlDir || "mặc định: trong thư mục dữ liệu của app"}
+          </span>
+          {dlDir && (
+            <button type="button" onClick={() => setDlDir("")} disabled={running}>
+              Dùng mặc định
+            </button>
+          )}
         </div>
         {dlPct !== null && <p className="muted">Đang tải… {dlPct.toFixed(0)}%</p>}
         {pickedVideo ? (
@@ -620,9 +665,23 @@ function App() {
                 <option key={v.id} value={v.id}>{voiceLabel(v)}</option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={onNgheThuGiong}
+              disabled={running || demoBusy || !tts.voice}
+            >
+              {demoBusy ? "Đang tạo…" : "Nghe thử giọng"}
+            </button>
             <button type="button" className="primary" onClick={onTts} disabled={running || !projectDir}>Lồng tiếng</button>
             <button type="button" onClick={onSaveCfg}>Lưu cấu hình</button>
           </div>
+        )}
+        {demoAudio && <audio src={demoAudio} controls autoPlay />}
+        {demoBusy && (
+          <p className="muted">
+            Lần đầu mất khoảng 10 giây vì phải nạp model; nghe lại cùng giọng
+            thì tức thì.
+          </p>
         )}
         {tts?.default_provider === "vieneu" && (
           <p className="muted">

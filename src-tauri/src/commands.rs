@@ -168,6 +168,66 @@ pub fn tts_voices(provider: String) -> Vec<VoiceDto> {
     }
 }
 
+/// Thư mục chứa câu demo của từng giọng. Để NGOÀI `projects/` vì demo không
+/// thuộc dự án nào; asset protocol đã được mở thêm đúng thư mục này.
+pub fn demo_dir() -> std::path::PathBuf {
+    crate::config::data_dir().join("demo")
+}
+
+/// Câu demo dùng chung cho mọi giọng. Cố định để người dùng so được các giọng
+/// với nhau, và để bản đã sinh dùng lại được mãi.
+const CAU_DEMO: &str = "Xin chào, đây là giọng đọc thử. Bạn nghe có tự nhiên không?";
+
+/// Sinh (hoặc dùng lại) câu demo cho một giọng. Tách khỏi lệnh Tauri để test
+/// đi qua đúng mã thật mà không cần runtime.
+pub fn tao_demo(
+    provider: &str,
+    voice: &str,
+    models: &std::path::Path,
+    thu_muc_demo: &std::path::Path,
+) -> Result<std::path::PathBuf, crate::error::PipelineError> {
+    use sha2::{Digest, Sha256};
+    let khoa = format!(
+        "{:x}",
+        Sha256::digest(format!("{provider}
+{voice}
+{CAU_DEMO}").as_bytes())
+    );
+    let out = thu_muc_demo.join(format!("{}.wav", &khoa[..16]));
+
+    // Đã sinh rồi thì dùng lại: mỗi lần sinh mất ~10 giây vì phải nạp model.
+    if out.exists() {
+        return Ok(out);
+    }
+    std::fs::create_dir_all(thu_muc_demo)
+        .map_err(|e| crate::error::PipelineError::Io(e.to_string()))?;
+
+    let mut cfg = crate::config::load_config();
+    cfg.tts.voice = voice.to_string();
+    let p = crate::tts::make_provider(provider, &cfg.tts, models)?;
+    p.synthesize(
+        &[crate::tts::TtsJob {
+            index: 1,
+            text: CAU_DEMO.to_string(),
+            out: out.clone(),
+            length_scale: 1.0,
+        }],
+        &mut |_| {},
+    )?;
+    Ok(out)
+}
+
+#[tauri::command]
+pub async fn preview_voice(provider: String, voice: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+        tao_demo(&provider, &voice, &models_dir(), &demo_dir())
+            .map(|p| p.display().to_string())
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub fn get_config() -> crate::config::AppConfig {
     crate::config::load_config()
@@ -210,13 +270,21 @@ pub struct DownloadProgressEvent {
 }
 
 #[tauri::command]
-pub async fn download_video(app: tauri::AppHandle, url: String) -> Result<String, String> {
+pub async fn download_video(
+    app: tauri::AppHandle,
+    url: String,
+    out_dir: Option<String>,
+) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
         use tauri::Emitter;
         let md = models_dir();
         let ytdlp = require_path(md.join("yt-dlp").join("yt-dlp.exe"))?;
         let ffmpeg_dir = md.join("ffmpeg");
-        let out = downloads_dir();
+        // Thư mục người dùng chọn, hoặc chỗ mặc định trong data_dir. Cùng khuôn
+        // với thư mục xuất video ở `run_export`.
+        let out = out_dir
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(downloads_dir);
 
         // Chỉ phát sự kiện khi phần trăm đổi tới mức thấy được: yt-dlp báo tiến
         // độ vài chục lần mỗi giây, gửi hết sang webview là phí.

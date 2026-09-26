@@ -33,6 +33,7 @@ pub fn run() {
             commands::download_video,
             commands::translate_contexts,
             commands::tts_voices,
+            commands::preview_voice,
             commands::run_tts,
             commands::run_export,
             commands::list_projects,
