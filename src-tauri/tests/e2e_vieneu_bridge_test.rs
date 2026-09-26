@@ -1,31 +1,44 @@
-//! E2E: cầu nối Python VieNeu-TTS thật (`python/vieneu_bridge.py`) — tổng hợp
-//! một câu, ghi ra wav 48kHz, đọc lại được bằng `wav::read_info`. Bỏ qua mặc
+//! E2E: provider Rust `VieNeu` (`app_lib::tts::vieneu::VieNeu`) chạy cầu nối
+//! Python thật (`python/vieneu_bridge.py`) qua đúng đường `synthesize()` mà
+//! pipeline dùng — không phải spawn tay như bản trước review. Bỏ qua mặc
 //! định; bật bằng:
 //!   DVL_E2E_VIENEU=1 cargo test --manifest-path src-tauri/Cargo.toml --test e2e_vieneu_bridge_test -- --ignored --nocapture
 //!
 //! Yêu cầu Task 1 + Task 2 của M7 đã xong: `python.exe` đóng gói cùng app và
-//! `site-packages` của vieneu đã cài ở `models_dir()`. Lần chạy ĐẦU TIÊN còn
-//! tự tải model ONNX (~580 MB tổng, backbone + codec) về `HF_HOME` nên có thể
-//! mất một, hai phút; các lần sau (đã cache) chỉ vài giây.
+//! `site-packages` của vieneu đã cài ở `models_dir()`.
+//!
+//! Test này chạy HAI job trong một lần gọi `synthesize()` (không phải một)
+//! và khẳng định `on_done` nhận đúng `job.index` GỐC của cả hai — index cố
+//! tình không liền số với vị trí trong batch (5 rồi 2, không phải 1 rồi 2)
+//! để không thể nhầm "job.index gốc" với "số thứ tự trong batch". Đây là
+//! đường thanh tiến độ thật của người dùng, trước bản sửa này chỉ được xác
+//! nhận bằng đọc mã.
+//!
+//! Nếu `models_dir()/vieneu/onnx_update` hoặc `.../moss` (15 file đã pin ở
+//! Task 4) CHƯA có trên máy — components.json mới chỉ khai báo, chưa có bước
+//! cài đặt thật nào chạy — test bỏ qua sạch sẽ (in lý do, không panic, không
+//! đỏ) thay vì coi đó là lỗi.
 //!
 //! Không đụng gì dưới `%APPDATA%\dichvideo-local\` ngoài việc ĐỌC
-//! `models/python` + `models/vieneu/site-packages` (Task 1/2 đã cài) và GHI
-//! vào `models/vieneu/cache` (thư mục cache HF_HOME hợp lệ, không phải nơi
-//! cấm động vào). File wav đầu ra nằm trong `tempdir` tự dọn khi test xong.
+//! `models/python`, `models/vieneu/site-packages`, `models/vieneu/onnx_update`,
+//! `models/vieneu/moss` (đều đã có sẵn từ trước) và GHI vào `models/vieneu/cache`
+//! (thư mục cache HF_HOME hợp lệ, không phải nơi cấm động vào). File wav đầu
+//! ra nằm trong `tempdir` tự dọn khi test xong.
 
 use app_lib::config::models_dir;
 use app_lib::pyenv::{python_exe, site_packages};
+use app_lib::tts::vieneu::{ensure_bridge_script, VieNeu};
+use app_lib::tts::{TtsJob, TtsProvider};
 use app_lib::wav;
-use std::io::{Read, Write};
-use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex};
 
 #[test]
 #[ignore]
-fn vieneu_bridge_that_tong_hop_mot_cau_ra_wav_48k() {
+fn vieneu_provider_that_tong_hop_hai_job_on_done_dung_index_goc() {
     assert_eq!(
         std::env::var("DVL_E2E_VIENEU").as_deref(),
         Ok("1"),
-        "đặt DVL_E2E_VIENEU=1 để chạy cầu nối VieNeu thật (yêu cầu Task 1 + Task 2 đã cài xong)"
+        "đặt DVL_E2E_VIENEU=1 để chạy provider VieNeu thật (yêu cầu Task 1 + Task 2 đã cài xong)"
     );
 
     let m = models_dir();
@@ -42,96 +55,69 @@ fn vieneu_bridge_that_tong_hop_mot_cau_ra_wav_48k() {
         sp.display()
     );
 
-    let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("python")
-        .join("vieneu_bridge.py");
-    assert!(script.exists(), "thiếu cầu nối: {}", script.display());
+    let vieneu_dir = m.join("vieneu");
+    let onnx_update = vieneu_dir.join("onnx_update");
+    let moss = vieneu_dir.join("moss");
+    if !onnx_update.exists() || !moss.exists() {
+        println!(
+            "BỎ QUA: chưa có model VieNeu đã pin cục bộ ở {} (thiếu onnx_update/ hoặc moss/) \
+             — components.json (Task 4) mới khai báo, chưa có bước cài đặt thật nào chạy trên máy này.",
+            vieneu_dir.display()
+        );
+        return;
+    }
+
+    let bridge = ensure_bridge_script(&m).unwrap_or_else(|e| panic!("ghi cầu nối lỗi: {e}"));
 
     // Thư mục tạm tự dọn khi `dir` bị drop cuối hàm — không đụng %APPDATA%.
     let dir = tempfile::tempdir().unwrap();
-    let out = dir.path().join("cau-kiem-tra.wav");
+    let out1 = dir.path().join("cue-a.wav");
+    let out2 = dir.path().join("cue-b.wav");
 
-    let job = serde_json::json!({
-        "text": "Xin chào, đây là câu kiểm tra cầu nối VieNeu tê tê ét.",
-        "output_file": out.display().to_string(),
-        "voice": "Mai Anh",
-    });
-    let line = job.to_string();
+    // index cố tình KHÔNG liền số với vị trí trong batch (vị trí 0 -> index 5,
+    // vị trí 1 -> index 2): nếu `synthesize` lỡ báo số thứ tự batch thay vì
+    // `job.index` gốc, test này bắt được ngay, khác với 1/2 dễ trùng nhau.
+    let jobs = vec![
+        TtsJob { index: 5, text: "Xin chào, đây là cue thứ nhất.".into(), out: out1.clone(), length_scale: 1.0 },
+        TtsJob { index: 2, text: "Và đây là cue thứ hai.".into(), out: out2.clone(), length_scale: 1.0 },
+    ];
 
-    // HF_HOME trỏ vào cache thật của VieNeu (đã có từ Task 2 / lần chạy tự tải
-    // model) — không phải %USERPROFILE%\.cache.
-    let hf_home = m.join("vieneu").join("cache");
-    std::fs::create_dir_all(&hf_home).unwrap();
+    let p = VieNeu {
+        python: py,
+        bridge,
+        site_packages: sp,
+        hf_home: vieneu_dir.join("cache"),
+        voice: "Mai Anh".into(),
+        models_dir: vieneu_dir,
+    };
 
-    let mut cmd = Command::new(&py);
-    cmd.arg(&script)
-        .env("PYTHONPATH", &sp)
-        .env("HF_HOME", &hf_home)
-        .env("PYTHONIOENCODING", "utf-8")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x08000000);
-    }
+    let indices_bao_xong: Arc<Mutex<Vec<usize>>> = Arc::new(Mutex::new(Vec::new()));
+    let ghi = Arc::clone(&indices_bao_xong);
 
     let t0 = std::time::Instant::now();
-    let mut child = cmd.spawn().unwrap_or_else(|e| panic!("spawn cầu nối lỗi: {e}"));
-
-    // Ghi stdin trên luồng riêng + đọc stderr trên luồng riêng, đọc stdout
-    // trên luồng gọi — cùng khuôn với `tts/piper.rs` để không ống nào có thể
-    // làm nghẽn tiến trình con dù batch một job này quá nhỏ để thực sự gặp
-    // vấn đề đó.
-    let mut stdin = child.stdin.take().expect("đã piped");
-    let writer = std::thread::spawn(move || -> std::io::Result<()> {
-        stdin.write_all(line.as_bytes())?;
-        stdin.write_all(b"\n")?;
-        stdin.flush()
-        // `stdin` bị drop ở cuối closure ⇒ báo hết đầu vào cho cầu nối.
-    });
-
-    let mut stderr_pipe = child.stderr.take().expect("đã piped");
-    let stderr_reader = std::thread::spawn(move || -> String {
-        let mut s = String::new();
-        let _ = stderr_pipe.read_to_string(&mut s);
-        s
-    });
-
-    let mut stdout_s = String::new();
-    child
-        .stdout
-        .take()
-        .expect("đã piped")
-        .read_to_string(&mut stdout_s)
-        .unwrap_or_else(|e| panic!("đọc stdout cầu nối lỗi: {e}"));
-
-    let _ = writer.join();
-    let stderr_s = stderr_reader.join().unwrap_or_default();
-    let status = child.wait().unwrap_or_else(|e| panic!("wait cầu nối lỗi: {e}"));
+    let ket_qua = p.synthesize(&jobs, &mut |idx| ghi.lock().unwrap().push(idx));
     let elapsed = t0.elapsed();
 
     println!(
-        "cầu nối VieNeu tổng hợp 1 câu trong {:.1}s (đã bao gồm nạp model; lần đầu còn cộng thời gian tải model)",
+        "provider VieNeu tổng hợp 2 job trong {:.1}s (đã bao gồm nạp model)",
         elapsed.as_secs_f32()
     );
-    if !stderr_s.trim().is_empty() {
-        println!("stderr cầu nối:\n{stderr_s}");
-    }
 
-    assert!(
-        status.success(),
-        "cầu nối thoát mã {:?}, stderr:\n{stderr_s}",
-        status.code()
-    );
+    ket_qua.unwrap_or_else(|e| panic!("synthesize lỗi: {e}"));
+
     assert_eq!(
-        stdout_s.trim(),
-        out.display().to_string(),
-        "stdout phải in đúng một dòng là đường dẫn wav đã ghi (hợp đồng stdin/stdout của cầu nối)"
+        *indices_bao_xong.lock().unwrap(),
+        vec![5usize, 2usize],
+        "on_done phải nhận đúng job.index GỐC của cả hai job, theo đúng thứ tự đã xử lý"
     );
 
-    assert!(out.exists(), "thiếu wav đầu ra: {}", out.display());
-    let info = wav::read_info(&out).unwrap_or_else(|e| panic!("wav::read_info lỗi: {e}"));
-    assert_eq!(info.sample_rate, 48_000, "VieNeu-TTS v3 Turbo phải ra 48kHz, đọc được {}", info.sample_rate);
+    for out in [&out1, &out2] {
+        assert!(out.exists(), "thiếu wav đầu ra: {}", out.display());
+        let info = wav::read_info(out).unwrap_or_else(|e| panic!("wav::read_info lỗi: {e}"));
+        assert_eq!(
+            info.sample_rate, 48_000,
+            "VieNeu-TTS v3 Turbo phải ra 48kHz, đọc được {}",
+            info.sample_rate
+        );
+    }
 }

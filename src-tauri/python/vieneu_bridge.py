@@ -96,6 +96,52 @@ def _tong_hop_mot_job(tts, job: dict) -> str:
     return output_file
 
 
+_BAN_SDK_DA_PIN = "3.8.3"
+
+
+def _phien_ban_vieneu_that() -> str:
+    try:
+        import importlib.metadata
+        return importlib.metadata.version("vieneu")
+    except Exception:
+        return "không xác định"
+
+
+def _kiem_tra_tham_so_ro_rang(ham, ten_tham_so: str, ten_lop: str) -> None:
+    """Khẳng định `ten_tham_so` là tham số CÓ TÊN tường minh trong chữ ký của
+    `ham` — không phải thứ chỉ rơi vào `**kwargs`/`**_kw` catch-all rồi bị
+    nuốt lặng lẽ.
+
+    Vá `OnnxV3LiteEngine.__init__` để chèn `codec_dir` (và gọi `Vieneu(...,
+    onnx_dir=...)` xuyên qua `V3TurboVieNeuTTS.__init__`) chỉ AN TOÀN khi
+    tham số đó thật sự có tên trong chữ ký hàm hiện tại. Cả hai hàm này đều
+    có `**kwargs`/`**_kw` catch-all: nếu một bản `vieneu` sau đổi tên tham
+    số, việc truyền `codec_dir=...`/`onnx_dir=...` vẫn "thành công" về mặt cú
+    pháp — Python không báo lỗi gì cả — nhưng giá trị rơi vào catch-all và bị
+    bỏ qua, và SDK ÂM THẦM quay lại tự tải model qua HF Hub thay vì dùng 15
+    file đã pin cứng. Người dùng vẫn nghe thấy giọng nói bình thường (chỉ lộ
+    ra trên máy không có mạng), nên sẽ không ai biết pin đã hỏng — nó phá
+    đúng thứ Task 4 bỏ công pin cứng 580MB để đạt được (chạy offline, đúng
+    byte đã kiểm hash). Vì vậy: kiểm chữ ký TRƯỚC khi vá, và nổ to ngay nếu
+    không khớp — thà không chạy được còn hơn chạy sai mà không ai biết.
+    """
+    import inspect
+
+    p = inspect.signature(ham).parameters.get(ten_tham_so)
+    if p is None or p.kind is inspect.Parameter.VAR_KEYWORD:
+        raise RuntimeError(
+            f"loi cau hinh: chu ky {ten_lop}.__init__ khong con tham so "
+            f"tuong minh '{ten_tham_so}' (SDK da pin luc viet ma: "
+            f"vieneu=={_BAN_SDK_DA_PIN}; ban dang chay that: "
+            f"{_phien_ban_vieneu_that()}). Vá pin model cục bộ "
+            f"(VIENEU_MODELS_DIR) trong vieneu_bridge.py không còn an toàn: "
+            f"tham số sẽ rơi vào **kwargs và bị nuốt lặng lẽ, SDK sẽ quay "
+            f"lại tự tải model qua HF Hub thay vì dùng file đã pin cứng. "
+            f"Cập nhật _vieneu_tu_thu_muc_cuc_bo() cho khớp chữ ký SDK mới "
+            f"trước khi dùng model cục bộ."
+        )
+
+
 def _vieneu_tu_thu_muc_cuc_bo(root: Path):
     """Khởi tạo `Vieneu(backend="onnx")` trỏ thẳng vào 15 file đã pin cứng
     dưới `root` (= `VIENEU_MODELS_DIR`), không gọi HF Hub qua mạng.
@@ -121,8 +167,22 @@ def _vieneu_tu_thu_muc_cuc_bo(root: Path):
       cục bộ; phải vá tạm `OnnxV3LiteEngine.__init__` ngay trong tiến trình
       cầu nối này (không đụng gì tới site-packages đã cài trên đĩa) để chèn
       `codec_dir` mặc định trước khi gọi hàm khởi tạo gốc.
+
+    CẢ HAI vá này đều được `_kiem_tra_tham_so_ro_rang` kiểm chữ ký TRƯỚC —
+    xem docstring của hàm đó để biết vì sao vá "âm thầm hỏng" còn nguy hiểm
+    hơn không vá gì cả.
     """
+    from vieneu.v3turbo import V3TurboVieNeuTTS
+
+    # `onnx_dir` đi qua `Vieneu(**kwargs) -> V3TurboVieNeuTTS(**kwargs)`: nếu
+    # bản SDK sau đổi tên tham số này, nó cũng rơi vào `**kwargs` của
+    # `V3TurboVieNeuTTS.__init__` y hệt `codec_dir` — kiểm luôn, không chỉ
+    # kiểm `codec_dir`.
+    _kiem_tra_tham_so_ro_rang(V3TurboVieNeuTTS.__init__, "onnx_dir", "V3TurboVieNeuTTS")
+
     import vieneu._v3_turbo_engine.onnx_runtime_lite as _onnx_lite
+
+    _kiem_tra_tham_so_ro_rang(_onnx_lite.OnnxV3LiteEngine.__init__, "codec_dir", "OnnxV3LiteEngine")
 
     codec_dir = str(root / "moss")
     goc_init = _onnx_lite.OnnxV3LiteEngine.__init__
