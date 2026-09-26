@@ -24,10 +24,7 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": [
-          "$APPDATA/dichvideo-local/projects/**",
-          "$APPDATA/dichvideo-local/demo/**"
-        ]
+        "scope": []
       }
     }
   },

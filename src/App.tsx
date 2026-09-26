@@ -34,6 +34,7 @@ interface ProjectSummaryDto {
   hasStt: boolean; hasTranslation: boolean; hasTts: boolean;
   hasExport: boolean; videoExists: boolean;
   exportPath: string | null;
+  thumbnailPath: string | null;
 }
 interface CueDto {
   index: number; startMs: number; endMs: number; text: string;
@@ -480,6 +481,13 @@ function App() {
         )}
         {projects.map((p) => (
           <div className="project-row" key={p.projectDir}>
+            {p.thumbnailPath && (
+              <img
+                className="project-thumb"
+                src={convertFileSrc(p.thumbnailPath)}
+                alt=""
+              />
+            )}
             <span className="grow">
               <b>{p.videoName}</b>
               <span className="muted">

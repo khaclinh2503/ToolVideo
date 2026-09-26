@@ -194,3 +194,84 @@ pub fn delete(projects_root: &Path, project_dir: &Path) -> Result<(), PipelineEr
     std::fs::remove_dir_all(&dir)
         .map_err(|e| PipelineError::Io(format!("không xoá được {}: {e}", dir.display())))
 }
+
+/// Tham số ffmpeg trích một khung hình làm ảnh bìa. Hàm thuần để test.
+///
+/// Lấy ở giây thứ 5 chứ không phải giây 0: rất nhiều video mở đầu bằng màn hình
+/// đen hoặc logo, nên khung đầu tiên thường vô dụng. Thu còn rộng 320px vì đây
+/// chỉ là ảnh nhỏ trong danh sách dự án.
+pub fn build_thumbnail_args(video: &Path, ra: &Path) -> Vec<String> {
+    vec![
+        "-nostdin".into(),
+        "-hide_banner".into(),
+        "-loglevel".into(),
+        "error".into(),
+        "-y".into(),
+        "-ss".into(),
+        "5".into(),
+        "-i".into(),
+        video.display().to_string(),
+        "-frames:v".into(),
+        "1".into(),
+        "-q:v".into(),
+        "2".into(),
+        "-vf".into(),
+        "scale=320:-1".into(),
+        ra.display().to_string(),
+    ]
+}
+
+/// Đường dẫn ảnh bìa của một dự án.
+pub fn thumbnail_path(project_dir: &Path) -> PathBuf {
+    project_dir.join("media").join("thumbnail.jpg")
+}
+
+/// Ảnh bìa mà yt-dlp đã tải về cạnh video, nếu có.
+///
+/// yt-dlp ghi ảnh cùng tên gốc với video, chỉ khác đuôi. Ảnh bìa thật của
+/// YouTube/Bilibili đẹp và nhận ra được ngay, hơn hẳn một khung hình bất kỳ.
+pub fn anh_bia_canh_video(video: &Path) -> Option<PathBuf> {
+    for duoi in ["jpg", "jpeg", "png", "webp"] {
+        let p = video.with_extension(duoi);
+        if p.exists() {
+            return Some(p);
+        }
+    }
+    None
+}
+
+/// Đặt ảnh bìa cho dự án: ưu tiên ảnh yt-dlp tải cùng video, không có thì trích
+/// một khung hình bằng ffmpeg.
+///
+/// Không bao giờ trả lỗi ra ngoài: thiếu ảnh bìa chỉ làm danh sách dự án xấu
+/// hơn một chút, không đáng để làm hỏng cả lần chạy nhận dạng vừa tốn vài phút.
+pub fn tao_thumbnail(ffmpeg: &Path, video: &Path, project_dir: &Path) {
+    let ra = thumbnail_path(project_dir);
+    if let Some(d) = ra.parent() {
+        if std::fs::create_dir_all(d).is_err() {
+            return;
+        }
+    }
+    if let Some(co_san) = anh_bia_canh_video(video) {
+        if co_san.extension().and_then(|e| e.to_str()) == Some("jpg") {
+            let _ = std::fs::copy(&co_san, &ra);
+            return;
+        }
+        // Định dạng khác (webp/png) thì để ffmpeg đổi sang jpg cho webview chắc
+        // chắn hiển thị được.
+        let mut cmd = std::process::Command::new(ffmpeg);
+        cmd.args([
+            "-nostdin", "-hide_banner", "-loglevel", "error", "-y", "-i",
+        ])
+        .arg(&co_san)
+        .arg(&ra);
+        crate::export::no_window(&mut cmd);
+        if cmd.output().map(|o| o.status.success()).unwrap_or(false) {
+            return;
+        }
+    }
+    let mut cmd = std::process::Command::new(ffmpeg);
+    cmd.args(build_thumbnail_args(video, &ra));
+    crate::export::no_window(&mut cmd);
+    let _ = cmd.output();
+}

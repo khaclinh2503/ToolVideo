@@ -108,3 +108,13 @@ fn thieu_yt_dlp_bao_engine_missing() {
     .unwrap_err();
     assert_eq!(err.code(), "engine_missing", "nhận: {err}");
 }
+
+#[test]
+fn co_tai_ca_anh_bia() {
+    // Ảnh bìa gốc của YouTube/Bilibili đẹp hơn hẳn một khung hình trích ở giây
+    // thứ 5, và là thứ người dùng nhận ra ngay trong danh sách dự án.
+    let a = args("https://x/y");
+    assert!(a.contains(&"--write-thumbnail".to_string()), "{a:?}");
+    let i = a.iter().position(|s| s == "--convert-thumbnail").expect("phải ép định dạng");
+    assert_eq!(a[i + 1], "jpg", "{a:?}");
+}

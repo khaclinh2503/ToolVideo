@@ -8,7 +8,13 @@ use std::path::Path;
 use std::process::Command;
 
 /// Ẩn cửa sổ console của tiến trình con trên Windows.
-fn no_window(cmd: &mut Command) {
+/// Ẩn cửa sổ console của tiến trình con trên Windows.
+///
+/// NỢ KỸ THUẬT: hiện có ba bản sao gần giống nhau (ở đây, `download.rs`,
+/// `pyenv.rs`). Bản này được mở `pub` để `project.rs` dùng lại thay vì thêm bản
+/// thứ tư; gom cả ba về một chỗ là việc dọn riêng, không làm lẫn vào một commit
+/// tính năng.
+pub fn no_window(cmd: &mut Command) {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;

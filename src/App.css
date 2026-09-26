@@ -394,3 +394,14 @@ audio {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted-fg);
 }
+
+/* Ảnh bìa trong danh sách dự án. Cố định khung để một ảnh dọc hay ngang đều
+   không làm xô lệch cả hàng. */
+.project-thumb {
+  width: 4rem;
+  height: 2.25rem;
+  object-fit: cover;
+  border-radius: 0.25rem;
+  background: var(--secondary);
+  flex: none;
+}

@@ -21,6 +21,33 @@ pub mod wav;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            // Khai phạm vi asset protocol LÚC CHẠY, theo đúng thư mục dữ liệu
+            // thật của app.
+            //
+            // Không dùng biến `$APPDATA` trong `tauri.conf.json`: Tauri giải nó
+            // thành `dirs::data_dir()/<identifier>` (xem `PathResolver::app_data_dir`),
+            // tức `%APPDATA%\com.dichvideo.local`, trong khi `config::data_dir()`
+            // của dự án là `%APPDATA%\dichvideo-local`. Hai đường khác nhau, nên
+            // scope khai trong config KHÔNG BAO GIỜ khớp và mọi yêu cầu phát
+            // audio đều bị từ chối im lặng — đó là lý do nghe thử cue không phát
+            // được suốt từ M6, mà không ai biết vì bước bấm-nút-nghe chưa từng
+            // được làm.
+            //
+            // Khai lúc chạy còn đúng cả khi người dùng có AppData bị chuyển
+            // hướng (roaming profile), thứ mà một hằng số trong config không
+            // thể theo kịp.
+            use tauri::Manager;
+            let scope = app.asset_protocol_scope();
+            let data = crate::config::data_dir();
+            for d in [data.join("projects"), data.join("demo")] {
+                std::fs::create_dir_all(&d).ok();
+                if let Err(e) = scope.allow_directory(&d, true) {
+                    eprintln!("không khai được phạm vi asset cho {}: {e}", d.display());
+                }
+            }
+            Ok(())
+        })
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![

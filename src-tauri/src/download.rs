@@ -34,6 +34,12 @@ pub fn build_args(url: &str, out_dir: &Path, ffmpeg_dir: &Path) -> Vec<String> {
         "--windows-filenames".to_string(),
         "--ffmpeg-location".to_string(),
         ffmpeg_dir.display().to_string(),
+        // Ảnh bìa gốc của video, ghi cạnh file với cùng tên gốc. Đẹp hơn hẳn
+        // một khung hình trích ở giây thứ 5, và là thứ người dùng nhận ra ngay
+        // khi nhìn danh sách dự án.
+        "--write-thumbnail".to_string(),
+        "--convert-thumbnail".to_string(),
+        "jpg".to_string(),
         // Ưu tiên mp4 sẵn có; không có thì ghép luồng tốt nhất rồi đóng gói mp4.
         "-f".to_string(),
         "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b".to_string(),

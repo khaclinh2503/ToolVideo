@@ -69,6 +69,11 @@ pub async fn run_stt(video_path: String, lang: String) -> Result<SttResultDto, S
         )
         .map_err(|e| e.to_string())?;
 
+        // Ảnh bìa cho danh sách dự án. Không chặn luồng chính: thiếu ảnh chỉ
+        // làm màn hình xấu hơn một chút, không đáng làm hỏng lần nhận dạng vừa
+        // tốn vài phút.
+        crate::project::tao_thumbnail(&ctx.ffmpeg, video, &project_dir);
+
         Ok(SttResultDto {
             srt_path: result.srt_path.display().to_string(),
             cue_count: result.cue_count,
@@ -487,6 +492,8 @@ pub struct ProjectSummaryDto {
     /// Đường dẫn bản xuất, để nút "Mở thư mục" trỏ đúng chỗ kể cả khi người dùng
     /// đã xuất ra thư mục riêng. `None` nếu chưa xuất lần nào.
     pub export_path: Option<String>,
+    /// Ảnh bìa để hiện trong danh sách; `None` nếu chưa có.
+    pub thumbnail_path: Option<String>,
 }
 
 pub fn summary_to_dto(s: &crate::project::ProjectSummary) -> ProjectSummaryDto {
@@ -504,6 +511,10 @@ pub fn summary_to_dto(s: &crate::project::ProjectSummary) -> ProjectSummaryDto {
         has_translation: s.status.has_translation,
         has_tts: s.status.has_tts,
         has_export: s.status.has_export,
+        thumbnail_path: {
+            let t = crate::project::thumbnail_path(&s.project_dir);
+            t.exists().then(|| t.display().to_string())
+        },
         export_path: if s.status.has_export {
             // Dự án cũ chưa có trường này trong metadata vẫn phải mở được thư
             // mục, nên lùi về đúng chỗ mà status() đã kiểm.

@@ -124,3 +124,34 @@ fn ban_xuat_bi_xoa_thi_bao_la_chua_co() {
     m.export_path = Some(r"E:\khong\ton\tai\clip-vi.mp4".into());
     assert!(!app_lib::project::status(d.path(), &m).has_export);
 }
+
+#[test]
+fn anh_bia_trich_o_giay_thu_nam_chu_khong_phai_khung_dau() {
+    use app_lib::project::build_thumbnail_args;
+    use std::path::Path;
+    // Rất nhiều video mở đầu bằng màn hình đen hoặc logo, nên khung đầu tiên
+    // thường vô dụng làm ảnh bìa.
+    let a = build_thumbnail_args(Path::new("C:/v/clip.mp4"), Path::new("C:/p/thumb.jpg"));
+    let i = a.iter().position(|s| s == "-ss").expect("phải tua trước khi lấy khung");
+    assert_eq!(a[i + 1], "5", "{a:?}");
+    // `-ss` phải đứng TRƯỚC `-i` mới là tua nhanh; đứng sau là giải mã từ đầu,
+    // chậm hơn nhiều với video dài.
+    let vi_tri_i = a.iter().position(|s| s == "-i").unwrap();
+    assert!(i < vi_tri_i, "-ss phải đứng trước -i: {a:?}");
+    assert!(a.contains(&"scale=320:-1".to_string()), "{a:?}");
+    assert_eq!(a.last().unwrap(), "C:/p/thumb.jpg");
+}
+
+#[test]
+fn uu_tien_anh_bia_yt_dlp_tai_ve_canh_video() {
+    use app_lib::project::anh_bia_canh_video;
+    let d = tempfile::tempdir().unwrap();
+    let video = d.path().join("clip.mp4");
+    std::fs::write(&video, b"x").unwrap();
+    assert!(anh_bia_canh_video(&video).is_none(), "chưa có ảnh thì phải là None");
+
+    // yt-dlp ghi ảnh cùng tên gốc, khác đuôi.
+    let jpg = d.path().join("clip.jpg");
+    std::fs::write(&jpg, b"anh").unwrap();
+    assert_eq!(anh_bia_canh_video(&video), Some(jpg));
+}
