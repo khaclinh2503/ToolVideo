@@ -166,6 +166,29 @@ pub fn atempo_tu_length_scale(length_scale: f32) -> Result<f32, PipelineError> {
     Ok(atempo)
 }
 
+/// Đường dẫn bản gốc TỐC ĐỘ TỰ NHIÊN của một cue, khoá theo (giọng, văn bản).
+///
+/// Vì sao phải giữ: `retime::fit_scale` đo độ dài ở lượt một rồi tính hệ số ép.
+/// Nếu lượt sau SINH LẠI audio thì dự đoán đó áp lên một dạng sóng khác —
+/// VieNeu lấy mẫu ngẫu nhiên (temperature 0.8, không seed) và đo được là cùng
+/// một câu, cùng một giọng, 4 lượt cho 4400/4160/4160/4480 ms, **chênh 7.7%**.
+/// Cue "đã khớp" vẫn tràn sang cue kế đúng bằng chừng đó.
+///
+/// Giữ bản gốc rồi chỉ chạy lại `atempo` biến bước khớp giọng thành phép biến
+/// đổi xác định trên đúng dạng sóng mà `fit_scale` đã đo — và bỏ luôn vài phút
+/// sinh lại mỗi lần xuất.
+fn duong_dan_goc(out: &Path, voice: &str, text: &str) -> PathBuf {
+    use sha2::{Digest, Sha256};
+    let mut h = Sha256::new();
+    h.update(voice.as_bytes());
+    h.update(b"
+");
+    h.update(text.as_bytes());
+    let khoa = format!("{:x}", h.finalize());
+    let thu_muc = out.parent().map(|d| d.join(".goc")).unwrap_or_else(|| PathBuf::from(".goc"));
+    thu_muc.join(format!("{}.wav", &khoa[..16]))
+}
+
 impl VieNeu {
     /// Ép tốc độ đọc của WAV vừa sinh cho khớp `job.length_scale`.
     ///
@@ -320,6 +343,35 @@ impl TtsProvider for VieNeu {
         // bên trong, nhưng không tự tạo thư mục gốc nếu cha nó còn thiếu.
         std::fs::create_dir_all(&self.hf_home).map_err(|e| PipelineError::Io(e.to_string()))?;
 
+        // Job nào đã có bản gốc tốc độ tự nhiên thì KHÔNG sinh lại — chép ra
+        // rồi ép tốc độ. Đây là chỗ giữ cho `fit_scale` đo và ép trên cùng một
+        // dạng sóng; xem `duong_dan_goc`.
+        let mut can_sinh: Vec<&TtsJob> = Vec::new();
+        for j in jobs {
+            let goc = duong_dan_goc(&j.out, &self.voice, &j.text);
+            if goc.exists() {
+                if let Some(d) = j.out.parent() {
+                    std::fs::create_dir_all(d).map_err(|e| PipelineError::Io(e.to_string()))?;
+                }
+                std::fs::copy(&goc, &j.out).map_err(|e| PipelineError::Io(e.to_string()))?;
+                on_done(j.index);
+            } else {
+                can_sinh.push(j);
+            }
+        }
+        if can_sinh.is_empty() {
+            // Mọi cue đã có bản gốc ⇒ KHÔNG spawn Python. Đây là đường mà pha
+            // retime đi: nạp model mất ~9 giây và sinh lại mất vài phút, trong
+            // khi việc cần làm chỉ là chạy lại `atempo`.
+            for j in jobs {
+                self.ep_toc_do(j)?;
+            }
+            return Ok(());
+        }
+        // KHÔNG che biến `jobs`: các bước cuối (kiểm file tồn tại, ép tốc độ)
+        // phải chạy cho TOÀN BỘ cue, kể cả những cue lấy từ bản gốc đã có.
+        let can_sinh: Vec<TtsJob> = can_sinh.into_iter().cloned().collect();
+
         let mut cmd = Command::new(&self.python);
         cmd.arg(&self.bridge)
             .env("PYTHONPATH", &self.site_packages)
@@ -347,14 +399,15 @@ impl TtsProvider for VieNeu {
         // qua `tts::procio::run_line_protocol`. Xem comment ở đó để biết lý
         // do (treo ống 4KB trên Windows, byte không phải UTF-8 trong đường
         // dẫn output_file làm chết `.lines()`).
-        let lines: Vec<String> = jobs.iter().map(|j| build_line(j, &self.voice)).collect();
+
+        let lines: Vec<String> = can_sinh.iter().map(|j| build_line(j, &self.voice)).collect();
         let mut done = 0usize;
         let (done_count, stderr_tail) = run_line_protocol(&mut child, lines, &mut |_line| {
             // `on_done` nhận `job.index` GỐC (không phải số thứ tự trong
             // batch): cùng quy ước với `piper.rs`, vì `jobs` ở đây đã là toàn
             // bộ batch (VieNeu không gom nhóm theo tốc độ như Piper).
-            if done < jobs.len() {
-                on_done(jobs[done].index);
+            if done < can_sinh.len() {
+                on_done(can_sinh[done].index);
             }
             done += 1;
         });
@@ -362,8 +415,8 @@ impl TtsProvider for VieNeu {
 
         let status = child.wait().map_err(|e| PipelineError::Io(e.to_string()))?;
 
-        if !status.success() || done < jobs.len() {
-            let failed_index = jobs.get(done).map(|j| j.index).unwrap_or(0);
+        if !status.success() || done < can_sinh.len() {
+            let failed_index = can_sinh.get(done).map(|j| j.index).unwrap_or(0);
             return Err(PipelineError::EngineFailed {
                 stage: format!("tts cue {failed_index}"),
                 code: status.code().unwrap_or(-1),
@@ -380,6 +433,16 @@ impl TtsProvider for VieNeu {
                     stderr: format!("vieneu báo xong nhưng thiếu file {}", j.out.display()),
                 });
             }
+        }
+
+        // Lưu bản gốc TRƯỚC khi ép tốc độ: sau bước `atempo` thì `j.out` không
+        // còn là tốc độ tự nhiên nữa, và lần retime sau sẽ không có gì để ép lại.
+        for j in &can_sinh {
+            let goc = duong_dan_goc(&j.out, &self.voice, &j.text);
+            if let Some(d) = goc.parent() {
+                std::fs::create_dir_all(d).map_err(|e| PipelineError::Io(e.to_string()))?;
+            }
+            std::fs::copy(&j.out, &goc).map_err(|e| PipelineError::Io(e.to_string()))?;
         }
 
         // Ép tốc độ SAU khi mọi file đã có: cầu nối sinh audio ở tốc độ tự

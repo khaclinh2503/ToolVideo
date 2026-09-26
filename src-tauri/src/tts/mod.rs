@@ -103,12 +103,26 @@ pub fn make_provider(
             }
             let bridge = vieneu::ensure_bridge_script(models)?;
             let hf_home = vieneu_dir.join("cache");
+
+            // Kiểm tên giọng NGAY ĐÂY, trước khi tốn vài giây nạp model rồi mới
+            // nhận stderr tiếng Anh `Voice '...' not found` từ SDK.
+            //
+            // Đường vào rất thật: đổi nhà cung cấp rồi bấm "Lưu cấu hình" trước
+            // khi danh sách giọng kịp nạp xong, mở một config.json cũ, hay sửa
+            // tay — khi đó `voice` vẫn là tên giọng Piper. Cấu hình rỗng thì
+            // dùng giọng mặc định thay vì báo lỗi.
+            let voice = if cfg.voice.trim().is_empty() {
+                vieneu::GIONG_MAC_DINH.to_string()
+            } else {
+                vieneu::tra_giong(&cfg.voice)?.ten.to_string()
+            };
+
             Ok(Box::new(vieneu::VieNeu {
                 python: py,
                 bridge,
                 site_packages,
                 hf_home,
-                voice: cfg.voice.clone(),
+                voice,
                 models_dir: vieneu_dir,
                 // VieNeu không tự ép tốc độ đọc được; bước `atempo` hậu xử lý
                 // trong `synthesize` cần ffmpeg, nên provider phải cầm đường dẫn.
