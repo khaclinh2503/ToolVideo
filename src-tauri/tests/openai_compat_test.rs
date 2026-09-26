@@ -282,3 +282,61 @@ fn loi_401_thi_khong_thu_lai() {
     assert_eq!(err.code(), "provider_error", "nhận: {err}");
     m.assert_hits(1);
 }
+
+#[test]
+fn loc_duoc_json_khoi_phan_suy_nghi_cua_model_reasoning() {
+    use app_lib::translate::openai_compat::loc_khoi_json;
+    let json = r#"{"items":[{"i":0,"text":"Xin chào"}]}"#;
+
+    // Dạng 1: khối <think> tường minh (GLM, DeepSeek-R1…). Bên trong nó cũng có
+    // ngoặc nhọn, nên phải cắt theo </think> trước chứ không phải tìm '{' đầu tiên.
+    let co_think = format!("<think>Tôi sẽ dịch {{từng}} câu một</think>\n{json}");
+    assert_eq!(loc_khoi_json(&co_think), json, "phải bỏ cả ngoặc nằm trong think");
+
+    // Dạng 2: văn xuôi trần trước JSON.
+    assert_eq!(loc_khoi_json(&format!("Đây là bản dịch:\n{json}")), json);
+
+    // Dạng 3: rào markdown.
+    assert_eq!(loc_khoi_json(&format!("```json\n{json}\n```")), json);
+
+    // Dạng 4: sạch sẵn thì không đụng vào.
+    assert_eq!(loc_khoi_json(json), json);
+
+    // Không có ngoặc nào ⇒ trả nguyên chuỗi, để thông báo lỗi hiện đúng thứ
+    // model đã trả thay vì một chuỗi rỗng khó hiểu.
+    assert_eq!(loc_khoi_json("xin lỗi, tôi không dịch được"), "xin lỗi, tôi không dịch được");
+}
+
+#[test]
+fn model_tra_ve_kem_phan_suy_nghi_van_dich_duoc() {
+    // Đường chạy thật: GLM/Nemotron trên NVIDIA trả kèm suy nghĩ. Trước bản sửa
+    // này cả lô 40 cue hỏng và hiện ra là provider_error, không ai đoán được
+    // nguyên nhân.
+    let server = MockServer::start();
+    let content = "<think>Người dùng muốn dịch sang tiếng Việt.</think>\n{\"items\":[{\"i\":0,\"text\":\"Xin chào\"}]}";
+    let body = serde_json::json!({"choices":[{"message":{"role":"assistant","content":content}}]}).to_string();
+    let m = server.mock(|when, then| {
+        when.method(POST).path("/v1/chat/completions");
+        then.status(200).header("content-type", "application/json").body(body);
+    });
+    let out = p(&server).translate_batch(&["Hello"], "en", "vi").unwrap();
+    assert_eq!(out, vec!["Xin chào"]);
+    m.assert_hits(1);
+}
+
+#[test]
+fn co_gui_max_tokens_du_rong_cho_mot_lo_40_cue() {
+    // Endpoint áp mặc định của nó nếu ta không gửi — đoạn mã mẫu của NVIDIA
+    // dùng 1024, quá nhỏ cho 40 câu phụ đề. Trả lời bị cắt cụt ⇒ JSON hỏng.
+    let server = MockServer::start();
+    let m = server.mock(|when, then| {
+        when.method(POST)
+            .path("/v1/chat/completions")
+            .body_contains("\"max_tokens\":4096");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(ok_body(r#"{"i":0,"text":"Xin chào"}"#));
+    });
+    p(&server).translate_batch(&["Hello"], "en", "vi").unwrap();
+    m.assert_hits(1);
+}

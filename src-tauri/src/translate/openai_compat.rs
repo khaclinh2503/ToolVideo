@@ -63,6 +63,32 @@ pub fn build_system_prompt(context: &str) -> String {
     format!("{SYSTEM_PROMPT} {huong_dan}")
 }
 
+/// Lọc lấy đúng khối JSON trong nội dung model trả về.
+///
+/// Model suy luận (GLM, Nemotron, Kimi, DeepSeek-R1…) hay chèn phần suy nghĩ
+/// trước JSON — có khi trong `<think>…</think>`, có khi là văn xuôi trần, có
+/// khi bọc trong rào ```json. Parser cũ gọi thẳng `from_str` nên mọi thứ đứng
+/// trước JSON đều làm cả lô 40 cue hỏng, và biểu hiện thành `provider_error`
+/// chứ không phải "bản dịch xấu" — rất khó đoán ra nguyên nhân.
+///
+/// Trả về nguyên chuỗi nếu không tìm thấy cặp ngoặc nào, để thông báo lỗi vẫn
+/// hiện đúng thứ model đã trả.
+pub fn loc_khoi_json(noi_dung: &str) -> &str {
+    // Bỏ hẳn phần <think>…</think> trước, vì bên trong nó cũng có thể có ngoặc.
+    let sau_think = match noi_dung.find("</think>") {
+        Some(i) => &noi_dung[i + "</think>".len()..],
+        None => noi_dung,
+    };
+    let bat_dau = match sau_think.find('{') {
+        Some(i) => i,
+        None => return noi_dung,
+    };
+    match sau_think.rfind('}') {
+        Some(ket) if ket > bat_dau => &sau_think[bat_dau..=ket],
+        _ => noi_dung,
+    }
+}
+
 pub struct OpenAiCompat {
     pub base_url: String,
     pub api_key: String,
@@ -129,6 +155,11 @@ impl OpenAiCompat {
         let mut body = serde_json::json!({
             "model": self.model,
             "temperature": 0.2,
+            // Một lô 40 cue phụ đề cộng khung JSON dễ vượt 2000 token. Không
+            // gửi thì endpoint áp mặc định của nó — ví dụ đoạn mã mẫu của
+            // NVIDIA dùng 1024 — và câu trả lời bị CẮT CỤT giữa chừng. JSON
+            // cụt thì parse hỏng, app thử lại đúng một lần rồi cũng cụt y hệt.
+            "max_tokens": 4096,
             "messages": [
                 {"role": "system", "content": build_system_prompt(&self.context)},
                 {"role": "user", "content": user.to_string()},
@@ -156,7 +187,7 @@ impl OpenAiCompat {
             .first()
             .map(|c| c.message.content.as_str())
             .ok_or_else(|| self.perr(Some(200), "không có choices"))?;
-        let mut out: OutItems = serde_json::from_str(content)
+        let mut out: OutItems = serde_json::from_str(loc_khoi_json(content))
             .map_err(|_| self.perr(Some(200), content.chars().take(200).collect::<String>()))?;
         out.items.sort_by_key(|x| x.i);
         let ok = out.items.len() == texts.len()
