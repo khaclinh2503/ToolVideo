@@ -232,3 +232,53 @@ fn danh_sach_ngu_canh_khong_trung_ma_va_khong_rong() {
         assert!(!h.trim().is_empty(), "hướng dẫn rỗng: {m}");
     }
 }
+
+#[test]
+fn endpoint_tu_choi_response_format_thi_thu_lai_khong_kem_tham_so_do() {
+    // build.nvidia.com và nhiều endpoint tương thích-OpenAI khác (Groq,
+    // LM Studio, OpenRouter) không khai `response_format`. Trả 400 ⇒ app phải
+    // tự thử lại KHÔNG kèm tham số đó thay vì bắt người dùng tự đoán; prompt đã
+    // yêu cầu trả JSON nên đường này vẫn dùng được.
+    let server = MockServer::start();
+
+    // Lần một CÓ response_format ⇒ endpoint từ chối.
+    let m400 = server.mock(|when, then| {
+        when.method(POST)
+            .path("/v1/chat/completions")
+            .body_contains("response_format");
+        then.status(400)
+            .header("content-type", "application/json")
+            .body(r#"{"error":"unknown field response_format"}"#);
+    });
+    // Lần hai KHÔNG có response_format ⇒ chạy bình thường.
+    let mok = server.mock(|when, then| {
+        when.method(POST)
+            .path("/v1/chat/completions")
+            .matches(|req| {
+                let b = req.body.as_ref().map(|b| String::from_utf8_lossy(b).to_string()).unwrap_or_default();
+                !b.contains("response_format")
+            });
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(ok_body(r#"{"i":0,"text":"Xin chào"}"#));
+    });
+
+    let out = p(&server).translate_batch(&["Hello"], "en", "vi").unwrap();
+    assert_eq!(out, vec!["Xin chào"]);
+    m400.assert_hits(1);
+    mok.assert_hits(1);
+}
+
+#[test]
+fn loi_401_thi_khong_thu_lai() {
+    // Khoá sai là 401. Thử lại chỉ tốn thêm một lần gọi mà chắc chắn hỏng y hệt,
+    // và làm người dùng chờ lâu hơn trước khi thấy lỗi thật.
+    let server = MockServer::start();
+    let m = server.mock(|when, then| {
+        when.method(POST).path("/v1/chat/completions");
+        then.status(401).body(r#"{"error":"invalid api key"}"#);
+    });
+    let err = p(&server).translate_batch(&["Hello"], "en", "vi").unwrap_err();
+    assert_eq!(err.code(), "provider_error", "nhận: {err}");
+    m.assert_hits(1);
+}

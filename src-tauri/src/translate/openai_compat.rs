@@ -107,22 +107,36 @@ impl OpenAiCompat {
         }
     }
 
-    fn once(&self, texts: &[&str], src: &str, tgt: &str) -> Result<Vec<String>, PipelineError> {
+    /// `che_do_json` = bật `response_format: {"type": "json_object"}`.
+    ///
+    /// Không phải endpoint tương thích-OpenAI nào cũng nhận tham số này —
+    /// NVIDIA build.nvidia.com không hề khai nó trong tài liệu, và nhiều
+    /// endpoint tự dựng (Groq, LM Studio, OpenRouter) cũng vậy. Đường chạy
+    /// không có nó vẫn dùng được vì prompt đã yêu cầu trả đúng JSON.
+    fn once(
+        &self,
+        texts: &[&str],
+        src: &str,
+        tgt: &str,
+        che_do_json: bool,
+    ) -> Result<Vec<String>, PipelineError> {
         let items: Vec<Item> = texts
             .iter()
             .enumerate()
             .map(|(i, t)| Item { i, text: t })
             .collect();
         let user = serde_json::json!({ "src": src, "tgt": tgt, "items": items });
-        let body = serde_json::json!({
+        let mut body = serde_json::json!({
             "model": self.model,
             "temperature": 0.2,
-            "response_format": { "type": "json_object" },
             "messages": [
                 {"role": "system", "content": build_system_prompt(&self.context)},
                 {"role": "user", "content": user.to_string()},
             ]
         });
+        if che_do_json {
+            body["response_format"] = serde_json::json!({ "type": "json_object" });
+        }
         let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
         let resp = http_client()?
             .post(url)
@@ -172,13 +186,23 @@ impl TranslateProvider for OpenAiCompat {
         src: &str,
         tgt: &str,
     ) -> Result<Vec<String>, PipelineError> {
-        match self.once(texts, src, tgt) {
+        match self.once(texts, src, tgt, true) {
             Ok(v) => Ok(v),
             // retry đúng 1 lần chỉ khi lỗi nội dung (status 200 nhưng JSON/số item sai);
             // lỗi HTTP (status khác 200 hoặc None) không retry
             Err(PipelineError::ProviderError {
                 status: Some(200), ..
-            }) => self.once(texts, src, tgt),
+            }) => self.once(texts, src, tgt, true),
+            // 400 thường là endpoint không nhận `response_format`. Thử lại đúng
+            // một lần KHÔNG kèm tham số đó thay vì bắt người dùng tự đoán: prompt
+            // đã yêu cầu trả JSON, nên đường này vẫn dùng được.
+            //
+            // Chỉ 400: khoá sai là 401, hết hạn mức là 429, model không có
+            // thường là 404 — thử lại mấy cái đó chỉ tốn thêm một lần gọi mà
+            // chắc chắn hỏng y hệt.
+            Err(PipelineError::ProviderError {
+                status: Some(400), ..
+            }) => self.once(texts, src, tgt, false),
             Err(e) => Err(e),
         }
     }
