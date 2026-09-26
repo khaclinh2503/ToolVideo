@@ -89,6 +89,7 @@ fn vieneu_provider_that_tong_hop_hai_job_on_done_dung_index_goc() {
         hf_home: vieneu_dir.join("cache"),
         voice: "Mai Anh".into(),
         models_dir: vieneu_dir,
+        ffmpeg: models_dir().join("ffmpeg").join("ffmpeg.exe"),
     };
 
     let indices_bao_xong: Arc<Mutex<Vec<usize>>> = Arc::new(Mutex::new(Vec::new()));

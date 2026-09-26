@@ -110,6 +110,9 @@ pub fn make_provider(
                 hf_home,
                 voice: cfg.voice.clone(),
                 models_dir: vieneu_dir,
+                // VieNeu không tự ép tốc độ đọc được; bước `atempo` hậu xử lý
+                // trong `synthesize` cần ffmpeg, nên provider phải cầm đường dẫn.
+                ffmpeg: models.join("ffmpeg").join("ffmpeg.exe"),
             }))
         }
         _ => Err(PipelineError::ProviderError {

@@ -16,6 +16,7 @@ fn provider_voi_python(python: &str) -> VieNeu {
         hf_home: PathBuf::from("target/tmp-vieneu-test/hf_home"),
         voice: "Mai Anh".into(),
         models_dir: PathBuf::from("khong-dung-toi/vieneu"),
+        ffmpeg: PathBuf::from("khong-dung-toi/ffmpeg.exe"),
     }
 }
 
@@ -80,4 +81,62 @@ fn group_by_speed_gom_dung_nhom_giu_dung_index_goc() {
     let (scale1, jobs1) = &groups[1];
     assert!((scale1 - 1.0).abs() < 1e-6);
     assert_eq!(jobs1.iter().map(|j| j.index).collect::<Vec<_>>(), vec![1, 3]);
+}
+
+// ---------- ép tốc độ bằng ffmpeg atempo ----------
+
+#[test]
+fn doi_chieu_he_so_dung_cach() {
+    use app_lib::tts::vieneu::atempo_tu_length_scale;
+    // `length_scale` 0.6 nghĩa là "đọc NHANH hơn" theo quy ước Piper/ScalePlan.
+    // `atempo` là hệ số TỐC ĐỘ nên phải LỚN HƠN 1. Đảo chiều thì giọng chậm
+    // lại, cue tràn nặng hơn, và không có gì báo lỗi — test này là lưới duy nhất.
+    let a = atempo_tu_length_scale(0.6).unwrap();
+    assert!(a > 1.0, "đảo chiều rồi: length_scale 0.6 phải cho atempo > 1, nhận {a}");
+    assert!((a - 1.0 / 0.6).abs() < 1e-6, "nhận {a}");
+}
+
+#[test]
+fn he_so_1_thi_atempo_cung_1() {
+    use app_lib::tts::vieneu::atempo_tu_length_scale;
+    assert!((atempo_tu_length_scale(1.0).unwrap() - 1.0).abs() < 1e-6);
+}
+
+#[test]
+fn he_so_ngoai_dai_bi_chan_ro_rang() {
+    use app_lib::tts::vieneu::atempo_tu_length_scale;
+    // atempo một tầng chỉ nhận [0.5, 2.0]. length_scale 0.4 ⇒ atempo 2.5.
+    let err = atempo_tu_length_scale(0.4).unwrap_err();
+    assert!(err.to_string().contains("vượt dải"), "nhận: {err}");
+    // Giá trị vô nghĩa phải bị chặn chứ không cho ra inf rồi đẩy sang ffmpeg.
+    assert!(atempo_tu_length_scale(0.0).is_err());
+    assert!(atempo_tu_length_scale(-1.0).is_err());
+    assert!(atempo_tu_length_scale(f32::NAN).is_err());
+}
+
+#[test]
+fn tham_so_ffmpeg_mang_dung_he_so_va_giu_dinh_dang() {
+    use app_lib::tts::vieneu::{atempo_tu_length_scale, build_atempo_args};
+    use std::path::Path;
+    let a = atempo_tu_length_scale(0.8).unwrap();
+    let args = build_atempo_args(Path::new("vao.wav"), Path::new("ra.wav"), a);
+
+    let i = args.iter().position(|s| s == "-filter:a").expect("phải có -filter:a");
+    assert_eq!(args[i + 1], format!("atempo={:.6}", 1.0 / 0.8), "{args:?}");
+
+    // compose.rs so tần số từng wav với header manifest rồi TỪ CHỐI nếu lệch,
+    // nên đầu ra phải giữ nguyên định dạng PCM 16-bit.
+    let c = args.iter().position(|s| s == "-c:a").expect("phải ép codec");
+    assert_eq!(args[c + 1], "pcm_s16le", "{args:?}");
+
+    assert!(args.contains(&"-y".to_string()), "phải ghi đè tệp tạm: {args:?}");
+
+    // Đầu ra là tệp tạm đuôi `.wav.tmp`; ffmpeg không suy ra định dạng từ đuôi
+    // đó nên phải chỉ định rõ. Thiếu dòng này thì ffmpeg bỏ ngang — đã gặp thật
+    // khi chạy E2E lần đầu.
+    let f = args.iter().position(|s| s == "-f").expect("phải chỉ định -f: {args:?}");
+    assert_eq!(args[f + 1], "wav", "{args:?}");
+    assert_eq!(args.last().unwrap(), "ra.wav", "đầu ra phải ở cuối: {args:?}");
+    let vi_tri_vao = args.iter().position(|s| s == "vao.wav").unwrap();
+    assert!(vi_tri_vao < args.len() - 1, "đầu vào phải trước đầu ra: {args:?}");
 }

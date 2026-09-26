@@ -3,14 +3,17 @@
 //! (`src-tauri/python/vieneu_bridge.py`, đọc chính file đó — không phải kế
 //! hoạch — nếu cần đối chiếu hợp đồng).
 //!
-//! KHÔNG ép tốc độ đọc ở đây, CỐ Ý: VieNeu-TTS không có tham số
-//! `length_scale`/`speed` nào trong `infer()` của SDK (Task 3 đã grep xác
-//! nhận rỗng trong `vieneu/v3turbo.py` và `vieneu/base.py` — xem docstring
-//! của `vieneu_bridge.py`). `job.length_scale` bị BỎ QUA có chủ ý trong
-//! `synthesize` bên dưới; việc ép tốc độ dồn hết cho ffmpeg `atempo` hậu xử
-//! lý, một task riêng ngay SAU task này. Đừng lặng lẽ thêm lại khoá
-//! "length_scale"/"speed" vào JSON gửi cho cầu nối — cầu nối không có gì để
-//! làm với khoá đó.
+//! Tốc độ đọc KHÔNG đi qua cầu nối: VieNeu-TTS không có tham số
+//! `length_scale`/`speed` nào trong `infer()` của SDK (đã grep xác nhận rỗng
+//! trong `vieneu/v3turbo.py` và `vieneu/base.py` — xem docstring của
+//! `vieneu_bridge.py`). Đừng lặng lẽ thêm lại khoá "length_scale"/"speed" vào
+//! JSON gửi cho cầu nối — cầu nối không có gì để làm với khoá đó.
+//!
+//! Thay vào đó `synthesize` **hậu xử lý bằng ffmpeg `atempo`** sau khi cầu nối
+//! ghi xong WAV — xem `ep_toc_do` bên dưới. Cách này còn chắc hơn đường của
+//! Piper: `atempo` là phép biến đổi số học xác định trên một file có sẵn, nên
+//! không thể rơi vào kiểu lỗi "engine nhận tham số rồi lặng lẽ bỏ qua" từng
+//! làm `--length_scale` của Piper thành no-op suốt từ M3 tới khi phát hiện ở M6.
 
 use crate::{
     error::PipelineError,
@@ -55,6 +58,129 @@ pub struct VieNeu {
     /// dùng cục bộ (offline) hay để SDK tải qua HF Hub nếu thư mục chưa đủ —
     /// xem `_tao_vieneu()` trong `vieneu_bridge.py`.
     pub models_dir: PathBuf,
+    /// `<models>/ffmpeg/ffmpeg.exe` — dùng cho bước ép tốc độ `atempo`. VieNeu
+    /// không tự ép tốc độ được nên phần này bắt buộc phải có ffmpeg.
+    pub ffmpeg: PathBuf,
+}
+
+/// Dải hợp lệ của MỘT tầng filter `atempo` trong ffmpeg.
+const ATEMPO_MIN: f32 = 0.5;
+const ATEMPO_MAX: f32 = 2.0;
+
+/// Đổi hệ số **kéo dài** (`length_scale`, quy ước của Piper và `retime::ScalePlan`)
+/// sang hệ số **tốc độ** của ffmpeg.
+///
+/// HAI ĐẠI LƯỢNG NGHỊCH ĐẢO NHAU — đây là chỗ dễ sai nhất của cả bước này:
+///
+/// | | ý nghĩa | đọc nhanh hơn thì |
+/// |---|---|---|
+/// | `length_scale` | hệ số kéo dài | **giảm** (0.6 = nhanh) |
+/// | `atempo` | hệ số tốc độ | **tăng** (1.667 = nhanh) |
+///
+/// Đảo chiều thì giọng đọc **chậm lại** thay vì nhanh lên, cue tràn nặng hơn,
+/// và không có gì báo lỗi. Test `doi_chieu_he_so_dung_cach` giữ đúng chiều này.
+///
+/// `retime::fit_scale` chỉ bao giờ GIẢM `length_scale` (≤ 1.0) và chặn dưới ở
+/// `MIN_LENGTH_SCALE = 0.6`, nên `atempo` thực tế nằm trong `[1.0, 1.667]` —
+/// gọn trong dải một tầng, không cần nối chuỗi filter.
+pub fn atempo_tu_length_scale(length_scale: f32) -> Result<f32, PipelineError> {
+    if !length_scale.is_finite() || length_scale <= 0.0 {
+        return Err(PipelineError::Io(format!(
+            "hệ số tốc độ đọc không hợp lệ: {length_scale}"
+        )));
+    }
+    let atempo = 1.0 / length_scale;
+    if !(ATEMPO_MIN..=ATEMPO_MAX).contains(&atempo) {
+        return Err(PipelineError::Io(format!(
+            "tốc độ đọc {length_scale} vượt dải ffmpeg xử lý được một tầng \
+             (atempo {atempo:.3}, phải trong {ATEMPO_MIN}..={ATEMPO_MAX})"
+        )));
+    }
+    Ok(atempo)
+}
+
+impl VieNeu {
+    /// Ép tốc độ đọc của WAV vừa sinh cho khớp `job.length_scale`.
+    ///
+    /// Không làm gì khi hệ số bằng 1.0 — đừng chạy ffmpeg vô ích cho mọi cue
+    /// trong khi phần lớn cue vừa khung và không cần ép.
+    ///
+    /// Ghi ra tệp tạm rồi `rename` đè: ffmpeg không đọc và ghi cùng một đường
+    /// dẫn được (nó cắt cụt file đầu vào ngay khi mở đầu ra). Cùng khuôn
+    /// tmp+rename đã dùng cho wav và manifest ở M6.
+    fn ep_toc_do(&self, job: &TtsJob) -> Result<(), PipelineError> {
+        ep_toc_do_tep(&self.ffmpeg, &job.out, job.length_scale, job.index)
+    }
+}
+
+/// Ép tốc độ một tệp WAV tại chỗ. Tách khỏi `VieNeu` để test đi qua đúng mã
+/// thật (kể cả bước tmp+rename) mà không cần dựng cả provider và Python.
+pub fn ep_toc_do_tep(
+    ffmpeg: &Path,
+    tep: &Path,
+    length_scale: f32,
+    index: usize,
+) -> Result<(), PipelineError> {
+    if (length_scale - 1.0).abs() < 1e-6 {
+            return Ok(());
+        }
+        let atempo = atempo_tu_length_scale(length_scale)?;
+        let tmp = tep.with_extension("wav.tmp");
+        let args = build_atempo_args(tep, &tmp, atempo);
+
+        let mut cmd = Command::new(ffmpeg);
+        cmd.args(&args);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x08000000);
+        }
+        let out = cmd.output().map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                PipelineError::EngineMissing("ffmpeg".into())
+            } else {
+                PipelineError::Io(e.to_string())
+            }
+        })?;
+        if !out.status.success() {
+            let _ = std::fs::remove_file(&tmp);
+            return Err(PipelineError::EngineFailed {
+                stage: format!("ép tốc độ cue {index}"),
+                code: out.status.code().unwrap_or(-1),
+                stderr: String::from_utf8_lossy(&out.stderr).to_string(),
+            });
+        }
+        // Chỉ thay file thật khi ffmpeg đã xong sạch — hỏng giữa chừng thì giữ
+        // nguyên bản chưa ép còn hơn để lại một file cụt.
+    std::fs::rename(&tmp, tep).map_err(|e| PipelineError::Io(e.to_string()))
+}
+
+/// Tham số ffmpeg đọc `vao`, ép tốc độ `atempo`, ghi `ra`. Hàm thuần để test.
+///
+/// `atempo` không đổi tần số mẫu hay số kênh, nhưng ta vẫn ép `pcm_s16le` để
+/// đầu ra chắc chắn cùng định dạng với đầu vào — `compose.rs` so tần số từng
+/// WAV với header manifest và từ chối nếu lệch.
+pub fn build_atempo_args(vao: &Path, ra: &Path, atempo: f32) -> Vec<String> {
+    vec![
+        "-nostdin".into(),
+        "-hide_banner".into(),
+        "-loglevel".into(),
+        "error".into(),
+        "-y".into(),
+        "-i".into(),
+        vao.display().to_string(),
+        "-filter:a".into(),
+        format!("atempo={atempo:.6}"),
+        "-c:a".into(),
+        "pcm_s16le".into(),
+        // BẮT BUỘC: đầu ra là tệp tạm đuôi `.wav.tmp`, ffmpeg không suy ra được
+        // định dạng từ đuôi đó và sẽ bỏ ngang với "Unable to choose an output
+        // format". Test đơn vị so chuỗi tham số KHÔNG bắt được lỗi này — chỉ
+        // E2E chạy ffmpeg thật mới thấy.
+        "-f".into(),
+        "wav".into(),
+        ra.display().to_string(),
+    ]
 }
 
 /// Một dòng JSON cho stdin của cầu nối VieNeu. Cùng quy tắc gộp xuống dòng với
@@ -187,6 +313,12 @@ impl TtsProvider for VieNeu {
                     stderr: format!("vieneu báo xong nhưng thiếu file {}", j.out.display()),
                 });
             }
+        }
+
+        // Ép tốc độ SAU khi mọi file đã có: cầu nối sinh audio ở tốc độ tự
+        // nhiên, bước này mới khớp nó vào khung phụ đề.
+        for j in jobs {
+            self.ep_toc_do(j)?;
         }
         Ok(())
     }
