@@ -58,14 +58,21 @@ fn vieneu_provider_that_tong_hop_hai_job_on_done_dung_index_goc() {
     let vieneu_dir = m.join("vieneu");
     let onnx_update = vieneu_dir.join("onnx_update");
     let moss = vieneu_dir.join("moss");
-    if !onnx_update.exists() || !moss.exists() {
-        println!(
-            "BỎ QUA: chưa có model VieNeu đã pin cục bộ ở {} (thiếu onnx_update/ hoặc moss/) \
-             — components.json (Task 4) mới khai báo, chưa có bước cài đặt thật nào chạy trên máy này.",
-            vieneu_dir.display()
-        );
-        return;
-    }
+    // KHÔNG `return` im lặng ở đây. Trước đây test in "BỎ QUA" rồi trả về —
+    // cargo báo `ok`, nên nó nằm trong danh sách test xanh suốt nhiều vòng
+    // review trong khi KHÔNG kiểm gì cả, và đường model offline chưa bao giờ
+    // được thực thi lần nào.
+    //
+    // Đặt `DVL_E2E_VIENEU=1` nghĩa là đã khẳng định "tôi muốn chạy E2E VieNeu".
+    // Thiếu model lúc đó là một thất bại CÓ Ý NGHĨA: nó nói đúng rằng bước cài
+    // đặt chưa từng được kiểm.
+    assert!(
+        onnx_update.exists() && moss.exists(),
+        "chưa có model VieNeu đã pin ở {} (thiếu onnx_update/ hoặc moss/) — bấm \
+         'Tải bộ công cụ' trong app để tải 15 file đã pin trong components.json. \
+         Không bỏ qua im lặng: đường chạy offline chính là thứ test này sinh ra để kiểm.",
+        vieneu_dir.display()
+    );
 
     let bridge = ensure_bridge_script(&m).unwrap_or_else(|e| panic!("ghi cầu nối lỗi: {e}"));
 

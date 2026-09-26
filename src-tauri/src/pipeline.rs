@@ -227,6 +227,49 @@ pub fn run_tts_stage(
 
     let generated = jobs.len();
     if !jobs.is_empty() {
+        // VÔ HIỆU HOÁ TRƯỚC KHI GHI ĐÈ.
+        //
+        // `synthesize` ghi đè wav tại chỗ, còn manifest chỉ được lưu sau khi
+        // MỌI cue xong. Hỏng giữa chừng (hết đĩa, antivirus chặn, đóng app) để
+        // lại file MỚI dưới khoá CŨ, mà điều kiện cache hit chỉ so khoá và kiểm
+        // file tồn tại — không bao giờ xác minh nội dung. Hai đường hỏng thật:
+        //
+        // - Đổi nhà cung cấp rồi hỏng giữa chừng: đổi lại nhà cung cấp cũ là
+        //   mọi khoá khớp hết ⇒ cache hit toàn bộ, không sinh cue nào, và tần
+        //   số file lệch manifest vĩnh viễn. `compose` chặn đúng, nhưng bấm
+        //   "Lồng tiếng" lại KHÔNG sửa được — phải xoá tay thư mục `tts/`.
+        // - Sửa một cue, lồng tiếng hỏng, rồi HOÀN TÁC về văn bản cũ: khoá cũ
+        //   khớp lại, file trên đĩa là bản đọc của văn bản mới. Không guard nào
+        //   bắt được vì tần số vẫn đúng.
+        //
+        // Ghi trước một manifest coi các cue sắp sinh là CHƯA CÓ: lần chạy sau
+        // buộc phải sinh lại đúng những cue đó, và bấm "Lồng tiếng" tự sửa được
+        // thay vì bắt người dùng đi xoá thư mục.
+        let dang_sinh: std::collections::HashSet<usize> =
+            jobs.iter().map(|j| j.index).collect();
+        let tam: Vec<tts_manifest::SegmentEntry> = entries
+            .iter()
+            .map(|e| {
+                let mut e = e.clone();
+                if dang_sinh.contains(&e.index) {
+                    e.cache_key = None;
+                    e.audio_path = None;
+                    e.duration_ms = 0;
+                }
+                e
+            })
+            .collect();
+        tts_manifest::save(
+            &manifest_path,
+            &tts_manifest::Manifest {
+                version: 1,
+                provider: p.id().to_string(),
+                voice: voice.to_string(),
+                sample_rate: p.sample_rate(),
+                segments: tam,
+            },
+        )?;
+
         p.synthesize(&jobs, &mut |_| {})?;
     }
 

@@ -240,3 +240,82 @@ fn doi_scale_mot_cue_chi_sinh_lai_cue_do() {
     assert_eq!(r.generated, 1);
     assert_eq!(p2.generated(), vec![2], "chỉ cue 2 được sinh lại");
 }
+
+/// Provider giả hỏng giữa chừng: ghi xong `hong_tu` file rồi trả lỗi. Mô phỏng
+/// hết đĩa / antivirus chặn / đóng app giữa lúc lồng tiếng.
+struct HongGiuaChung {
+    hong_tu: usize,
+    sample_rate: u32,
+}
+
+impl TtsProvider for HongGiuaChung {
+    fn id(&self) -> &'static str { "hong" }
+    fn sample_rate(&self) -> u32 { self.sample_rate }
+    fn synthesize(&self, jobs: &[TtsJob], _on_done: &mut dyn FnMut(usize)) -> Result<(), PipelineError> {
+        for (i, j) in jobs.iter().enumerate() {
+            if i >= self.hong_tu {
+                return Err(PipelineError::Io("hỏng giữa chừng".into()));
+            }
+            write_one_second_wav(&j.out, self.sample_rate);
+        }
+        Ok(())
+    }
+}
+
+#[test]
+fn hong_giua_chung_thi_lan_sau_sinh_lai_chu_khong_cache_hit_nham() {
+    // I4/I5 của review tổng. `synthesize` ghi đè wav TẠI CHỖ, manifest chỉ lưu
+    // sau khi mọi cue xong. Hỏng giữa chừng để lại file MỚI dưới khoá CŨ, mà
+    // điều kiện cache hit chỉ so khoá và kiểm file tồn tại — không xác minh nội
+    // dung. Không vô hiệu hoá trước thì lần bấm "Lồng tiếng" sau sẽ cache hit
+    // toàn bộ và KHÔNG sửa được gì; người dùng phải tự xoá thư mục tts/.
+    let dir = tempfile::tempdir().unwrap();
+    write_translated(dir.path(), &[("Một", 0, 1000), ("Hai", 1000, 2000), ("Ba", 2000, 3000)]);
+
+    // Lượt một: xong sạch.
+    let p1 = FakeTts::new();
+    run_tts_stage(dir.path(), &p1, "giong-a", &ScalePlan::uniform(1.0), "vi").unwrap();
+
+    // Lượt hai: ĐỔI giọng ⇒ mọi khoá đổi ⇒ cả ba cue vào jobs. Ghi được 2 file
+    // rồi hỏng.
+    let p2 = HongGiuaChung { hong_tu: 2, sample_rate: 8000 };
+    let loi = run_tts_stage(dir.path(), &p2, "giong-b", &ScalePlan::uniform(1.0), "vi");
+    assert!(loi.is_err(), "lượt hai phải báo lỗi");
+
+    // Lượt ba: quay lại giọng cũ. Nếu manifest chưa bị vô hiệu hoá thì mọi khoá
+    // của giọng-a vẫn còn và file vẫn tồn tại ⇒ cache hit hết, KHÔNG sinh cue
+    // nào, trong khi hai file đầu trên đĩa là của giọng-b ở 8000 Hz.
+    let p3 = FakeTts::new();
+    run_tts_stage(dir.path(), &p3, "giong-a", &ScalePlan::uniform(1.0), "vi").unwrap();
+    assert!(
+        !p3.generated().is_empty(),
+        "phải sinh lại sau một lần hỏng giữa chừng, không được cache hit toàn bộ"
+    );
+}
+
+#[test]
+fn hoan_tac_van_ban_sau_khi_hong_thi_van_sinh_lai() {
+    // Nhánh còn lại của I4: sửa một cue, lồng tiếng hỏng, rồi HOÀN TÁC về văn
+    // bản cũ. Khoá cũ khớp lại và file vẫn tồn tại — nhưng file đó là bản đọc
+    // của văn bản MỚI. Không guard nào bắt được vì tần số vẫn đúng.
+    let dir = tempfile::tempdir().unwrap();
+    write_translated(dir.path(), &[("Câu A", 0, 1000), ("Giữ nguyên", 1000, 2000)]);
+
+    let p1 = FakeTts::new();
+    run_tts_stage(dir.path(), &p1, "giong-a", &ScalePlan::uniform(1.0), "vi").unwrap();
+
+    // Sửa cue 1 thành văn bản khác rồi lồng tiếng hỏng ngay từ cue đầu.
+    write_translated(dir.path(), &[("Câu B", 0, 1000), ("Giữ nguyên", 1000, 2000)]);
+    let p2 = HongGiuaChung { hong_tu: 0, sample_rate: 8000 };
+    assert!(run_tts_stage(dir.path(), &p2, "giong-a", &ScalePlan::uniform(1.0), "vi").is_err());
+
+    // Hoàn tác về văn bản cũ.
+    write_translated(dir.path(), &[("Câu A", 0, 1000), ("Giữ nguyên", 1000, 2000)]);
+    let p3 = FakeTts::new();
+    run_tts_stage(dir.path(), &p3, "giong-a", &ScalePlan::uniform(1.0), "vi").unwrap();
+    assert!(
+        p3.generated().contains(&1),
+        "cue vừa hỏng phải được sinh lại dù văn bản đã quay về bản cũ, nhận {:?}",
+        p3.generated()
+    );
+}
