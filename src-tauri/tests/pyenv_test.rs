@@ -1,6 +1,6 @@
 //! Test cho phần thuần của `pyenv` — không đụng %APPDATA% thật, không cài gì.
 
-use app_lib::pyenv::{build_pip_args, site_packages};
+use app_lib::pyenv::{build_pip_args, site_packages, REQUIREMENTS};
 use std::path::Path;
 
 #[test]
@@ -27,4 +27,17 @@ fn pip_cai_vao_dung_thu_muc_va_khong_dung_moi_truong_nguoi_dung() {
 fn site_packages_nam_trong_thu_muc_models() {
     let p = site_packages(Path::new("C:/m"));
     assert!(p.starts_with("C:/m"), "{}", p.display());
+}
+
+#[test]
+fn requirements_nhung_vao_binary_co_hash() {
+    // Phải nhúng vào binary lúc biên dịch (`include_str!`), không đọc từ đĩa
+    // theo `CARGO_MANIFEST_DIR` — hằng số đó trỏ vào máy build, không tồn tại
+    // trên máy người dùng cài bản đóng gói. Test này bắt trường hợp file bị
+    // xoá hoặc bị làm rỗng mà mã vẫn biên dịch được.
+    assert!(!REQUIREMENTS.trim().is_empty(), "vieneu-requirements.txt rỗng");
+    assert!(
+        REQUIREMENTS.contains("--hash=sha256:"),
+        "thiếu hash đã pin — --require-hashes sẽ không có gì để đối chiếu"
+    );
 }

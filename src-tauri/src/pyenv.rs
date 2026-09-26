@@ -21,9 +21,14 @@ pub fn python_exe(models: &Path) -> PathBuf {
     models.join("python").join("python.exe")
 }
 
-pub fn requirements_path() -> &'static Path {
-    Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/vieneu-requirements.txt"))
-}
+/// Nội dung file pin gói, nhúng thẳng vào binary lúc biên dịch.
+///
+/// KHÔNG đọc từ đĩa theo `CARGO_MANIFEST_DIR`: hằng số đó trỏ vào cây nguồn của
+/// máy build (ví dụ `E:\workspace\ToolVideo\src-tauri` trên máy dev), không
+/// phải thư mục cài đặt trên máy người dùng — bản đóng gói (`tauri build`) sẽ
+/// không bao giờ tìm thấy file ở đó. Nhúng vào binary cũng có nghĩa là các hash
+/// đã pin đi cùng chính bản dựng đã được kiểm, không thể bị thay ra ngoài.
+pub const REQUIREMENTS: &str = include_str!("../vieneu-requirements.txt");
 
 pub fn build_pip_args(req: &Path, target: &Path) -> Vec<String> {
     vec![
@@ -73,14 +78,6 @@ pub fn install(models: &Path, on_line: &mut dyn FnMut(&str)) -> Result<(), Pipel
         return Err(PipelineError::EngineMissing("python".into()));
     }
 
-    let req = requirements_path();
-    if !req.exists() {
-        return Err(PipelineError::Io(format!(
-            "thiếu file pin gói Python: {}",
-            req.display()
-        )));
-    }
-
     let vieneu_dir = models.join("vieneu");
     std::fs::create_dir_all(&vieneu_dir).map_err(|e| PipelineError::Io(e.to_string()))?;
     let tmp_target = vieneu_dir.join("site-packages.tmp");
@@ -90,8 +87,14 @@ pub fn install(models: &Path, on_line: &mut dyn FnMut(&str)) -> Result<(), Pipel
     }
     std::fs::create_dir_all(&tmp_target).map_err(|e| PipelineError::Io(e.to_string()))?;
 
+    // Ghi nội dung đã nhúng ra một file tạm cạnh đích để truyền cho `pip -r`
+    // (pip cần một đường dẫn thật, không nhận nội dung qua stdin cho `-r`).
+    // Dọn file tạm này ở MỌI nhánh thoát bên dưới — kể cả khi pip lỗi.
+    let req_tmp = vieneu_dir.join("requirements.pinned.txt");
+    std::fs::write(&req_tmp, REQUIREMENTS).map_err(|e| PipelineError::Io(e.to_string()))?;
+
     let mut cmd = Command::new(&py);
-    cmd.args(build_pip_args(req, &tmp_target))
+    cmd.args(build_pip_args(&req_tmp, &tmp_target))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     no_window(&mut cmd);
@@ -146,6 +149,8 @@ pub fn install(models: &Path, on_line: &mut dyn FnMut(&str)) -> Result<(), Pipel
     let wait_res = child.wait();
     let stderr_tail = err_handle.join().unwrap_or_default();
     let status = wait_res.map_err(|e| PipelineError::Io(e.to_string()))?;
+
+    let _ = std::fs::remove_file(&req_tmp);
 
     if !status.success() {
         let _ = std::fs::remove_dir_all(&tmp_target);
