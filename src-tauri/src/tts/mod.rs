@@ -4,6 +4,8 @@ use std::path::PathBuf;
 
 pub mod manifest;
 pub mod piper;
+pub(crate) mod procio;
+pub mod vieneu;
 
 /// Một cue cần sinh audio.
 #[derive(Debug, Clone)]
@@ -84,6 +86,31 @@ pub fn make_provider(
             }
             let sample_rate = read_piper_sample_rate(&model_cfg)?;
             Ok(Box::new(piper::Piper { exe, model, sample_rate }))
+        }
+        "vieneu" => {
+            let py = crate::pyenv::python_exe(models);
+            let site_packages = crate::pyenv::site_packages(models);
+            let vieneu_dir = models.join("vieneu");
+            let onnx_update = vieneu_dir.join("onnx_update");
+            let moss = vieneu_dir.join("moss");
+            for p in [&py, &site_packages.join("vieneu").join("__init__.py"), &onnx_update, &moss] {
+                if !p.exists() {
+                    return Err(PipelineError::EngineMissing(format!(
+                        "vieneu ({}) — bấm 'Tải bộ công cụ' để cài",
+                        p.display()
+                    )));
+                }
+            }
+            let bridge = vieneu::ensure_bridge_script(models)?;
+            let hf_home = vieneu_dir.join("cache");
+            Ok(Box::new(vieneu::VieNeu {
+                python: py,
+                bridge,
+                site_packages,
+                hf_home,
+                voice: cfg.voice.clone(),
+                models_dir: vieneu_dir,
+            }))
         }
         _ => Err(PipelineError::ProviderError {
             provider: id.into(),

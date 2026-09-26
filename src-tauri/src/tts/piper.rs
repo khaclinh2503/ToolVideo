@@ -1,8 +1,7 @@
 use crate::{
     error::PipelineError,
-    tts::{TtsJob, TtsProvider},
+    tts::{procio::run_line_protocol, TtsJob, TtsProvider},
 };
-use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -117,101 +116,22 @@ impl Piper {
             }
         })?;
 
-        // stderr đọc song song để tiến trình con không nghẽn ống.
-        //
-        // Đọc theo byte (read_until) rồi decode lossy: `.lines()` trả `Err` ngay khi
-        // gặp byte không phải UTF-8 hợp lệ và `map_while(Result::ok)` dừng hẳn tại đó
-        // — một byte hỏng là đủ để luồng rút ống này ngừng vĩnh viễn, ống đầy lại,
-        // và treo y hệt lỗi mà driver này được viết ra để tránh. Piper in đường dẫn
-        // `output_file` (bắt nguồn từ %APPDATA%) theo codepage hệ thống chứ không phải
-        // UTF-8, nên tên người dùng có dấu là đủ để kích hoạt.
-        let stderr = child.stderr.take().expect("đã piped");
-        let err_handle = std::thread::spawn(move || {
-            let mut tail: Vec<String> = Vec::new();
-            let mut reader = BufReader::new(stderr);
-            let mut buf: Vec<u8> = Vec::new();
-            loop {
-                buf.clear();
-                match reader.read_until(b'\n', &mut buf) {
-                    Ok(0) | Err(_) => break,
-                    Ok(_) => {}
-                }
-                if buf.last() == Some(&b'\n') {
-                    buf.pop();
-                    if buf.last() == Some(&b'\r') {
-                        buf.pop();
-                    }
-                }
-                tail.push(String::from_utf8_lossy(&buf).into_owned());
-                if tail.len() > 100 {
-                    tail.remove(0);
-                }
-            }
-            tail.join("\n")
-        });
-
-        // Ghi stdin trên luồng riêng, đọc stdout trên luồng gọi — chạy song song.
-        //
-        // Ống nặc danh trên Windows có bộ đệm khoảng 4KB. Nếu ghi hết stdin rồi mới
-        // đọc stdout (như brief ban đầu mô tả), với một batch lớn (~200 cue ⇒ ~40KB
-        // JSON vào, ~12KB đường dẫn ra) sẽ nghẽn: ghi đầy bộ đệm stdin ⇒ tiến trình
-        // gọi bị chặn ở write; Piper đầy bộ đệm stdout vì không ai đọc ⇒ Piper bị
-        // chặn ở write stdout; Piper bị chặn nên ngừng đọc stdin ⇒ không bên nào
-        // tiến được nữa — treo vĩnh viễn, không lỗi, không timeout.
-        //
-        // Tách ghi stdin ra luồng riêng và đọc stdout ngay trên luồng gọi giải quyết
-        // việc này: mỗi ống luôn có người rút cạn phía bên kia bất kể ống nào đầy
-        // trước.
-        let mut stdin = child.stdin.take().expect("đã piped");
+        // Khuôn ba luồng song song (stdin riêng / stdout luồng gọi / stderr
+        // riêng, đọc theo byte + decode lossy) đã chuyển sang
+        // `tts::procio::run_line_protocol` dùng chung với `tts/vieneu.rs` —
+        // xem comment ở đó để biết lý do (treo ống 4KB trên Windows, byte
+        // không phải UTF-8 trong output_file làm chết `.lines()`).
         let lines: Vec<String> = jobs.iter().map(build_line).collect();
-        let writer_handle = std::thread::spawn(move || -> std::io::Result<()> {
-            for l in &lines {
-                stdin.write_all(l.as_bytes())?;
-                stdin.write_all(b"\n")?;
-            }
-            stdin.flush()
-            // `stdin` bị drop ở cuối closure ⇒ báo hết đầu vào cho Piper.
-        });
-
-        // Cùng lý do như stderr ở trên: đọc theo byte + decode lossy để một byte
-        // không phải UTF-8 trong đường dẫn output_file không thể chặn đứng việc rút
-        // ống stdout (và qua đó gây treo writer_handle.join() bên dưới).
-        let stdout = child.stdout.take().expect("đã piped");
-        let mut reader = BufReader::new(stdout);
-        let mut buf: Vec<u8> = Vec::new();
         let mut done = 0usize;
-        loop {
-            buf.clear();
-            match reader.read_until(b'\n', &mut buf) {
-                Ok(0) | Err(_) => break,
-                Ok(_) => {}
-            }
-            if buf.last() == Some(&b'\n') {
-                buf.pop();
-                if buf.last() == Some(&b'\r') {
-                    buf.pop();
-                }
-            }
-            let line = String::from_utf8_lossy(&buf);
-            if line.trim().is_empty() {
-                continue;
-            }
+        let (done_count, stderr_tail) = run_line_protocol(&mut child, lines, &mut |_line| {
             if done < jobs.len() {
                 on_done(jobs[done].index);
             }
             done += 1;
-        }
+        });
+        let done = done_count;
 
-        // Join luồng ghi trước khi wait(): lỗi ghi thường do tiến trình con đã
-        // chết — để phần dưới báo lỗi có ngữ cảnh (mã thoát + stderr) thay vì
-        // trả lỗi I/O trần trụi ở đây.
-        let _ = writer_handle.join();
-
-        let wait_res = child.wait();
-        // Join stderr trước khi propagate lỗi wait(): mọi luồng phải được join
-        // trên MỌI nhánh thoát, kể cả khi wait() chính nó lỗi.
-        let stderr_tail = err_handle.join().unwrap_or_default();
-        let status = wait_res.map_err(|e| PipelineError::Io(e.to_string()))?;
+        let status = child.wait().map_err(|e| PipelineError::Io(e.to_string()))?;
 
         if !status.success() || done < jobs.len() {
             let failed_index = jobs.get(done).map(|j| j.index).unwrap_or(0);

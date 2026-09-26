@@ -47,8 +47,17 @@ này không tự đặt các biến này, thiếu là lỗi cấu hình ở tầ
   HF_HOME          -> <models>/vieneu/cache (để huggingface_hub không tự tải
                        vào %USERPROFILE%\\.cache của người dùng)
   PYTHONIOENCODING -> utf-8 (văn bản tiếng Việt đi qua stdin/stdout)
+
+Môi trường TUỲ CHỌN (Task 4 — pin model cục bộ để chạy offline):
+  VIENEU_MODELS_DIR -> <models>/vieneu — thư mục gốc chứa 15 file đã pin cứng
+                       trong `components.json` (config.json, denoiser.onnx ở
+                       gốc; onnx_update/ với 7 file backbone fp32; moss/ với 6
+                       file codec ONNX). Xem `_tao_vieneu()` dưới đây để biết
+                       cách từng file được SDK dùng tới và vì sao cần vá thêm
+                       một hàm khởi tạo (không chỉ truyền tham số).
 """
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -87,6 +96,74 @@ def _tong_hop_mot_job(tts, job: dict) -> str:
     return output_file
 
 
+def _vieneu_tu_thu_muc_cuc_bo(root: Path):
+    """Khởi tạo `Vieneu(backend="onnx")` trỏ thẳng vào 15 file đã pin cứng
+    dưới `root` (= `VIENEU_MODELS_DIR`), không gọi HF Hub qua mạng.
+
+    Đối chiếu trực tiếp mã nguồn `vieneu==3.8.3` đã cài (không suy đoán):
+
+    - `onnx_dir`: `V3TurboVieNeuTTS.__init__` (`vieneu/v3turbo.py`) CHUYỂN TIẾP
+      thẳng xuống `OnnxV3LiteEngine(onnx_dir=onnx_dir, ...)`
+      (`vieneu/_v3_turbo_engine/onnx_runtime_lite.py`), nơi `onnx_dir` có mặt
+      ⇒ `vd = Path(onnx_dir)` thay vì tải qua `hf_hub_download`. Chỉ cần
+      truyền qua tham số `Vieneu(..., onnx_dir=...)` là đủ.
+    - `backbone_repo` (= `checkpoint_path` của `OnnxV3LiteEngine`) trỏ vào
+      chính `root`: `_resolve_root_file("denoiser.onnx")` kiểm
+      `Path(checkpoint_path).is_dir()` trước, đọc thẳng file cục bộ, không
+      gọi mạng. `_load_repo_voices` cũng kiểm `is_dir()` trước — thư mục cục
+      bộ không có `voices_v3_turbo.json` thì lặng lẽ bỏ qua, KHÔNG gọi mạng
+      (25 giọng preset đến từ `assets/voices_v3_turbo.json` đóng gói sẵn
+      trong gói `vieneu`, không phải từ HF Hub).
+    - `codec_dir`: đây là tham số của `OnnxV3LiteEngine`, nhưng
+      `V3TurboVieNeuTTS.__init__` KHÔNG chuyển tiếp nó xuống — nó bị nuốt vào
+      `**kwargs` rồi bỏ qua (đọc thẳng mã nguồn để xác nhận, không phải suy
+      đoán). Vì vậy không có tham số nào của `Vieneu()` đặt được `codec_dir`
+      cục bộ; phải vá tạm `OnnxV3LiteEngine.__init__` ngay trong tiến trình
+      cầu nối này (không đụng gì tới site-packages đã cài trên đĩa) để chèn
+      `codec_dir` mặc định trước khi gọi hàm khởi tạo gốc.
+    """
+    import vieneu._v3_turbo_engine.onnx_runtime_lite as _onnx_lite
+
+    codec_dir = str(root / "moss")
+    goc_init = _onnx_lite.OnnxV3LiteEngine.__init__
+
+    def _init_da_va(self, *args, **kwargs):
+        kwargs.setdefault("codec_dir", codec_dir)
+        return goc_init(self, *args, **kwargs)
+
+    _onnx_lite.OnnxV3LiteEngine.__init__ = _init_da_va
+
+    from vieneu import Vieneu
+
+    return Vieneu(backend="onnx", backbone_repo=str(root), onnx_dir=str(root / "onnx_update"))
+
+
+def _tao_vieneu():
+    """Khởi tạo `Vieneu(backend="onnx")`.
+
+    `VIENEU_MODELS_DIR` (tuỳ chọn, Rust đặt — xem `tts/vieneu.rs`) trỏ vào
+    `<models>/vieneu`: nếu biến này có mặt VÀ cả `onnx_update/` lẫn `moss/`
+    bên trong đều tồn tại (người dùng đã bấm "Tải bộ công cụ" và
+    `components.json` đã đặt đủ 15 file), dùng thẳng model cục bộ đó — không
+    gọi mạng (xem `_vieneu_tu_thu_muc_cuc_bo`).
+
+    Vắng biến này, hoặc thư mục chưa đủ (chưa cài) ⇒ hành vi CŨ của Task 3 giữ
+    nguyên: SDK tự tải qua HF Hub vào `HF_HOME`.
+    """
+    root_raw = os.environ.get("VIENEU_MODELS_DIR", "").strip()
+    if root_raw:
+        root = Path(root_raw)
+        if (root / "onnx_update").is_dir() and (root / "moss").is_dir():
+            return _vieneu_tu_thu_muc_cuc_bo(root)
+
+    from vieneu import Vieneu
+
+    # backend="onnx": ép chạy CPU, torch-free — đúng mục tiêu M7 (không phụ
+    # thuộc GPU/CUDA, không cần cài PyTorch). Không có model cục bộ (nhánh
+    # trên) ⇒ để SDK tự tải qua HF Hub vào HF_HOME như Task 3.
+    return Vieneu(backend="onnx")
+
+
 def main() -> int:
     _dam_bao_utf8()
 
@@ -94,18 +171,13 @@ def main() -> int:
     # hỏng chỉ nên xảy ra ở đây, bắt được và báo rõ qua stderr thay vì để
     # traceback trần trụi văng ra trước khi main() kịp chạy.
     try:
-        from vieneu import Vieneu
+        import vieneu  # noqa: F401
     except Exception as e:  # noqa: BLE001
         print(f"loi: không nạp được thư viện vieneu: {e}", file=sys.stderr, flush=True)
         return 1
 
     try:
-        # backend="onnx": ép chạy CPU, torch-free — đúng mục tiêu M7 (không
-        # phụ thuộc GPU/CUDA, không cần cài PyTorch). Không truyền `onnx_dir`:
-        # để SDK tự tải model ONNX (~435 MB) về HF_HOME ở lần chạy đầu; Task 4
-        # sẽ pin thư mục cục bộ đó vào components.json rồi truyền `onnx_dir`
-        # khi việc pin đã xong.
-        tts = Vieneu(backend="onnx")
+        tts = _tao_vieneu()
     except Exception as e:  # noqa: BLE001
         print(f"loi: không nạp được model VieNeu-TTS: {e}", file=sys.stderr, flush=True)
         return 1

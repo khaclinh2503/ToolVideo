@@ -20,13 +20,29 @@ fn manifest_liet_ke_du_moi_artifact_va_dung_hinh_dang() {
     // Con số ở đây là bản kiểm kê có chủ ý, không phải chi tiết cài đặt: thêm
     // hay bớt một artifact thì phải sửa cả danh sách id bên dưới, để không ai
     // lặng lẽ thêm một thứ được tải về rồi đem chạy mà không ai soát.
-    assert_eq!(s.len(), 10, "components.json phải có đủ 10 artifact");
+    // 10 (M1-M6) + 15 file model VieNeu-TTS đã pin ở Task 4 (M7) = 25.
+    assert_eq!(s.len(), 25, "components.json phải có đủ 25 artifact");
 
     let ids: Vec<&str> = s.iter().map(|c| c.id.as_str()).collect();
     for want in [
         "ffmpeg", "sherpa", "sense-voice", "sense-voice-tokens",
         "silero-vad", "piper", "piper-voice-vi", "piper-voice-vi-cfg",
         "python", "yt-dlp",
+        "vieneu-config-json",
+        "vieneu-denoiser-onnx",
+        "vieneu-onnx_update-config-json",
+        "vieneu-onnx_update-tokenizer-json",
+        "vieneu-onnx_update-vieneu_acoustic_cached-onnx",
+        "vieneu-onnx_update-vieneu_backbone_shared-data",
+        "vieneu-onnx_update-vieneu_decode_step-onnx",
+        "vieneu-onnx_update-vieneu_prefill-onnx",
+        "vieneu-onnx_update-vieneu_v3_heads-npz",
+        "vieneu-codec_browser_onnx_meta-json",
+        "vieneu-moss_audio_tokenizer_decode_full-onnx",
+        "vieneu-moss_audio_tokenizer_decode_shared-data",
+        "vieneu-moss_audio_tokenizer_decode_step-onnx",
+        "vieneu-moss_audio_tokenizer_encode-data",
+        "vieneu-moss_audio_tokenizer_encode-onnx",
     ] {
         assert!(ids.contains(&want), "thiếu component '{want}' trong {ids:?}");
     }
