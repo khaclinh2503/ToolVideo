@@ -258,7 +258,7 @@ Giao thức giống hệt `piper.exe --json-input` để tầng Rust không ph�
 mình đang gọi engine nào:
 
   stdin : mỗi dòng một JSON
-          {"text": "...", "output_file": "...", "voice": "mai_anh", "speed": 1.0}
+          {"text": "...", "output_file": "...", "voice": "Mai Anh"}
   stdout: mỗi job xong in một dòng là đường dẫn file đã ghi, rồi flush
   stderr: log và lỗi
   mã thoát khác 0 nếu có bất kỳ job nào hỏng
@@ -326,11 +326,11 @@ Nếu đỏ: báo lệnh và lỗi nguyên văn rồi dừng. **Không làm yế
 ```rust
 #[test]
 fn dong_json_gop_xuong_dong_va_mang_ten_giong() {
-    let l = build_line(&job(1, "dòng một\r\ndòng \"hai\"", 1.0), "mai_anh");
+    let l = build_line(&job(1, "dòng một\r\ndòng \"hai\"", 1.0), "Mai Anh");
     assert!(!l.contains('\n'), "dòng gửi stdin không được chứa xuống dòng");
     let v: serde_json::Value = serde_json::from_str(&l).unwrap();
     assert_eq!(v["text"], "dòng một dòng \"hai\"");
-    assert_eq!(v["voice"], "mai_anh");
+    assert_eq!(v["voice"], "Mai Anh");
 }
 
 #[test]
@@ -381,33 +381,47 @@ Môi trường cho tiến trình con:
 
 Trong `vieneu.rs`, `pub const VOICES: &[Voice]` với `Voice { id, ten, gioi, mien, phong_cach, khuyen_dung }`. Đọc từ `gguf/voices/manifest.json` của model repo ngày 2026-09-26; mặc định là `minh_quan_pro`. Đủ 25 mục:
 
-| id | tên | giới | miền | phong cách | ⭐ |
-|---|---|---|---|---|---|
-| `adam_bua` | Adam bựa | Nam | Bắc | tự nhiên | ⭐ |
-| `truc_ly` | Trúc Ly | Nữ | Bắc | tự nhiên | ⭐ |
-| `anh_khoi` | Anh Khôi | Nam | Bắc | kể chuyện | ⭐ |
-| `mai_anh` | Mai Anh | Nữ | Bắc | tin tức | ⭐ |
-| `minh_quan_pro` | Minh Quân Pro | Nam | Bắc | tự nhiên | ⭐ |
-| `thuy_dung` | Thùy Dung | Nữ | Nam | tin tức | ⭐ |
-| `thien_tam_duc` | Thiền Tâm Đức | Nam | Bắc | kể chuyện | ⭐ |
-| `ngoc_huyen` | Ngọc Huyền | Nữ | Bắc | tự nhiên | ⭐ |
-| `quang_son` | Quang Sơn | Nam | Trung | tự nhiên | ⭐ |
-| `ngoc_tran` | Ngọc Trân | Nữ | Trung | tự nhiên | ⭐ |
-| `minh_duc` | Minh Đức | Nam | Bắc | tin tức | |
-| `pham_tuyen` | Phạm Tuyên | Nam | Bắc | tự nhiên | |
-| `thai_son` | Thái Sơn | Nam | Nam | kể chuyện | |
-| `xuan_vinh` | Xuân Vĩnh | Nam | Bắc | tự nhiên | |
-| `thanh_binh` | Thanh Bình | Nam | Bắc | kể chuyện | |
-| `ngoc_linh` | Ngọc Linh | Nữ | Bắc | kể chuyện | |
-| `doan_trang` | Đoan Trang | Nữ | Bắc | tự nhiên | |
-| `thuc_doan` | Thục Đoan | Nữ | Nam | kể chuyện | |
-| `minh_triet` | Minh Triết | Nam | Nam | tin tức | |
-| `my_duyen` | Mỹ Duyên | Nữ | Nam | đọc truyện | |
-| `quynh_anh` | Quỳnh Anh | Nữ | Bắc | đọc truyện | |
-| `duc_tri` | Đức Trí | Nam | Nam | đọc truyện | |
-| `kim_thanh` | Kim Thanh | Nữ | Nam | đọc truyện | |
-| `adam` | Adam | Nam | Nam | tự nhiên | |
-| `manh_dung` | Mạnh Dũng | Nam | Bắc | tự nhiên | |
+> **ĐÃ SỬA 2026-09-26 sau khi chạy SDK thật.** Bảng cũ lấy từ
+> `gguf/voices/manifest.json` trên HuggingFace và **sai hai lần**:
+> (1) SDK **không** nhận id dạng slug (`mai_anh`) — truyền vào là lỗi
+> `Voice 'mai_anh' not found`; nó chỉ nhận **tên hiển thị có dấu**;
+> (2) bộ giọng của đường GGUF **khác** bộ của đường ONNX/Python — manifest có
+> `Anh Khôi`, `Minh Quân Pro`, `Mạnh Dũng` mà SDK không có, còn SDK có
+> `Thiện Minh` và `Quốc Tuấn` mà manifest không có.
+>
+> Nguồn sự thật là `list_preset_voices()` của SDK đã cài, không phải
+> HuggingFace. Bảng dưới đây lấy từ đó.
+>
+> Lưu ý: `Mạnh Dũng` — một trong hai tên khớp app gốc — **không dùng được**.
+> Chỉ còn `Ngọc Huyền`.
+
+| tên (giá trị truyền cho `voice=`) | giới | miền | phong cách | ⭐ |
+|---|---|---|---|---|
+| `Adam bựa` | Nam | Bắc | tự nhiên | ⭐ |
+| `Trúc Ly` | Nữ | Bắc | tự nhiên | ⭐ |
+| `Thiện Minh` | Nam | Bắc | kể chuyện | ⭐ |
+| `Mai Anh` | Nữ | Bắc | tin tức | ⭐ |
+| `Hải Đăng` | Nam | Bắc | tự nhiên | ⭐ |
+| `Thùy Dung` | Nữ | Nam | tin tức | ⭐ |
+| `Thiền Tâm Đức` | Nam | Bắc | kể chuyện | ⭐ |
+| `Ngọc Huyền` | Nữ | Bắc | tự nhiên | ⭐ |
+| `Quang Sơn` | Nam | Trung | tự nhiên | ⭐ |
+| `Ngọc Trân` | Nữ | Trung | tự nhiên | ⭐ |
+| `Minh Đức` | Nam | Bắc | tin tức |  |
+| `Phạm Tuyên` | Nam | Bắc | tự nhiên |  |
+| `Thái Sơn` | Nam | Nam | kể chuyện |  |
+| `Xuân Vĩnh` | Nam | Bắc | tự nhiên |  |
+| `Thanh Bình` | Nam | Bắc | kể chuyện |  |
+| `Ngọc Linh` | Nữ | Bắc | kể chuyện |  |
+| `Đoan Trang` | Nữ | Bắc | tự nhiên |  |
+| `Thục Đoan` | Nữ | Nam | kể chuyện |  |
+| `Minh Triết` | Nam | Nam | tin tức |  |
+| `Mỹ Duyên` | Nữ | Nam | đọc truyện |  |
+| `Quỳnh Anh` | Nữ | Bắc | đọc truyện |  |
+| `Đức Trí` | Nam | Nam | đọc truyện |  |
+| `Kim Thanh` | Nữ | Nam | đọc truyện |  |
+| `Adam` | Nam | Nam | tự nhiên |  |
+| `Quốc Tuấn` | Nam | Bắc | tự nhiên |  |
 
 - [ ] **Bước 2: Test**
 
@@ -458,7 +472,7 @@ fn doi_giong_khac_tan_so_thi_tu_choi_truoc_khi_goi_engine() {
     // Manifest ghi 22050 (đã lồng tiếng bằng Piper), provider giả báo 48000.
     // Nếu cho chạy, wav 48 kHz sẽ nằm dưới manifest 22 kHz và chỉ vỡ lúc Xuất.
     let (d, p) = dung_fixture_manifest_22050_voi_provider_48000();
-    let err = preview(&d, &p, "mai_anh", 1.0, "vi", 1, None, &FitOpts::default()).unwrap_err();
+    let err = preview(&d, &p, "Mai Anh", 1.0, "vi", 1, None, &FitOpts::default()).unwrap_err();
     assert!(err.to_string().contains("chạy lại Lồng tiếng"), "nhận: {err}");
     assert!(err.to_string().contains("48000"), "phải nói rõ hai con số: {err}");
     assert!(p.calls().is_empty(), "không được gọi engine rồi mới từ chối");
@@ -502,7 +516,7 @@ Dựng `VieNeu` từ `models_dir()`. Thiếu Python hoặc thiếu gói ⇒ lỗ
 
 - [ ] **Bước 2: Đổi nhà cung cấp phải đặt lại giọng**
 
-Giọng VieNeu (`"mai_anh"`) và giọng Piper (`"vi_VN-vais1000-medium"`) là hai không gian tên khác nhau. Khi người dùng đổi nhà cung cấp, đặt `voice` về mặc định của nhà cung cấp mới thay vì mang theo một giá trị vô nghĩa.
+Giọng VieNeu (`"Mai Anh"`) và giọng Piper (`"vi_VN-vais1000-medium"`) là hai không gian tên khác nhau. Khi người dùng đổi nhà cung cấp, đặt `voice` về mặc định của nhà cung cấp mới thay vì mang theo một giá trị vô nghĩa.
 
 - [ ] **Bước 3: Giao diện Bước 5**
 
@@ -529,7 +543,7 @@ Tổng hợp cùng một câu ở tốc độ nền và ở tốc độ nhanh. T
 
 - [ ] **Bước 2: Chọn giọng có tác dụng thật**
 
-Tổng hợp cùng một câu bằng hai giọng khác giới (`mai_anh` nữ và `manh_dung` nam), khẳng định hai file **khác nhau** theo sha256. Đây là test bắt được lỗi "tham số voice bị engine bỏ qua" — đúng loại lỗi đã xảy ra với `length_scale`.
+Tổng hợp cùng một câu bằng hai giọng khác giới (`Mai Anh` nữ và `Hải Đăng` nam — **không** dùng `Mạnh Dũng`, giọng đó không có trong SDK), khẳng định hai file **khác nhau** theo sha256. Đây là test bắt được lỗi "tham số voice bị engine bỏ qua" — đúng loại lỗi đã xảy ra với `length_scale`.
 
 - [ ] **Bước 3: Tần số đúng 48000**
 
