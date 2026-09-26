@@ -30,3 +30,7 @@ target
 
 # Project-local tooling (not part of the app source)
 .superpowers/
+
+# Bytecode Python phát sinh khi test chạy vieneu_bridge.py
+__pycache__/
+*.pyc
