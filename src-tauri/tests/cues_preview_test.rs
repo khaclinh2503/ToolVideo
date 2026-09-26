@@ -315,3 +315,23 @@ fn cung_tan_so_thi_van_nghe_thu_duoc() {
         .expect("cùng tần số thì phải chạy được");
     assert!(!p.calls().is_empty(), "engine phải được gọi");
 }
+
+#[test]
+fn ten_tep_tam_van_giu_duoi_wav() {
+    use app_lib::cues::duong_dan_tam;
+    use std::path::Path;
+    // Cầu nối VieNeu ghi bằng `soundfile`, thư viện đó suy định dạng từ ĐUÔI
+    // tệp. Đã chạy thật và xác nhận: `.wav.tmp` ⇒ mã thoát 1, "unable to get
+    // format from file extension", không có file nào được ghi; `.tmp.wav` ⇒
+    // mã thoát 0, file ghi đúng. Piper không dính vì nó ghi wav bất kể đuôi,
+    // nên lỗi này chỉ lộ ra sau khi thêm VieNeu.
+    let t = duong_dan_tam(Path::new("C:/du an/tts/segments/cue-0001.wav"));
+    assert_eq!(
+        t.extension().and_then(|e| e.to_str()),
+        Some("wav"),
+        "tệp tạm phải còn đuôi .wav, nhận {}",
+        t.display()
+    );
+    // Và phải KHÁC file thật, nếu không thì tmp+rename mất tác dụng.
+    assert_ne!(t, Path::new("C:/du an/tts/segments/cue-0001.wav"));
+}

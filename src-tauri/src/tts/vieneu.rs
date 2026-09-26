@@ -192,7 +192,7 @@ pub fn ep_toc_do_tep(
             return Ok(());
         }
         let atempo = atempo_tu_length_scale(length_scale)?;
-        let tmp = tep.with_extension("wav.tmp");
+        let tmp = tep.with_extension("tmp.wav");
         let args = build_atempo_args(tep, &tmp, atempo);
 
         let mut cmd = Command::new(ffmpeg);
@@ -240,7 +240,7 @@ pub fn build_atempo_args(vao: &Path, ra: &Path, atempo: f32) -> Vec<String> {
         format!("atempo={atempo:.6}"),
         "-c:a".into(),
         "pcm_s16le".into(),
-        // BẮT BUỘC: đầu ra là tệp tạm đuôi `.wav.tmp`, ffmpeg không suy ra được
+        // BẮT BUỘC: đầu ra là tệp tạm, ffmpeg không phải lúc nào cũng suy ra được
         // định dạng từ đuôi đó và sẽ bỏ ngang với "Unable to choose an output
         // format". Test đơn vị so chuỗi tham số KHÔNG bắt được lỗi này — chỉ
         // E2E chạy ffmpeg thật mới thấy.

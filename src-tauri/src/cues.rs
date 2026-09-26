@@ -146,6 +146,19 @@ pub struct PreviewResult {
     pub unconstrained: bool,
 }
 
+/// Tên tệp tạm cho wav đang sinh dở.
+///
+/// Đuôi PHẢI còn là `.wav`. Cầu nối VieNeu ghi bằng `soundfile`, thư viện đó
+/// suy định dạng từ ĐUÔI tệp và bỏ ngang với "unable to get format from file
+/// extension" nếu gặp `.tmp`. Đã xảy ra thật: `.wav.tmp` làm Nghe thử hỏng
+/// 100% với VieNeu (Piper không dính vì nó ghi wav bất kể đuôi).
+///
+/// Cùng họ lỗi với cờ `-f wav` phải thêm cho ffmpeg ở bước ép tốc độ — ở đây
+/// không có cờ nào để ép, nên phải đặt tên đúng ngay từ đầu.
+pub fn duong_dan_tam(out: &Path) -> PathBuf {
+    out.with_extension("tmp.wav")
+}
+
 /// Tổng hợp lại đúng một cue, ghi đè wav thật và cập nhật manifest.
 ///
 /// KHÔNG gọi `run_retime_stage`: guard của nó so manifest với SRT trước khi làm
@@ -236,7 +249,7 @@ pub fn preview(
     // hết đĩa, đóng app) thì để nguyên wav thật cũ — người dùng không mất giọng
     // đã sinh trước đó, và manifest (chỉ lưu sau rename) không thể nói dối về
     // một wav chưa từng tồn tại.
-    let tmp = out.with_extension("wav.tmp");
+    let tmp = duong_dan_tam(&out);
 
     let synth = |scale: f32| -> Result<u64, PipelineError> {
         p.synthesize(

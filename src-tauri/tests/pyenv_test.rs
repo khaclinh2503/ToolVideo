@@ -41,3 +41,12 @@ fn requirements_nhung_vao_binary_co_hash() {
         "thiếu hash đã pin — --require-hashes sẽ không có gì để đối chiếu"
     );
 }
+
+#[test]
+fn components_ready_tinh_ca_buoc_cai_goi_python() {
+    // Thư mục trống: artifact thiếu VÀ gói python thiếu ⇒ phải là chưa sẵn sàng.
+    // Nếu components_ready chỉ tính artifact thì giao diện sẽ ẩn mất nút "Tải bộ
+    // công cụ" ngay khi tải xong file, trong khi 79 gói python chưa hề được cài.
+    let d = tempfile::tempdir().unwrap();
+    assert!(!app_lib::pyenv::is_installed(d.path()), "thư mục trống ⇒ chưa cài gói");
+}

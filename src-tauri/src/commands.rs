@@ -237,7 +237,11 @@ pub async fn download_video(app: tauri::AppHandle, url: String) -> Result<String
 
 #[tauri::command]
 pub fn components_ready() -> Result<bool, String> {
-    crate::components::all_installed(&crate::config::models_dir()).map_err(|e| e.to_string())
+    let models = crate::config::models_dir();
+    // Phải tính CẢ bước cài gói Python: thiếu nó thì VieNeu không chạy được,
+    // mà giao diện lại ẩn mất đúng nút "Tải bộ công cụ" mà thông báo lỗi bảo bấm.
+    let artifacts = crate::components::all_installed(&models).map_err(|e| e.to_string())?;
+    Ok(artifacts && crate::pyenv::is_installed(&models))
 }
 
 #[tauri::command]
@@ -259,6 +263,24 @@ pub async fn ensure_components(app: tauri::AppHandle) -> Result<(), String> {
                 },
             };
             let _ = app.emit("component_progress", ev);
+        })
+        .map_err(|e| e.to_string())?;
+
+        // Cài gói Python cho VieNeu. KHÔNG nằm trong `install_all` vì đó là cây
+        // thư mục chứ không phải một artifact tải theo sha256 — nhưng nếu không
+        // gọi ở đây thì 79 gói không bao giờ được cài và VieNeu không chạy được
+        // trên bất kỳ máy nào. Đã từng thiếu đúng lời gọi này.
+        crate::pyenv::install(&models, &mut |dong| {
+            let _ = app.emit(
+                "component_progress",
+                ComponentProgressEvent {
+                    id: "vieneu-packages".into(),
+                    phase: "extract",
+                    done: 0,
+                    total: 0,
+                },
+            );
+            let _ = dong;
         })
         .map_err(|e| e.to_string())
     })
