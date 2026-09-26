@@ -50,6 +50,19 @@ fn list_entries(path: &std::path::Path, archive: Archive) -> Vec<String> {
                 }
             }
         }
+        Archive::TarGz => {
+            if let Ok(f) = std::fs::File::open(path) {
+                let dec = flate2::read::GzDecoder::new(f);
+                let mut t = tar::Archive::new(dec);
+                if let Ok(entries) = t.entries() {
+                    for e in entries.flatten() {
+                        if let Ok(p) = e.path() {
+                            out.push(p.to_string_lossy().to_string());
+                        }
+                    }
+                }
+            }
+        }
         Archive::Raw => {}
     }
     out

@@ -10,6 +10,8 @@ pub enum Archive {
     Zip,
     #[serde(rename = "tar.bz2")]
     TarBz2,
+    #[serde(rename = "tar.gz")]
+    TarGz,
     #[serde(rename = "raw")]
     Raw,
 }
@@ -170,6 +172,37 @@ fn target_for(files: &[FileMap], entry: &str) -> Option<String> {
     None
 }
 
+/// Duyệt mọi entry của một tarball đã giải nén (`dec`), chép các file được
+/// khai báo trong `spec.files` vào `models`, gom đích đã ghi vào `written`.
+/// Dùng chung cho `TarBz2` và `TarGz` — hai định dạng chỉ khác nhau ở lớp
+/// giải nén phía trước, còn phần duyệt entry, `safe_join` chống path
+/// traversal, và xử lý `from` kết bằng '/' thì giống hệt nhau.
+fn extract_tar_entries(
+    dec: impl Read,
+    spec: &ComponentSpec,
+    models: &Path,
+    written: &mut Vec<String>,
+) -> Result<(), PipelineError> {
+    let mut t = tar::Archive::new(dec);
+    for e in t.entries().map_err(|e| PipelineError::Io(e.to_string()))? {
+        let mut e = e.map_err(|e| PipelineError::Io(e.to_string()))?;
+        if !e.header().entry_type().is_file() {
+            continue;
+        }
+        let name = e
+            .path()
+            .map_err(|e| PipelineError::Io(e.to_string()))?
+            .to_string_lossy()
+            .replace('\\', "/");
+        let Some(to) = target_for(&spec.files, &name) else { continue };
+        let mut data = Vec::new();
+        e.read_to_end(&mut data).map_err(|e| PipelineError::Io(e.to_string()))?;
+        write_member(models, &to, &data)?;
+        written.push(to);
+    }
+    Ok(())
+}
+
 /// Đặt các file khai báo trong `spec.files` từ `archive_path` vào `models`.
 /// Trả danh sách đích tương đối đã ghi (dùng '/').
 pub fn place_files(
@@ -212,23 +245,12 @@ pub fn place_files(
         Archive::TarBz2 => {
             let f = std::fs::File::open(archive_path).map_err(|e| PipelineError::Io(e.to_string()))?;
             let dec = bzip2::read::BzDecoder::new(f);
-            let mut t = tar::Archive::new(dec);
-            for e in t.entries().map_err(|e| PipelineError::Io(e.to_string()))? {
-                let mut e = e.map_err(|e| PipelineError::Io(e.to_string()))?;
-                if !e.header().entry_type().is_file() {
-                    continue;
-                }
-                let name = e
-                    .path()
-                    .map_err(|e| PipelineError::Io(e.to_string()))?
-                    .to_string_lossy()
-                    .replace('\\', "/");
-                let Some(to) = target_for(&spec.files, &name) else { continue };
-                let mut data = Vec::new();
-                e.read_to_end(&mut data).map_err(|e| PipelineError::Io(e.to_string()))?;
-                write_member(models, &to, &data)?;
-                written.push(to);
-            }
+            extract_tar_entries(dec, spec, models, &mut written)?;
+        }
+        Archive::TarGz => {
+            let f = std::fs::File::open(archive_path).map_err(|e| PipelineError::Io(e.to_string()))?;
+            let dec = flate2::read::GzDecoder::new(f);
+            extract_tar_entries(dec, spec, models, &mut written)?;
         }
     }
 

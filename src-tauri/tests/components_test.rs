@@ -20,13 +20,13 @@ fn manifest_liet_ke_du_moi_artifact_va_dung_hinh_dang() {
     // Con số ở đây là bản kiểm kê có chủ ý, không phải chi tiết cài đặt: thêm
     // hay bớt một artifact thì phải sửa cả danh sách id bên dưới, để không ai
     // lặng lẽ thêm một thứ được tải về rồi đem chạy mà không ai soát.
-    assert_eq!(s.len(), 9, "components.json phải có đủ 9 artifact");
+    assert_eq!(s.len(), 10, "components.json phải có đủ 10 artifact");
 
     let ids: Vec<&str> = s.iter().map(|c| c.id.as_str()).collect();
     for want in [
         "ffmpeg", "sherpa", "sense-voice", "sense-voice-tokens",
         "silero-vad", "piper", "piper-voice-vi", "piper-voice-vi-cfg",
-        "yt-dlp",
+        "python", "yt-dlp",
     ] {
         assert!(ids.contains(&want), "thiếu component '{want}' trong {ids:?}");
     }
@@ -204,6 +204,20 @@ fn make_tar_bz2(path: &std::path::Path, entries: &[(&str, &[u8])]) {
     t.into_inner().unwrap().finish().unwrap();
 }
 
+fn make_tar_gz(path: &std::path::Path, entries: &[(&str, &[u8])]) {
+    let f = std::fs::File::create(path).unwrap();
+    let enc = flate2::write::GzEncoder::new(f, flate2::Compression::fast());
+    let mut t = tar::Builder::new(enc);
+    for (name, data) in entries {
+        let mut h = tar::Header::new_gnu();
+        h.set_size(data.len() as u64);
+        h.set_mode(0o644);
+        h.set_cksum();
+        t.append_data(&mut h, *name, *data).unwrap();
+    }
+    t.into_inner().unwrap().finish().unwrap();
+}
+
 #[test]
 fn place_raw_renames_download_to_target() {
     let dir = tempfile::tempdir().unwrap();
@@ -281,6 +295,21 @@ fn place_tar_bz2_copies_subtree() {
     );
     assert_eq!(std::fs::read(models.join("sherpa/onnxruntime.dll")).unwrap(), b"DLL");
     assert!(!models.join("sherpa/x.h").exists());
+}
+
+#[test]
+fn giai_nen_duoc_tar_gz() {
+    // Đây đúng định dạng mà python-build-standalone phát hành (.tar.gz),
+    // dựng ngay trong test: không phụ thuộc mạng.
+    let dir = tempfile::tempdir().unwrap();
+    let models = dir.path().join("models");
+    let tgz = dir.path().join("x.tar.gz");
+    make_tar_gz(&tgz, &[("python/python.exe", b"hello")]);
+
+    let s = spec("python", Archive::TarGz, vec![(Some("python/python.exe"), "python/python.exe")]);
+    place_files(&tgz, &s, &models).unwrap();
+
+    assert_eq!(std::fs::read(models.join("python/python.exe")).unwrap(), b"hello");
 }
 
 #[test]
