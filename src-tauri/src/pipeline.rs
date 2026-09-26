@@ -112,6 +112,17 @@ pub fn run_translate_stage(
 
     let translated = translate_segments(p, &segs, src, tgt)?;
 
+    // Cắt cue dài thành phụ đề một dòng, theo ranh giới câu.
+    //
+    // Cắt SAU khi dịch chứ không phải trước: dịch cả câu rồi mới cắt thì ngữ
+    // pháp tiếng Việt mới đúng; cắt trước rồi dịch từng mảnh sẽ ra những câu
+    // cụt lủn vì model không thấy được cả câu.
+    //
+    // Đo trên một dự án thật (193 cue): trung vị 43 ký tự nhưng cue dài nhất
+    // 987 ký tự trải 34,5 giây — một đoạn VAD không bao giờ ngắt. Một nửa số
+    // cue vượt một dòng.
+    let translated = srt::cat_cue_dai(&translated, srt::MAX_MOT_DONG);
+
     let tmp_path = sub.join(format!("translated.{tgt}.srt.tmp"));
     std::fs::write(&tmp_path, srt::write_srt(&translated)).map_err(|e| PipelineError::Io(e.to_string()))?;
     std::fs::rename(&tmp_path, &srt_path).map_err(|e| PipelineError::Io(e.to_string()))?;
