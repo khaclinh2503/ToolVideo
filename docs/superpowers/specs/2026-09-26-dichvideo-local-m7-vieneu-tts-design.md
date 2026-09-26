@@ -155,7 +155,23 @@ thức dòng thay vì gọi một tiến trình mỗi cue: nạp model mất và
 
 ### 5.2b Thuỷ vân
 
-`infer()` nhúng thuỷ vân vào audio sinh ra, mặc định bật. **Giữ nguyên bật.**
+> **ĐÍNH CHÍNH 2026-09-26 sau review tổng.** Mục này từng khẳng định thuỷ vân
+> "giữ nguyên bật". **Sai.** `infer()` có `apply_watermark=True` và cầu nối
+> không tắt nó, nhưng `resemble-perth` **không nằm trong 79 gói đã pin**, nên
+> `BaseVieneuTTS._init_watermarker()` đặt `watermarker = None` và
+> `_apply_watermark()` trả về dạng sóng nguyên vẹn. **Không có thuỷ vân nào
+> được nhúng.**
+>
+> Lý do không thêm được một cách vô hại: `resemble-perth` kéo theo
+> **torch + torchaudio** — đúng thứ cả M7 được thiết kế để tránh (mục 4 nói rõ
+> đường CPU của VieNeu là torch-free, và đó là lý do bộ cài "chỉ" 775 MB thay
+> vì hơn gấp đôi).
+>
+> Trạng thái: **chờ người dùng quyết**. Giữ nguyên như hiện tại (không thuỷ
+> vân, không torch) hay chấp nhận thêm vài trăm MB để bật.
+
+`infer()` nhúng thuỷ vân vào audio sinh ra, mặc định bật, **nhưng xem đính chính
+ở trên — thực tế nó không chạy.** Ý định thiết kế vẫn là **giữ bật**.
 
 Dự án này cố ý loại bỏ watermark của app gốc, nhưng hai thứ khác hẳn nhau: cái
 kia là watermark **thương hiệu** dán lên sản phẩm của người dùng, còn cái này là
