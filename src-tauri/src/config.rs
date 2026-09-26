@@ -155,5 +155,11 @@ pub fn save_config(cfg: &AppConfig) -> Result<(), PipelineError> {
         std::fs::create_dir_all(dir).map_err(|e| PipelineError::Io(e.to_string()))?;
     }
     let json = serde_json::to_string_pretty(cfg).map_err(|e| PipelineError::Io(e.to_string()))?;
-    std::fs::write(&p, json).map_err(|e| PipelineError::Io(e.to_string()))
+    // tmp + rename như mọi chỗ ghi quan trọng khác trong dự án. Ghi thẳng thì
+    // tắt máy đúng lúc để lại một `config.json` cụt, và `load_config` lặng lẽ
+    // quay về mặc định — người dùng mất hết cấu hình mà chỉ thấy một dòng
+    // stderr không ai đọc.
+    let tmp = p.with_extension("json.tmp");
+    std::fs::write(&tmp, json).map_err(|e| PipelineError::Io(e.to_string()))?;
+    std::fs::rename(&tmp, &p).map_err(|e| PipelineError::Io(e.to_string()))
 }

@@ -1,6 +1,6 @@
 use crate::error::PipelineError;
 use sha2::{Digest, Sha256};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub mod manifest;
 pub mod piper;
@@ -27,6 +27,14 @@ pub trait TtsProvider {
         jobs: &[TtsJob],
         on_done: &mut dyn FnMut(usize),
     ) -> Result<(), PipelineError>;
+
+    /// Dọn file phụ trợ mà provider tự sinh ra trong `seg_dir` và nay không còn
+    /// cue nào dùng tới. `van_ban_con_lai` là toàn bộ text của bản lồng tiếng
+    /// hiện hành.
+    ///
+    /// Mặc định không làm gì: Piper không sinh file phụ nào. VieNeu giữ bản gốc
+    /// tốc độ tự nhiên nên cần dọn, và pipeline không phải biết chi tiết đó.
+    fn don_rac(&self, _seg_dir: &Path, _van_ban_con_lai: &[String]) {}
 }
 
 /// Khoá cache: đổi provider/voice/tốc độ/text ⇒ đổi khoá.
@@ -43,7 +51,6 @@ pub fn cache_key(provider: &str, voice: &str, length_scale: f32, text: &str) -> 
 }
 
 use crate::config::TtsConfig;
-use std::path::Path;
 
 /// Đọc `audio.sample_rate` từ file `<voice>.onnx.json` cạnh model.
 /// Piper cài kèm file này (Phase A); nó khai báo tần số lấy mẫu thật của giọng
@@ -93,7 +100,12 @@ pub fn make_provider(
             let vieneu_dir = models.join("vieneu");
             let onnx_update = vieneu_dir.join("onnx_update");
             let moss = vieneu_dir.join("moss");
-            for p in [&py, &site_packages.join("vieneu").join("__init__.py"), &onnx_update, &moss] {
+            // ffmpeg nằm trong danh sách vì bước ép tốc độ `atempo` bắt buộc
+            // cần nó. Thiếu mà không kiểm ở đây thì người dùng chờ hết cả mẻ
+            // tổng hợp (có thể 6 phút) rồi mới nhận lỗi, và toàn bộ công sinh
+            // audio bị vứt vì manifest chưa được lưu.
+            let ffmpeg = models.join("ffmpeg").join("ffmpeg.exe");
+            for p in [&py, &site_packages.join("vieneu").join("__init__.py"), &onnx_update, &moss, &ffmpeg] {
                 if !p.exists() {
                     return Err(PipelineError::EngineMissing(format!(
                         "vieneu ({}) — bấm 'Tải bộ công cụ' để cài",
@@ -124,9 +136,7 @@ pub fn make_provider(
                 hf_home,
                 voice,
                 models_dir: vieneu_dir,
-                // VieNeu không tự ép tốc độ đọc được; bước `atempo` hậu xử lý
-                // trong `synthesize` cần ffmpeg, nên provider phải cầm đường dẫn.
-                ffmpeg: models.join("ffmpeg").join("ffmpeg.exe"),
+                ffmpeg,
             }))
         }
         _ => Err(PipelineError::ProviderError {

@@ -306,6 +306,9 @@ pub fn run_tts_stage(
             }
         }
     }
+    // Provider tự dọn file phụ trợ của mình (VieNeu giữ bản gốc tốc độ tự nhiên).
+    let van_ban: Vec<String> = m.segments.iter().map(|s| s.text.clone()).collect();
+    p.don_rac(&seg_dir, &van_ban);
 
     Ok(TtsResult {
         manifest_path,

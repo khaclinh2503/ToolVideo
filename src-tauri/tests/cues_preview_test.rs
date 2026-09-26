@@ -190,7 +190,10 @@ impl FailSecondPass {
 }
 
 impl TtsProvider for FailSecondPass {
-    fn id(&self) -> &'static str { "failsecond" }
+    // Cùng id với manifest fixture ("scaled"): test này kiểm việc lượt hai hỏng
+    // thì wav và manifest cũ còn nguyên, KHÔNG kiểm guard đổi giọng. Để id khác
+    // là bị guard chặn trước khi tới được phần cần kiểm.
+    fn id(&self) -> &'static str { "scaled" }
     fn sample_rate(&self) -> u32 { 1000 }
     fn synthesize(&self, jobs: &[TtsJob], on_done: &mut dyn FnMut(usize)) -> Result<(), PipelineError> {
         let mut c = self.calls.borrow_mut();
@@ -334,4 +337,23 @@ fn ten_tep_tam_van_giu_duoi_wav() {
     );
     // Và phải KHÁC file thật, nếu không thì tmp+rename mất tác dụng.
     assert_ne!(t, Path::new("C:/du an/tts/segments/cue-0001.wav"));
+}
+
+#[test]
+fn doi_giong_cung_tan_so_thi_van_tu_choi() {
+    // M1: guard chỉ so tần số là chưa đủ. Đổi giọng TRONG CÙNG một nhà cung cấp
+    // giữ nguyên 48000 Hz, nên nghe thử vẫn chạy và ghi một cue giọng mới vào
+    // giữa một bản lồng tiếng giọng cũ — Bước 4 phát ra một cue lạc giọng mà
+    // không cảnh báo gì.
+    let d = tempfile::tempdir().unwrap();
+    write_srt(d.path(), &[("Câu một", 0, 1000), ("Câu hai", 2000, 3000)]);
+    write_manifest(d.path(), vec![entry(1, 0, "Câu một"), entry(2, 2000, "Câu hai")]);
+
+    let p = ScaledTts::new(300);
+    // Manifest fixture ghi voice = "v"; đây là một giọng khác, cùng provider.
+    let err = preview(d.path(), &p, "giong-khac", 1.0, "vi", 1, None, &FitOpts::default())
+        .unwrap_err();
+    assert!(err.to_string().contains("chạy lại Lồng tiếng"), "nhận: {err}");
+    assert!(err.to_string().contains("giong-khac"), "phải nêu giọng mới: {err}");
+    assert!(p.calls().is_empty(), "không được gọi engine rồi mới từ chối");
 }

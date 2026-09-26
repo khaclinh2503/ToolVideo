@@ -213,6 +213,19 @@ pub fn preview(
             m.sample_rate
         )));
     }
+    // Tần số thôi chưa đủ: đổi giọng TRONG CÙNG một nhà cung cấp giữ nguyên
+    // 48000 Hz, nên guard trên cho lọt. Khi đó Nghe thử ghi một cue giọng mới
+    // vào giữa một bản lồng tiếng giọng cũ, và Bước 4 phát ra một cue lạc giọng
+    // mà không cảnh báo gì.
+    if m.provider != p.id() || m.voice != voice.trim() {
+        return Err(PipelineError::Io(format!(
+            "Giọng đọc đã đổi ('{}' của {} so với '{}' của {} trong bản lồng tiếng hiện có) — chạy lại Lồng tiếng trước",
+            voice.trim(),
+            p.id(),
+            m.voice,
+            m.provider
+        )));
+    }
 
     // Ghép manifest với SRT theo VỊ TRÍ, giống hệt `cues::list` (`m.segments.get(i)`)
     // và guard của `run_export_stage` (`current_segs.iter().zip(m.segments.iter())`)

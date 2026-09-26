@@ -59,8 +59,29 @@ fn no_window(cmd: &mut Command) {
 }
 
 /// Đã cài = tồn tại `vieneu/__init__.py` bên trong `site_packages(models)`.
+/// Vân tay của `vieneu-requirements.txt` đang được biên dịch cùng binary.
+/// Ghi cạnh cây gói để biết cây đó cài từ bản requirements nào.
+fn van_tay_requirements() -> String {
+    use sha2::{Digest, Sha256};
+    format!("{:x}", Sha256::digest(REQUIREMENTS.as_bytes()))
+}
+
+fn duong_dan_van_tay(models: &Path) -> PathBuf {
+    site_packages(models).join(".requirements-sha256")
+}
+
+/// Đã cài = có file mốc trong gói VÀ vân tay khớp bản requirements hiện hành.
+///
+/// Chỉ kiểm sự tồn tại là không đủ: nâng cấp app kèm `vieneu-requirements.txt`
+/// mới sẽ không cài lại gì cả, cây gói cũ ở lại, và lỗi lộ ra rất muộn ở chỗ
+/// cầu nối kiểm chữ ký SDK — một thông báo đúng nhưng khó hiểu.
 pub fn is_installed(models: &Path) -> bool {
-    site_packages(models).join(MARKER_REL).exists()
+    if !site_packages(models).join(MARKER_REL).exists() {
+        return false;
+    }
+    std::fs::read_to_string(duong_dan_van_tay(models))
+        .map(|s| s.trim() == van_tay_requirements())
+        .unwrap_or(false)
 }
 
 /// Cài các gói trong `vieneu-requirements.txt` vào `site_packages(models)`.
@@ -166,6 +187,11 @@ pub fn install(models: &Path, on_line: &mut dyn FnMut(&str)) -> Result<(), Pipel
         std::fs::remove_dir_all(&target).map_err(|e| PipelineError::Io(e.to_string()))?;
     }
     std::fs::rename(&tmp_target, &target).map_err(|e| PipelineError::Io(e.to_string()))?;
+
+    // Ghi vân tay SAU khi cây gói đã vào đúng chỗ: hỏng trước bước này thì
+    // `is_installed` trả false và lần sau cài lại, thay vì tưởng là xong.
+    std::fs::write(duong_dan_van_tay(models), van_tay_requirements())
+        .map_err(|e| PipelineError::Io(e.to_string()))?;
 
     if !is_installed(models) {
         return Err(PipelineError::EngineFailed {

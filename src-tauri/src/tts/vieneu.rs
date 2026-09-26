@@ -177,16 +177,19 @@ pub fn atempo_tu_length_scale(length_scale: f32) -> Result<f32, PipelineError> {
 /// Giữ bản gốc rồi chỉ chạy lại `atempo` biến bước khớp giọng thành phép biến
 /// đổi xác định trên đúng dạng sóng mà `fit_scale` đã đo — và bỏ luôn vài phút
 /// sinh lại mỗi lần xuất.
-fn duong_dan_goc(out: &Path, voice: &str, text: &str) -> PathBuf {
+fn khoa_goc(voice: &str, text: &str) -> String {
     use sha2::{Digest, Sha256};
     let mut h = Sha256::new();
     h.update(voice.as_bytes());
     h.update(b"
 ");
     h.update(text.as_bytes());
-    let khoa = format!("{:x}", h.finalize());
+    format!("{:x}", h.finalize())[..16].to_string()
+}
+
+fn duong_dan_goc(out: &Path, voice: &str, text: &str) -> PathBuf {
     let thu_muc = out.parent().map(|d| d.join(".goc")).unwrap_or_else(|| PathBuf::from(".goc"));
-    thu_muc.join(format!("{}.wav", &khoa[..16]))
+    thu_muc.join(format!("{}.wav", khoa_goc(voice, text)))
 }
 
 impl VieNeu {
@@ -322,6 +325,26 @@ impl TtsProvider for VieNeu {
         // (`V3TurboVieNeuTTS.__init__`: `self.sample_rate = 48_000`), không
         // đọc từ file cấu hình như Piper (không có file kiểu đó ở đây).
         48_000
+    }
+
+    /// Xoá bản gốc tốc độ tự nhiên của những cue không còn tồn tại (người dùng
+    /// sửa văn bản hoặc xoá bớt cue). Không dọn thì thư mục `.goc/` lớn dần mãi.
+    fn don_rac(&self, seg_dir: &Path, van_ban_con_lai: &[String]) {
+        let goc_dir = seg_dir.join(".goc");
+        let giu: std::collections::HashSet<String> = van_ban_con_lai
+            .iter()
+            .map(|t| khoa_goc(&self.voice, t))
+            .collect();
+        if let Ok(rd) = std::fs::read_dir(&goc_dir) {
+            for e in rd.flatten() {
+                let ten = e.file_name().to_string_lossy().to_string();
+                if let Some(khoa) = ten.strip_suffix(".wav") {
+                    if !giu.contains(khoa) {
+                        let _ = std::fs::remove_file(e.path());
+                    }
+                }
+            }
+        }
     }
 
     fn synthesize(
