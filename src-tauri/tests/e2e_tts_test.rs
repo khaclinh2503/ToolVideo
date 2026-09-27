@@ -2,7 +2,9 @@
 //!   DVL_E2E_CLIP=<path.mp4> cargo test --test e2e_tts_test -- --ignored --nocapture
 //! Yêu cầu đã chạy pha A (ensure_components) để có đủ engine + voice.
 
-use app_lib::config::{load_config, models_dir, projects_dir};
+mod common;
+
+use app_lib::config::{load_config, models_dir};
 use app_lib::pipeline::{run_stt_pipeline, run_translate_stage, run_tts_stage, EngineCtx};
 use app_lib::stt::SttModels;
 use std::path::Path;
@@ -22,8 +24,8 @@ fn e2e_video_to_voiced_segments() {
             vad: m.join("sherpa").join("vad-model.onnx"),
         },
     };
-    let project = projects_dir().join(format!("e2e-tts-{}", uuid::Uuid::new_v4()));
-    std::fs::create_dir_all(&project).unwrap();
+    let _giu = common::DuAnTam::moi("e2e-tts");
+    let project = _giu.duong_dan().to_path_buf();
 
     let stt = run_stt_pipeline(&ctx, Path::new(&clip), &project, &lang)
         .unwrap_or_else(|e| panic!("STT lỗi: {e}"));

@@ -7,7 +7,9 @@
 //!   DVL_E2E_TTS_MANY=1 cargo test --test e2e_tts_many_cues_test -- --ignored --nocapture
 //! Yêu cầu đã chạy pha A (ensure_components) để có piper.exe + voice cài sẵn.
 
-use app_lib::config::{models_dir, projects_dir};
+mod common;
+
+use app_lib::config::models_dir;
 use app_lib::pipeline::run_tts_stage;
 use app_lib::srt::{write_srt, Segment};
 use std::path::Path;
@@ -63,8 +65,8 @@ fn e2e_tts_many_cues_no_deadlock() {
 
     // Thư mục dự án thật (không dùng tempfile — file cần còn tồn tại sau khi test
     // chạy xong để nghe thử kiểm tra bằng tai).
-    let project = projects_dir().join(format!("e2e-tts-many-{}", uuid::Uuid::new_v4()));
-    std::fs::create_dir_all(&project).unwrap();
+    let _giu = common::DuAnTam::moi("e2e-tts-many");
+    let project = _giu.duong_dan().to_path_buf();
     write_synthetic_translated_srt(&project);
 
     println!("Bắt đầu TTS {CUE_COUNT} cue thật (Piper) — nếu treo, đây là bằng chứng lỗi bế tắc ống stdin/stdout.");

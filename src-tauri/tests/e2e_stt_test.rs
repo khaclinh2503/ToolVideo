@@ -2,7 +2,9 @@
 //!   DVL_E2E_CLIP=<path.mp4> cargo test --test e2e_stt_test -- --ignored --nocapture
 //! Yêu cầu 5 file trong config::models_dir() (xem commands::resolve_engine_ctx).
 
-use app_lib::config::{models_dir, projects_dir};
+mod common;
+
+use app_lib::config::models_dir;
 use app_lib::pipeline::{run_stt_pipeline, EngineCtx};
 use app_lib::stt::SttModels;
 use std::path::Path;
@@ -25,8 +27,8 @@ fn e2e_stt_on_clip_writes_srt() {
     for p in [&ctx.ffmpeg, &ctx.sherpa, &ctx.models.sense_voice, &ctx.models.tokens, &ctx.models.vad] {
         assert!(p.exists(), "thiếu file: {}", p.display());
     }
-    let project = projects_dir().join(format!("e2e-{}", uuid::Uuid::new_v4()));
-    std::fs::create_dir_all(&project).unwrap();
+    let _giu = common::DuAnTam::moi("e2e-stt");
+    let project = _giu.duong_dan().to_path_buf();
 
     let t0 = std::time::Instant::now();
     let res = run_stt_pipeline(&ctx, Path::new(&clip), &project, &lang);

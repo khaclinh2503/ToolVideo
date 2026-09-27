@@ -3,7 +3,9 @@
 //!   cargo test --manifest-path src-tauri/Cargo.toml --test e2e_cue_edit_test -- --ignored --nocapture
 //! Yêu cầu đã chạy ensure_components để có đủ engine.
 
-use app_lib::config::{load_config, models_dir, projects_dir};
+mod common;
+
+use app_lib::config::{load_config, models_dir};
 use app_lib::cues;
 use app_lib::pipeline::{run_stt_pipeline, run_translate_stage, run_tts_stage, EngineCtx};
 use app_lib::retime::{FitOpts, MIN_LENGTH_SCALE};
@@ -34,8 +36,8 @@ fn sua_mot_cue_roi_nghe_thu_chi_doi_wav_cua_cue_do() {
             vad: m.join("sherpa").join("vad-model.onnx"),
         },
     };
-    let project = projects_dir().join(format!("e2e-cue-{}", uuid::Uuid::new_v4()));
-    std::fs::create_dir_all(&project).unwrap();
+    let _giu = common::DuAnTam::moi("e2e-cue");
+    let project = _giu.duong_dan().to_path_buf();
     println!("dự án: {}", project.display());
 
     run_stt_pipeline(&ctx, Path::new(&clip), &project, &lang).unwrap();

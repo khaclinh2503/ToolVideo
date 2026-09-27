@@ -3,7 +3,9 @@
 //!   cargo test --manifest-path src-tauri/Cargo.toml --test e2e_export_test -- --ignored --nocapture
 //! Yêu cầu đã chạy ensure_components để có đủ ffmpeg/ffprobe/sherpa/piper.
 
-use app_lib::config::{load_config, models_dir, projects_dir};
+mod common;
+
+use app_lib::config::{load_config, models_dir};
 use app_lib::pipeline::{
     run_export_stage, run_stt_pipeline, run_translate_stage, run_tts_stage, EngineCtx,
 };
@@ -54,8 +56,8 @@ fn chay(burn: bool, soft: bool, ten: &str) {
         },
     };
 
-    let project = projects_dir().join(format!("e2e-export-{ten}-{}", uuid::Uuid::new_v4()));
-    std::fs::create_dir_all(&project).unwrap();
+    let _giu = common::DuAnTam::moi(&format!("e2e-export-{ten}"));
+    let project = _giu.duong_dan().to_path_buf();
     println!("dự án: {}", project.display());
 
     let stt = run_stt_pipeline(&ctx, Path::new(&clip), &project, &lang)
@@ -124,10 +126,9 @@ fn chay(burn: bool, soft: bool, ten: &str) {
     if burn {
         assert!(!kinds.contains("subtitle"), "burn thì không kèm luồng subtitle");
         // Nhánh burn chỉ kiểm HÌNH DẠNG (không có luồng subtitle riêng, video
-        // đã mã hoá lại). Không có assertion nào ở đây chứng minh phụ đề thật
-        // sự được VẼ lên hình — phân biệt một khung hình có chữ với một khung
-        // hình mà filter `subtitles` âm thầm lỗi cần soi pixel, ngoài phạm vi
-        // của phép kiểm này.
+        // đã mã hoá lại). Không assertion nào ở ĐÂY chứng minh phụ đề thật sự
+        // được VẼ lên hình; việc đó do kieu_chu_that_test lo, bằng cách dựng
+        // khung hình rồi đòi hai kiểu chữ khác nhau phải ra hai ảnh khác nhau.
     }
 
     // Không vỡ tiếng, VÀ có tiếng lồng thật (không phải im lặng/pass-through).
