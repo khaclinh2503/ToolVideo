@@ -110,6 +110,9 @@ pub struct ExportOpts {
     pub volume_dub: f32,
     pub crf: u32,
     pub preset: String,
+    /// Kiểu chữ khi ghi phụ đề vào hình. `None` ⇒ để libass dùng mặc định,
+    /// giữ nguyên hành vi của dự án trước khi có tính năng này.
+    pub style: Option<SubStyle>,
 }
 
 /// `0.18` chứ không phải `0.180`; `3` chứ không phải `3.000`.
@@ -123,7 +126,10 @@ pub fn build_filter_complex(o: &ExportOpts) -> String {
     let mut parts: Vec<String> = Vec::new();
 
     if o.burn_subs {
-        parts.push(format!("[0:v]subtitles={BURN_SRT_NAME}[v]"));
+        parts.push(format!(
+            "[0:v]{}[v]",
+            subtitles_filter(BURN_SRT_NAME, o.style.as_ref())
+        ));
     }
 
     if o.has_audio {
@@ -306,4 +312,111 @@ pub fn unique_path(dir: &Path, name: &str) -> PathBuf {
         }
     }
     dir.join(format!("{than} (1000){duoi}"))
+}
+
+/// Kiểu chữ phụ đề khi ghi vào hình (burn-in).
+#[derive(Debug, Clone, PartialEq)]
+pub struct SubStyle {
+    /// Tên font theo cách Windows gọi, ví dụ "Arial", "Segoe UI".
+    pub font: String,
+    pub size: u32,
+    /// Màu chữ dạng `#RRGGBB`.
+    pub color: String,
+    /// Màu viền dạng `#RRGGBB`.
+    pub outline_color: String,
+    /// Độ dày viền, 0 = không viền.
+    pub outline: u32,
+}
+
+impl Default for SubStyle {
+    fn default() -> Self {
+        Self {
+            // Arial có đủ dấu tiếng Việt và có trên mọi máy Windows.
+            font: "Arial".into(),
+            size: 24,
+            color: "#FFFFFF".into(),
+            outline_color: "#000000".into(),
+            outline: 2,
+        }
+    }
+}
+
+/// Đổi màu `#RRGGBB` sang dạng ASS `&HBBGGRR&`.
+///
+/// ASS ĐẢO THỨ TỰ KÊNH MÀU so với HTML: nó là BGR chứ không phải RGB. Đây là
+/// cái bẫy kinh điển của libass — truyền thẳng chuỗi hex vào sẽ cho ra màu
+/// hoán vị (đỏ thành xanh dương) mà vẫn chạy ngon lành, không báo lỗi gì.
+///
+/// Đầu vào không hợp lệ ⇒ trả về trắng, vì phụ đề sai màu còn hơn không xuất
+/// được video.
+pub fn ass_color(hex: &str) -> String {
+    let h = hex.trim().trim_start_matches('#');
+    if h.len() != 6 || !h.chars().all(|c| c.is_ascii_hexdigit()) {
+        return "&HFFFFFF&".to_string();
+    }
+    // &H + BB + GG + RR
+    format!("&H{}{}{}&", &h[4..6], &h[2..4], &h[0..2]).to_uppercase()
+}
+
+/// Chuỗi `force_style` cho filter `subtitles` của ffmpeg.
+pub fn build_force_style(s: &SubStyle) -> String {
+    format!(
+        "FontName={},FontSize={},PrimaryColour={},OutlineColour={},Outline={},BorderStyle=1",
+        s.font.trim(),
+        s.size,
+        ass_color(&s.color),
+        ass_color(&s.outline_color),
+        s.outline
+    )
+}
+
+/// Escape chuỗi `force_style` để nhét vào filtergraph của ffmpeg.
+///
+/// Trong filtergraph, dấu `:` ngăn cách tham số và `,` ngăn cách filter, nên
+/// một tên font có dấu cách thì không sao nhưng chuỗi style thì phải bọc trong
+/// nháy đơn. Dấu `'` trong tên font được bỏ đi thay vì escape lồng nhau —
+/// không font Windows chuẩn nào có dấu nháy, và escape lồng trong filtergraph
+/// là chỗ rất dễ sai.
+pub fn subtitles_filter(srt_name: &str, style: Option<&SubStyle>) -> String {
+    match style {
+        None => format!("subtitles={srt_name}"),
+        Some(s) => {
+            let fs = build_force_style(s).replace('\'', "");
+            format!("subtitles={srt_name}:force_style='{fs}'")
+        }
+    }
+}
+
+/// Tham số ffmpeg dựng MỘT khung hình có phụ đề đã cháy vào, để xem thử kiểu chữ.
+///
+/// `-ss` đặt TRƯỚC `-i` để tua nhanh, và `-copyts` giữ nguyên mốc thời gian gốc
+/// — thiếu nó thì sau khi tua, khung hình mang mốc 0 và filter `subtitles` đi
+/// tìm cue ở giây 0, nên ảnh xem thử thường TRỐNG chữ dù video có phụ đề.
+pub fn build_preview_frame_args(
+    video: &Path,
+    srt_name: &str,
+    tai_ms: u64,
+    style: Option<&SubStyle>,
+    ra: &Path,
+) -> Vec<String> {
+    let giay = tai_ms as f64 / 1000.0;
+    vec![
+        "-nostdin".into(),
+        "-hide_banner".into(),
+        "-loglevel".into(),
+        "error".into(),
+        "-y".into(),
+        "-ss".into(),
+        format!("{giay:.3}"),
+        "-copyts".into(),
+        "-i".into(),
+        video.display().to_string(),
+        "-vf".into(),
+        subtitles_filter(srt_name, style),
+        "-frames:v".into(),
+        "1".into(),
+        "-q:v".into(),
+        "2".into(),
+        ra.display().to_string(),
+    ]
 }

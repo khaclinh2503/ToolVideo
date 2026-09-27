@@ -233,6 +233,69 @@ pub async fn preview_voice(provider: String, voice: String) -> Result<String, St
     .map_err(|e| e.to_string())?
 }
 
+/// Dựng một khung hình có phụ đề đã cháy vào, để xem thử kiểu chữ trước khi
+/// xuất cả video (có thể mất vài phút).
+///
+/// Chọn mốc thời gian ở GIỮA một cue có chữ thật, không phải giây 0 — khung đầu
+/// video thường chưa có phụ đề nào và ảnh xem thử sẽ trống trơn.
+#[tauri::command]
+pub async fn preview_subtitle(project_dir: String, tgt: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+        let du_an = std::path::PathBuf::from(&project_dir);
+        let meta = crate::project::load(&du_an)
+            .ok_or_else(|| "Chưa mở dự án nào".to_string())?;
+        let video = std::path::PathBuf::from(&meta.video_path);
+        if !video.exists() {
+            return Err(format!("Không tìm thấy video gốc: {}", video.display()));
+        }
+
+        let sub_dir = du_an.join("subtitles");
+        let ban_dich = sub_dir.join(format!("translated.{}.srt", tgt.trim()));
+        let raw = std::fs::read_to_string(&ban_dich)
+            .map_err(|_| "Chưa có bản dịch — chạy Dịch trước".to_string())?;
+        let segs = crate::srt::parse_srt(&raw).map_err(|e| e.to_string())?;
+
+        // Cue đầu tiên có ít nhất 10 ký tự: cue quá ngắn ("Ừ.") không cho thấy
+        // kiểu chữ trông ra sao.
+        let cue = segs
+            .iter()
+            .find(|s| s.text.trim().chars().count() >= 10)
+            .or_else(|| segs.first())
+            .ok_or_else(|| "Bản dịch rỗng".to_string())?;
+        let giua = cue.start_ms + (cue.end_ms.saturating_sub(cue.start_ms)) / 2;
+
+        // Dùng chính burn.srt mà bước xuất dùng, để thứ nhìn thấy đúng là thứ
+        // sẽ được ghi ra.
+        crate::export::prepare_burn_srt(&sub_dir, &ban_dich).map_err(|e| e.to_string())?;
+
+        let ra = du_an.join("media").join("xem-thu-phu-de.jpg");
+        if let Some(d) = ra.parent() {
+            std::fs::create_dir_all(d).map_err(|e| e.to_string())?;
+        }
+        let cfg = crate::config::load_config();
+        let style = crate::config::doi_sang_sub_style(&cfg.subtitle);
+        let args = crate::export::build_preview_frame_args(
+            &video,
+            crate::export::BURN_SRT_NAME,
+            giua,
+            Some(&style),
+            &ra,
+        );
+        // Chạy trong thư mục subtitles: filter `subtitles=` không escape được
+        // đường dẫn Windows trong filtergraph, nên bước xuất cũng làm y hệt.
+        crate::export::run_export(
+            &require_path(models_dir().join("ffmpeg").join("ffmpeg.exe"))?,
+            &sub_dir,
+            &args.iter().map(std::ffi::OsString::from).collect::<Vec<_>>(),
+        )
+        .map_err(|e| e.to_string())?;
+
+        Ok(ra.display().to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub fn get_config() -> crate::config::AppConfig {
     crate::config::load_config()
@@ -422,6 +485,7 @@ pub async fn run_export(
             burn_subs,
             soft_subs,
             out_dir.as_deref().map(Path::new),
+            Some(crate::config::doi_sang_sub_style(&cfg.subtitle)),
             &mut |phase| {
                 let _ = app.emit("export_progress", ExportProgressEvent { phase: phase.to_string() });
             },

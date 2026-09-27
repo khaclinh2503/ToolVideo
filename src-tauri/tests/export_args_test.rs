@@ -28,6 +28,7 @@ fn opts(burn: bool, soft: bool, has_audio: bool) -> ExportOpts {
         volume_dub: 3.0,
         crf: 20,
         preset: "medium".into(),
+        style: None,
     }
 }
 
@@ -244,4 +245,90 @@ fn khong_de_len_file_da_co_trong_thu_muc_nguoi_dung() {
     assert_eq!(unique_path(d.path(), "clip-vi.mp4"), d.path().join("clip-vi (3).mp4"));
     // bản cũ vẫn còn nguyên
     assert_eq!(std::fs::read(d.path().join("clip-vi.mp4")).unwrap(), b"ban cu");
+}
+
+// ---------- kiểu chữ phụ đề ----------
+
+#[test]
+fn mau_ass_dao_thu_tu_kenh_so_voi_html() {
+    use app_lib::export::ass_color;
+    // ASS là BGR chứ không phải RGB. Truyền thẳng hex vào sẽ ra màu hoán vị
+    // (đỏ thành xanh dương) mà ffmpeg vẫn chạy ngon, không báo lỗi gì — đây là
+    // đúng loại sai chỉ phát hiện được bằng mắt sau khi xuất xong cả video.
+    assert_eq!(ass_color("#FF0000"), "&H0000FF&", "đỏ HTML phải thành 0000FF trong ASS");
+    assert_eq!(ass_color("#0000FF"), "&HFF0000&", "xanh dương HTML phải thành FF0000");
+    assert_eq!(ass_color("#00FF00"), "&H00FF00&", "xanh lá đối xứng nên giữ nguyên");
+    assert_eq!(ass_color("#FFFFFF"), "&HFFFFFF&");
+    assert_eq!(ass_color("#000000"), "&H000000&");
+    // Không có dấu thăng vẫn nhận.
+    assert_eq!(ass_color("FF0000"), "&H0000FF&");
+}
+
+#[test]
+fn mau_khong_hop_le_thi_ve_trang_chu_khong_lam_hong_lenh() {
+    use app_lib::export::ass_color;
+    // Phụ đề sai màu còn hơn không xuất được video.
+    for xau in ["", "#12345", "#GGGGGG", "xanh", "#1234567"] {
+        assert_eq!(ass_color(xau), "&HFFFFFF&", "nhận: {xau}");
+    }
+}
+
+#[test]
+fn force_style_mang_du_font_co_chu_va_hai_mau() {
+    use app_lib::export::{build_force_style, SubStyle};
+    let s = SubStyle {
+        font: "Segoe UI".into(),
+        size: 28,
+        color: "#FFEE00".into(),
+        outline_color: "#101010".into(),
+        outline: 3,
+    };
+    let fs = build_force_style(&s);
+    assert!(fs.contains("FontName=Segoe UI"), "{fs}");
+    assert!(fs.contains("FontSize=28"), "{fs}");
+    assert!(fs.contains("PrimaryColour=&H00EEFF&"), "màu chữ phải đảo kênh: {fs}");
+    assert!(fs.contains("OutlineColour=&H101010&"), "{fs}");
+    assert!(fs.contains("Outline=3"), "{fs}");
+}
+
+#[test]
+fn khong_co_kieu_chu_thi_filter_giu_nguyen_dang_cu() {
+    use app_lib::export::subtitles_filter;
+    // Dự án cũ chưa cấu hình kiểu chữ vẫn phải xuất được y như trước.
+    assert_eq!(subtitles_filter("burn.srt", None), "subtitles=burn.srt");
+}
+
+#[test]
+fn chuoi_style_duoc_boc_nhay_don_cho_filtergraph() {
+    use app_lib::export::{subtitles_filter, SubStyle};
+    let f = subtitles_filter("burn.srt", Some(&SubStyle::default()));
+    assert!(f.starts_with("subtitles=burn.srt:force_style='"), "{f}");
+    assert!(f.ends_with('\''), "{f}");
+    // Dấu nháy đơn bên trong sẽ phá filtergraph nên phải bị bỏ.
+    let co_nhay = SubStyle { font: "Xin'chao".into(), ..SubStyle::default() };
+    let f2 = subtitles_filter("burn.srt", Some(&co_nhay));
+    assert_eq!(f2.matches('\'').count(), 2, "chỉ được còn đúng hai nháy bao ngoài: {f2}");
+}
+
+#[test]
+fn khung_xem_thu_giu_moc_thoi_gian_de_phu_de_hien_ra() {
+    use app_lib::export::{build_preview_frame_args, SubStyle};
+    use std::path::Path;
+    let a = build_preview_frame_args(
+        Path::new("C:/v/clip.mp4"),
+        "burn.srt",
+        12_500,
+        Some(&SubStyle::default()),
+        Path::new("C:/p/xem-thu.jpg"),
+    );
+    let ss = a.iter().position(|x| x == "-ss").expect("phải có -ss");
+    let i = a.iter().position(|x| x == "-i").expect("phải có -i");
+    assert!(ss < i, "-ss phải trước -i để tua nhanh: {a:?}");
+    assert_eq!(a[ss + 1], "12.500");
+    // Thiếu -copyts thì khung hình mang mốc 0, filter subtitles tìm cue ở giây 0
+    // và ảnh xem thử TRỐNG chữ — chạy vẫn xong, chỉ là vô dụng.
+    assert!(a.contains(&"-copyts".to_string()), "{a:?}");
+    let vf = a.iter().position(|x| x == "-vf").unwrap();
+    assert!(a[vf + 1].starts_with("subtitles=burn.srt:force_style="), "{}", a[vf + 1]);
+    assert_eq!(a.last().unwrap(), "C:/p/xem-thu.jpg");
 }

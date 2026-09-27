@@ -61,6 +61,7 @@ pub fn run() {
             commands::translate_contexts,
             commands::tts_voices,
             commands::preview_voice,
+            commands::preview_subtitle,
             commands::run_tts,
             commands::run_export,
             commands::list_projects,

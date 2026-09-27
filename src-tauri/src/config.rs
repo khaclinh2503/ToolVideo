@@ -30,6 +30,11 @@ pub fn projects_dir() -> PathBuf {
 pub struct AppConfig {
     #[serde(default)]
     pub translate: TranslateConfig,
+    /// Kiểu chữ phụ đề khi ghi vào hình. `serde(default)` để config.json cũ
+    /// vẫn đọc được — thiếu khoá này thì dùng mặc định chứ không biến mất khỏi
+    /// danh sách như đã từng xảy ra với export_path ở M7.
+    #[serde(default)]
+    pub subtitle: SubtitleConfig,
     #[serde(default)]
     pub tts: TtsConfig,
     #[serde(default)]
@@ -51,6 +56,40 @@ impl Default for TranslateConfig {
             target_lang: "vi".into(),
             openai: OpenAiConfig::default(),
         }
+    }
+}
+
+/// Kiểu chữ phụ đề, ở dạng thân thiện với giao diện (`#RRGGBB`).
+/// Đổi sang dạng ASS của libass ở `doi_sang_sub_style`.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct SubtitleConfig {
+    pub font: String,
+    pub size: u32,
+    pub color: String,
+    pub outline_color: String,
+    pub outline: u32,
+}
+
+impl Default for SubtitleConfig {
+    fn default() -> Self {
+        let d = crate::export::SubStyle::default();
+        Self {
+            font: d.font,
+            size: d.size,
+            color: d.color,
+            outline_color: d.outline_color,
+            outline: d.outline,
+        }
+    }
+}
+
+pub fn doi_sang_sub_style(c: &SubtitleConfig) -> crate::export::SubStyle {
+    crate::export::SubStyle {
+        font: c.font.clone(),
+        size: c.size,
+        color: c.color.clone(),
+        outline_color: c.outline_color.clone(),
+        outline: c.outline,
     }
 }
 

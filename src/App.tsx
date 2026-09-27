@@ -11,10 +11,21 @@ interface TtsResultDto { manifestPath: string; cueCount: number; generated: numb
 interface OpenAiConfig { base_url: string; api_key: string; model: string; context: string }
 interface ContextDto { id: string; label: string }
 interface TtsConfig { default_provider: string; voice: string; length_scale: number }
+interface SubtitleConfig {
+  font: string; size: number; color: string;
+  outline_color: string; outline: number;
+}
 interface AppConfig {
   translate: { default_provider: string; target_lang: string; openai: OpenAiConfig };
   tts: TtsConfig;
+  subtitle: SubtitleConfig;
 }
+
+/** Font có sẵn trên mọi máy Windows và đủ dấu tiếng Việt. */
+const FONT_GOI_Y = [
+  "Arial", "Segoe UI", "Tahoma", "Verdana",
+  "Times New Roman", "Calibri", "Roboto",
+];
 /** Một giọng đọc mà một nhà cung cấp TTS hỗ trợ (trả về từ lệnh `tts_voices`). */
 interface VoiceDto {
   id: string;
@@ -103,6 +114,9 @@ function App() {
   // Câu demo của giọng đang chọn, để nghe thử trước khi lồng tiếng cả video.
   const [demoAudio, setDemoAudio] = useState("");
   const [demoBusy, setDemoBusy] = useState(false);
+  // Ảnh xem thử kiểu chữ phụ đề, dựng từ một khung hình thật của video.
+  const [subPreview, setSubPreview] = useState("");
+  const [subBusy, setSubBusy] = useState(false);
   // "" = ghi vào thư mục dự án như mặc định cũ.
   const [outDir, setOutDir] = useState("");
   const [contexts, setContexts] = useState<ContextDto[]>([]);
@@ -405,6 +419,28 @@ function App() {
       setStatus(`Lỗi: ${String(e)}`);
     } finally {
       setRunning(false); setExportPhase("");
+    }
+  }
+
+  const sub = cfg?.subtitle;
+  const setSub = (patch: Partial<SubtitleConfig>) =>
+    cfg && setCfg({ ...cfg, subtitle: { ...cfg.subtitle, ...patch } });
+
+  async function onXemThuPhuDe() {
+    if (!projectDir) { setStatus("Mở một dự án đã dịch trước."); return; }
+    setSubBusy(true);
+    setStatus("Đang dựng khung hình xem thử…");
+    try {
+      // Lưu cấu hình trước: lệnh dựng khung đọc kiểu chữ từ đĩa, không nhận
+      // qua tham số — không lưu thì bạn xem thử bản cũ mà không biết.
+      if (cfg) await invoke("save_config", { cfg });
+      const p = await invoke<string>("preview_subtitle", { projectDir, tgt });
+      setSubPreview(`${convertFileSrc(p)}?t=${Date.now()}`);
+      setStatus("");
+    } catch (e) {
+      setStatus(`Lỗi xem thử phụ đề: ${String(e)}`);
+    } finally {
+      setSubBusy(false);
     }
   }
 
@@ -716,6 +752,81 @@ function App() {
           />
           Ghi phụ đề vào hình (burn-in, phải mã hoá lại video nên lâu hơn nhiều)
         </label>
+        {burnSubs && sub && (
+          <>
+            <div className="row">
+              <label className="muted" htmlFor="sub-font">Font</label>
+              <input
+                id="sub-font"
+                list="font-goi-y"
+                value={sub.font}
+                onChange={(e) => setSub({ font: e.target.value })}
+                disabled={running}
+              />
+              <datalist id="font-goi-y">
+                {FONT_GOI_Y.map((f) => <option key={f} value={f} />)}
+              </datalist>
+
+              <label className="muted" htmlFor="sub-size">Cỡ</label>
+              <input
+                id="sub-size"
+                type="number"
+                min={8}
+                max={96}
+                className="input-lang"
+                value={sub.size}
+                onChange={(e) => setSub({ size: Number(e.target.value) || 24 })}
+                disabled={running}
+              />
+
+              <label className="muted" htmlFor="sub-color">Màu chữ</label>
+              <input
+                id="sub-color"
+                type="color"
+                value={sub.color}
+                onChange={(e) => setSub({ color: e.target.value.toUpperCase() })}
+                disabled={running}
+              />
+
+              <label className="muted" htmlFor="sub-outline-color">Màu viền</label>
+              <input
+                id="sub-outline-color"
+                type="color"
+                value={sub.outline_color}
+                onChange={(e) => setSub({ outline_color: e.target.value.toUpperCase() })}
+                disabled={running}
+              />
+
+              <label className="muted" htmlFor="sub-outline">Dày viền</label>
+              <input
+                id="sub-outline"
+                type="number"
+                min={0}
+                max={6}
+                className="input-lang"
+                value={sub.outline}
+                onChange={(e) => setSub({ outline: Number(e.target.value) || 0 })}
+                disabled={running}
+              />
+            </div>
+            <div className="row">
+              <button
+                type="button"
+                onClick={onXemThuPhuDe}
+                disabled={running || subBusy || !projectDir}
+              >
+                {subBusy ? "Đang dựng…" : "Xem thử phụ đề"}
+              </button>
+              <span className="muted">
+                Dựng một khung hình thật của video để xem kiểu chữ trước khi
+                xuất — xuất cả video có thể mất vài phút.
+              </span>
+            </div>
+            {subPreview && (
+              <img className="sub-preview" src={subPreview} alt="Xem thử phụ đề" />
+            )}
+          </>
+        )}
         <label>
           <input
             type="checkbox"

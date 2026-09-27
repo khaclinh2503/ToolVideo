@@ -405,3 +405,20 @@ audio {
   background: var(--secondary);
   flex: none;
 }
+
+/* Ảnh xem thử phụ đề: hiện to đủ để đọc được chữ, nhưng không tràn khung. */
+.sub-preview {
+  width: 100%;
+  max-width: 40rem;
+  border-radius: var(--radius-ui);
+  border: 1px solid var(--border);
+  background: #000;
+}
+
+/* Ô chọn màu của trình duyệt mặc định rất cao và xấu trong hàng ngang. */
+input[type="color"] {
+  width: 2.5rem;
+  height: 2rem;
+  padding: 0.125rem;
+  cursor: pointer;
+}
