@@ -22,6 +22,10 @@ interface AppConfig {
 }
 
 /** Font có sẵn trên mọi máy Windows và đủ dấu tiếng Việt. */
+// Phải khớp với srt::MAX_MOT_DONG bên Rust — chỉ dùng để hiển thị, bộ cắt thật
+// nằm ở backend.
+const MAX_MOT_DONG = 42;
+
 const FONT_GOI_Y = [
   "Arial", "Segoe UI", "Tahoma", "Verdana",
   "Times New Roman", "Calibri", "Roboto",
@@ -820,6 +824,13 @@ function App() {
               <span className="muted">
                 Dựng một khung hình thật của video để xem kiểu chữ trước khi
                 xuất — xuất cả video có thể mất vài phút.
+              </span>
+            </div>
+            <div className="row">
+              <span className={sub.size > 36 ? "warn" : "muted"}>
+                {sub.size > 36
+                  ? `Cỡ ${sub.size} khá lớn: phụ đề được cắt tối đa ${MAX_MOT_DONG} ký tự, nhưng cỡ này vẫn có thể tràn xuống hai dòng. Bấm Xem thử để chắc.`
+                  : `Phụ đề đã được cắt tối đa ${MAX_MOT_DONG} ký tự mỗi câu. Cỡ chữ càng lớn càng dễ tràn hai dòng — ngưỡng tuỳ kích thước video.`}
               </span>
             </div>
             {subPreview && (

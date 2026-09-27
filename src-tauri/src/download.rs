@@ -169,9 +169,7 @@ pub fn run_download(
     // Nhiều dòng chỉ xảy ra khi một link ra nhiều file; lấy dòng cuối là file
     // vừa hoàn tất.
     let path = text
-        .lines()
-        .filter(|l| !l.trim().is_empty())
-        .next_back()
+        .lines().rfind(|l| !l.trim().is_empty())
         .map(|l| PathBuf::from(l.trim()))
         .ok_or_else(|| PipelineError::EngineFailed {
             stage: "tải video".into(),

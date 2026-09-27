@@ -277,7 +277,7 @@ impl TtsProvider for KhacTanSo {
     fn synthesize(&self, jobs: &[TtsJob], _on_done: &mut dyn FnMut(usize)) -> Result<(), PipelineError> {
         for j in jobs {
             self.calls.borrow_mut().push(j.length_scale);
-            app_lib::wav::write_pcm16_mono(&j.out, 48_000, &vec![0i16; 100]).unwrap();
+            app_lib::wav::write_pcm16_mono(&j.out, 48_000, &[0i16; 100]).unwrap();
         }
         Ok(())
     }
@@ -293,7 +293,7 @@ fn doi_giong_khac_tan_so_thi_tu_choi_truoc_khi_goi_engine() {
 
     let wav = d.path().join("tts").join("segments").join("cue-0001.wav");
     std::fs::create_dir_all(wav.parent().unwrap()).unwrap();
-    app_lib::wav::write_pcm16_mono(&wav, 1000, &vec![7i16; 42]).unwrap();
+    app_lib::wav::write_pcm16_mono(&wav, 1000, &[7i16; 42]).unwrap();
     let truoc = std::fs::read(&wav).unwrap();
 
     let p = KhacTanSo { calls: RefCell::new(Vec::new()) };

@@ -78,3 +78,29 @@ fn doi_kieu_chu_thi_khung_hinh_phai_khac_di() {
     std::fs::copy(&b, luu.join("to-vang.jpg")).unwrap();
     println!("ảnh lưu tại {}", luu.display());
 }
+
+/// Chạy đúng cái nút "Xem thử phụ đề" trong app gọi, trên một dự án thật.
+///
+/// Chạy: $env:DVL_PROJECT="<thư mục dự án>"
+///       cargo test --manifest-path src-tauri/Cargo.toml --test kieu_chu_that_test -- --ignored --nocapture nut_xem_thu
+#[test]
+#[ignore]
+fn nut_xem_thu_dung_duoc_tren_du_an_that() {
+    let Ok(du_an) = std::env::var("DVL_PROJECT") else {
+        eprintln!("đặt DVL_PROJECT=<thư mục dự án> để chạy");
+        return;
+    };
+    let du_an = PathBuf::from(du_an);
+    let style = SubStyle {
+        font: "Arial".into(),
+        size: 40,
+        color: "#00E5FF".into(),
+        outline_color: "#000000".into(),
+        outline: 3,
+    };
+    let anh = app_lib::commands::tao_xem_thu_phu_de(&du_an, "vi", &style, &ffmpeg())
+        .unwrap_or_else(|e| panic!("nút xem thử lỗi: {e}"));
+    let n = std::fs::metadata(&anh).expect("phải ra file").len();
+    assert!(n > 2_000, "ảnh quá nhỏ, chắc là khung đen: {n} byte");
+    println!("ảnh {} ({n} byte)", anh.display());
+}

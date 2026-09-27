@@ -241,8 +241,33 @@ pub async fn preview_voice(provider: String, voice: String) -> Result<String, St
 #[tauri::command]
 pub async fn preview_subtitle(project_dir: String, tgt: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
-        let du_an = std::path::PathBuf::from(&project_dir);
-        let meta = crate::project::load(&du_an)
+        let ffmpeg = require_path(models_dir().join("ffmpeg").join("ffmpeg.exe"))?;
+        let style = crate::config::doi_sang_sub_style(&crate::config::load_config().subtitle);
+        tao_xem_thu_phu_de(
+            std::path::Path::new(&project_dir),
+            tgt.trim(),
+            &style,
+            &ffmpeg,
+        )
+        .map(|p| p.display().to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Dựng một khung hình có phụ đề thật của dự án, trả đường dẫn ảnh.
+///
+/// Tách khỏi lệnh Tauri để chạy được với ffmpeg thật trong test — kiểu chữ là
+/// thứ chỉ nhìn ảnh mới biết đúng sai, vì ffmpeg bỏ qua im lặng mọi khoá
+/// force_style nó không hiểu.
+pub fn tao_xem_thu_phu_de(
+    du_an: &std::path::Path,
+    tgt: &str,
+    style: &crate::export::SubStyle,
+    ffmpeg: &std::path::Path,
+) -> Result<std::path::PathBuf, String> {
+    {
+        let meta = crate::project::load(du_an)
             .ok_or_else(|| "Chưa mở dự án nào".to_string())?;
         let video = std::path::PathBuf::from(&meta.video_path);
         if !video.exists() {
@@ -250,7 +275,7 @@ pub async fn preview_subtitle(project_dir: String, tgt: String) -> Result<String
         }
 
         let sub_dir = du_an.join("subtitles");
-        let ban_dich = sub_dir.join(format!("translated.{}.srt", tgt.trim()));
+        let ban_dich = sub_dir.join(format!("translated.{tgt}.srt"));
         let raw = std::fs::read_to_string(&ban_dich)
             .map_err(|_| "Chưa có bản dịch — chạy Dịch trước".to_string())?;
         let segs = crate::srt::parse_srt(&raw).map_err(|e| e.to_string())?;
@@ -272,28 +297,24 @@ pub async fn preview_subtitle(project_dir: String, tgt: String) -> Result<String
         if let Some(d) = ra.parent() {
             std::fs::create_dir_all(d).map_err(|e| e.to_string())?;
         }
-        let cfg = crate::config::load_config();
-        let style = crate::config::doi_sang_sub_style(&cfg.subtitle);
         let args = crate::export::build_preview_frame_args(
             &video,
             crate::export::BURN_SRT_NAME,
             giua,
-            Some(&style),
+            Some(style),
             &ra,
         );
         // Chạy trong thư mục subtitles: filter `subtitles=` không escape được
         // đường dẫn Windows trong filtergraph, nên bước xuất cũng làm y hệt.
         crate::export::run_export(
-            &require_path(models_dir().join("ffmpeg").join("ffmpeg.exe"))?,
+            ffmpeg,
             &sub_dir,
             &args.iter().map(std::ffi::OsString::from).collect::<Vec<_>>(),
         )
         .map_err(|e| e.to_string())?;
 
-        Ok(ra.display().to_string())
-    })
-    .await
-    .map_err(|e| e.to_string())?
+        Ok(ra)
+    }
 }
 
 #[tauri::command]

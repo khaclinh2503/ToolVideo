@@ -36,7 +36,7 @@ pub fn build_args(model: &Path, length_scale: f32) -> Vec<String> {
 /// giờ đi qua cờ tiến trình ở `build_args`, không qua khoá JSON này nữa — giữ
 /// lại khoá này là giữ một lời nói dối trong mã.
 pub fn build_line(job: &TtsJob) -> String {
-    let text = job.text.replace("\r\n", " ").replace('\n', " ").replace('\r', " ");
+    let text = job.text.replace("\r\n", " ").replace(['\n', '\r'], " ");
     let v = serde_json::json!({
         "text": text,
         "output_file": job.out.display().to_string(),

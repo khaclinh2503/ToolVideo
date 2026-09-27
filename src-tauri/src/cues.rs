@@ -234,7 +234,7 @@ pub fn preview(
     // không tồn tại (ví dụ Dịch lại thêm cue sau khi đã Lồng tiếng): không được
     // tự vá bằng cách chèn thêm entry, vì việc đó phá đúng bất biến vị trí ↔ cue
     // mà `list` và guard xuất đang dựa vào.
-    if index - 1 >= m.segments.len() {
+    if index > m.segments.len() {
         return Err(PipelineError::Io(format!(
             "Giọng đọc không khớp phụ đề ({} cue nhưng {} đoạn giọng) — chạy lại Lồng tiếng",
             segs.len(),

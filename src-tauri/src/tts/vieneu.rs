@@ -286,7 +286,7 @@ pub fn build_atempo_args(vao: &Path, ra: &Path, atempo: f32) -> Vec<String> {
 ///
 /// KHÔNG có khoá "length_scale"/"speed" — xem comment đầu file module.
 pub fn build_line(job: &TtsJob, voice: &str) -> String {
-    let text = job.text.replace("\r\n", " ").replace('\n', " ").replace('\r', " ");
+    let text = job.text.replace("\r\n", " ").replace(['\n', '\r'], " ");
     let v = serde_json::json!({
         "text": text,
         "output_file": job.out.display().to_string(),

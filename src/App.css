@@ -422,3 +422,9 @@ input[type="color"] {
   padding: 0.125rem;
   cursor: pointer;
 }
+
+/* Lời nhắc cần chú ý nhưng chưa phải lỗi. */
+.warn {
+  color: #fbbf24;
+  font-size: 0.8125rem;
+}
