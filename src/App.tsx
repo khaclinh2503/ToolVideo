@@ -22,6 +22,32 @@ interface AppConfig {
 }
 
 /** Font có sẵn trên mọi máy Windows và đủ dấu tiếng Việt. */
+// Endpoint tương thích-OpenAI đã dựng sẵn, để khỏi phải nhớ URL.
+const NHA_CUNG_CAP = [
+  { ten: "NVIDIA build.nvidia.com", url: "https://integrate.api.nvidia.com/v1" },
+  { ten: "OpenAI", url: "https://api.openai.com/v1" },
+  { ten: "Groq", url: "https://api.groq.com/openai/v1" },
+  { ten: "OpenRouter", url: "https://openrouter.ai/api/v1" },
+  { ten: "LM Studio (máy này)", url: "http://localhost:1234/v1" },
+];
+
+// Model gợi ý theo endpoint. Số giây là ĐO THẬT trên một lô 40 cue phụ đề
+// tiếng Trung chạy qua đúng đường của app, không phải phỏng đoán. Model suy
+// luận chậm gấp hàng chục lần và có khi tiêu hết hạn mức token vào phần nghĩ
+// rồi trả về rỗng — xem chỗ tắt suy luận trong translate/openai_compat.rs.
+const MODEL_GOI_Y: Record<string, { ten: string; ghi_chu: string }[]> = {
+  "https://integrate.api.nvidia.com/v1": [
+    { ten: "openai/gpt-oss-20b", ghi_chu: "nhanh nhất, 28s mỗi 40 câu — nên dùng" },
+    { ten: "deepseek-ai/deepseek-v4.1-flash", ghi_chu: "dịch sát nhất (xưng hô, anh rể/chị dâu) nhưng 72–85s và thỉnh thoảng lỗi 500" },
+    { ten: "z-ai/glm-5.3-flash", ghi_chu: "103s mỗi 40 câu" },
+    { ten: "z-ai/glm-5.3", ghi_chu: "model suy luận, 90s cho 3 câu — đừng dùng để dịch cả phim" },
+  ],
+  "https://api.openai.com/v1": [
+    { ten: "gpt-4o-mini", ghi_chu: "rẻ, đủ dùng cho phụ đề" },
+    { ten: "gpt-4o", ghi_chu: "dịch sát hơn, đắt hơn" },
+  ],
+};
+
 // Phải khớp với srt::MAX_MOT_DONG bên Rust — chỉ dùng để hiển thị, bộ cắt thật
 // nằm ở backend.
 const MAX_MOT_DONG = 42;
@@ -661,9 +687,43 @@ function App() {
         )}
         {provider === "openai_compat" && oa && (
           <div className="row col">
+            <div className="row">
+              <label className="muted" htmlFor="oa-nha">Nhà cung cấp</label>
+              <select
+                id="oa-nha"
+                value={NHA_CUNG_CAP.some((n) => n.url === oa.base_url) ? oa.base_url : ""}
+                onChange={(e) => {
+                  const url = e.target.value;
+                  if (!url) return;
+                  // Model của nhà cũ gần như chắc chắn không tồn tại ở nhà mới,
+                  // nên chuyển sang gợi ý đầu tiên thay vì để lại tên sẽ 404.
+                  const goi_y = MODEL_GOI_Y[url]?.[0]?.ten;
+                  setOa(goi_y ? { base_url: url, model: goi_y } : { base_url: url });
+                }}
+              >
+                <option value="">— tự nhập —</option>
+                {NHA_CUNG_CAP.map((n) => (
+                  <option key={n.url} value={n.url}>{n.ten}</option>
+                ))}
+              </select>
+            </div>
             <input value={oa.base_url} onChange={(e) => setOa({ base_url: e.target.value })} placeholder="base_url" />
             <input value={oa.api_key} onChange={(e) => setOa({ api_key: e.target.value })} placeholder="api_key" type="password" />
-            <input value={oa.model} onChange={(e) => setOa({ model: e.target.value })} placeholder="model" />
+            <input
+              value={oa.model}
+              list="model-goi-y"
+              onChange={(e) => setOa({ model: e.target.value })}
+              placeholder="model"
+            />
+            <datalist id="model-goi-y">
+              {(MODEL_GOI_Y[oa.base_url] ?? []).map((m) => (
+                <option key={m.ten} value={m.ten}>{m.ghi_chu}</option>
+              ))}
+            </datalist>
+            {(() => {
+              const m = MODEL_GOI_Y[oa.base_url]?.find((x) => x.ten === oa.model);
+              return m ? <span className="muted">{oa.model}: {m.ghi_chu}</span> : null;
+            })()}
             <button type="button" onClick={onSaveCfg}>Lưu cấu hình</button>
           </div>
         )}

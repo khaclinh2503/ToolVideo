@@ -265,8 +265,70 @@ fn endpoint_tu_choi_response_format_thi_thu_lai_khong_kem_tham_so_do() {
 
     let out = p(&server).translate_batch(&["Hello"], "en", "vi").unwrap();
     assert_eq!(out, vec!["Xin chào"]);
+    // HAI lần 400, không phải một: app lùi từng bước vì thông báo lỗi không nói
+    // rõ tham số nào bị chê. Nấc giữa (bỏ khoá tắt suy luận, còn giữ JSON) ở
+    // đây là một lần gọi thừa — chấp nhận được vì 400 trả về tức thì, trong khi
+    // đoán sai tham số thì người dùng mất cả lô dịch.
+    m400.assert_hits(2);
+    mok.assert_hits(1);
+}
+
+#[test]
+fn endpoint_tu_choi_khoa_tat_suy_luan_thi_van_giu_che_do_json() {
+    // Ngược lại: endpoint nhận `response_format` nhưng không biết
+    // `reasoning_effort`. Lùi hết một lượt là mất luôn chế độ JSON dù endpoint
+    // vẫn hỗ trợ, nên nấc giữa phải giữ lại JSON.
+    let server = MockServer::start();
+
+    let m400 = server.mock(|when, then| {
+        when.method(POST)
+            .path("/v1/chat/completions")
+            .body_contains("reasoning_effort");
+        then.status(400)
+            .header("content-type", "application/json")
+            .body(r#"{"error":"unknown field reasoning_effort"}"#);
+    });
+    let mok = server.mock(|when, then| {
+        when.method(POST)
+            .path("/v1/chat/completions")
+            .matches(|req| {
+                let b = req
+                    .body
+                    .as_ref()
+                    .map(|b| String::from_utf8_lossy(b).to_string())
+                    .unwrap_or_default();
+                !b.contains("reasoning_effort") && b.contains("response_format")
+            });
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(ok_body(r#"{"i":0,"text":"Xin chào"}"#));
+    });
+
+    let out = p(&server).translate_batch(&["Hello"], "en", "vi").unwrap();
+    assert_eq!(out, vec!["Xin chào"]);
     m400.assert_hits(1);
     mok.assert_hits(1);
+}
+
+#[test]
+fn mac_dinh_gui_kem_khoa_tat_suy_luan() {
+    // Model suy luận đốt sạch max_tokens vào phần nghĩ rồi trả về RỖNG — đo
+    // thật trên NVIDIA: deepseek-v4.1-flash tiêu 4095/4096 token cho suy luận,
+    // 173 giây, không một chữ dịch nào. Thiếu hai khoá này là hỏng ngay.
+    let server = MockServer::start();
+    let m = server.mock(|when, then| {
+        when.method(POST)
+            .path("/v1/chat/completions")
+            .body_contains("reasoning_effort")
+            .body_contains("chat_template_kwargs");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(ok_body(r#"{"i":0,"text":"Xin chào"}"#));
+    });
+
+    let out = p(&server).translate_batch(&["Hello"], "en", "vi").unwrap();
+    assert_eq!(out, vec!["Xin chào"]);
+    m.assert_hits(1);
 }
 
 #[test]

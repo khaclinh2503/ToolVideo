@@ -3,9 +3,17 @@ use crate::{config::TranslateConfig, error::PipelineError, srt::Segment};
 pub mod google_free;
 pub mod openai_compat;
 
-pub(crate) fn http_client() -> Result<reqwest::blocking::Client, PipelineError> {
+/// Hạn chờ cho endpoint LLM. Đo thật trên NVIDIA: một lô 40 cue mất 11–17 giây
+/// với model đã tắt suy luận, nhưng 103–206 giây nếu nó vẫn nghĩ. 30 giây như cũ
+/// cắt đứt gần như mọi lô thật; 240 giây đủ rộng mà vẫn không treo app cả buổi.
+pub(crate) const CHO_LLM: std::time::Duration = std::time::Duration::from_secs(240);
+
+/// Hạn chờ cho Google miễn phí: chỉ là một GET nhỏ, chờ lâu là hỏng thật.
+pub(crate) const CHO_NHANH: std::time::Duration = std::time::Duration::from_secs(30);
+
+pub(crate) fn http_client_voi(cho: std::time::Duration) -> Result<reqwest::blocking::Client, PipelineError> {
     reqwest::blocking::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
+        .timeout(cho)
         .user_agent("DichVideo-Local/0.1")
         .build()
         .map_err(|e| PipelineError::ProviderError {
@@ -13,6 +21,10 @@ pub(crate) fn http_client() -> Result<reqwest::blocking::Client, PipelineError> 
             status: None,
             msg: e.to_string(),
         })
+}
+
+pub(crate) fn http_client() -> Result<reqwest::blocking::Client, PipelineError> {
+    http_client_voi(CHO_NHANH)
 }
 
 pub(crate) fn map_http_err(provider: &str, e: reqwest::Error) -> PipelineError {

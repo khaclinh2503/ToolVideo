@@ -1,4 +1,4 @@
-use super::{http_client, map_http_err, TranslateProvider};
+use super::{map_http_err, TranslateProvider};
 use crate::error::PipelineError;
 use serde::{Deserialize, Serialize};
 
@@ -145,6 +145,7 @@ impl OpenAiCompat {
         src: &str,
         tgt: &str,
         che_do_json: bool,
+        tat_suy_luan: bool,
     ) -> Result<Vec<String>, PipelineError> {
         let items: Vec<Item> = texts
             .iter()
@@ -168,8 +169,20 @@ impl OpenAiCompat {
         if che_do_json {
             body["response_format"] = serde_json::json!({ "type": "json_object" });
         }
+        if tat_suy_luan {
+            // Model suy luận đốt sạch max_tokens vào phần nghĩ rồi trả về RỖNG.
+            // Đo thật trên NVIDIA, lô 40 cue: deepseek-v4.1-flash mất 173 giây
+            // và tiêu 4095/4096 token cho suy luận, chữ dịch bằng không.
+            //
+            // Hai khoá dưới đây là hai cách tắt khác nhau vì nhà cung cấp không
+            // thống nhất: `reasoning_effort` là của OpenAI, `chat_template_kwargs`
+            // là của vLLM/NVIDIA. Gửi cả hai rồi lùi về khi bị 400 rẻ hơn nhiều
+            // so với bắt người dùng tự đoán endpoint của mình nhận khoá nào.
+            body["reasoning_effort"] = serde_json::json!("low");
+            body["chat_template_kwargs"] = serde_json::json!({ "thinking": false });
+        }
         let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
-        let resp = http_client()?
+        let resp = crate::translate::http_client_voi(crate::translate::CHO_LLM)?
             .post(url)
             .bearer_auth(&self.api_key)
             .json(&body)
@@ -217,23 +230,32 @@ impl TranslateProvider for OpenAiCompat {
         src: &str,
         tgt: &str,
     ) -> Result<Vec<String>, PipelineError> {
-        match self.once(texts, src, tgt, true) {
+        match self.once(texts, src, tgt, true, true) {
             Ok(v) => Ok(v),
             // retry đúng 1 lần chỉ khi lỗi nội dung (status 200 nhưng JSON/số item sai);
             // lỗi HTTP (status khác 200 hoặc None) không retry
             Err(PipelineError::ProviderError {
                 status: Some(200), ..
-            }) => self.once(texts, src, tgt, true),
-            // 400 thường là endpoint không nhận `response_format`. Thử lại đúng
-            // một lần KHÔNG kèm tham số đó thay vì bắt người dùng tự đoán: prompt
-            // đã yêu cầu trả JSON, nên đường này vẫn dùng được.
+            }) => self.once(texts, src, tgt, true, true),
+            // 400 thường là endpoint không nhận một tham số nào đó: có nơi không
+            // biết `response_format`, có nơi không biết khoá tắt suy luận. Không
+            // phân biệt được là cái nào qua thông báo lỗi, nên lùi từng bước —
+            // bỏ khoá tắt suy luận trước (vẫn giữ JSON), rồi bỏ nốt JSON. Thà
+            // gọi thêm hai lần còn hơn bắt người dùng tự đoán endpoint của mình
+            // nhận khoá nào; prompt đã yêu cầu trả JSON nên đường trần vẫn chạy.
             //
             // Chỉ 400: khoá sai là 401, hết hạn mức là 429, model không có
             // thường là 404 — thử lại mấy cái đó chỉ tốn thêm một lần gọi mà
             // chắc chắn hỏng y hệt.
             Err(PipelineError::ProviderError {
                 status: Some(400), ..
-            }) => self.once(texts, src, tgt, false),
+            }) => match self.once(texts, src, tgt, true, false) {
+                Ok(v) => Ok(v),
+                Err(PipelineError::ProviderError {
+                    status: Some(400), ..
+                }) => self.once(texts, src, tgt, false, false),
+                Err(e) => Err(e),
+            },
             Err(e) => Err(e),
         }
     }
