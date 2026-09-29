@@ -114,6 +114,28 @@ pub fn probe_has_audio(ffprobe: &Path, video: &Path) -> Result<bool, PipelineErr
 
 use std::ffi::OsString;
 
+/// Chiều cao hệ quy chiếu của script ASS mà ffmpeg sinh ra khi nạp một file
+/// SRT. libass KHÔNG đo `FontSize` theo khung hình thật: ffmpeg chuyển SRT
+/// sang ASS trước, và header nó sinh ra ghi cứng `PlayResX: 384 / PlayResY:
+/// 288` bất kể video 360p hay 4K. libass vẽ trong lưới 288 đơn vị đó rồi phóng
+/// cả khung lên kích thước thật, nên `FontSize=24` là 24/288 ≈ 8.3% chiều cao
+/// khung — TỈ LỆ với khung, không phải một số pixel tuyệt đối.
+///
+/// Đo thật (ffmpeg 9.0.2, burn `FontSize=24,Outline=0` lên nền đen): chiều cao
+/// chữ "H" là 19 / 39 / 57 / 115 px ở 360p / 720p / 1080p / 4K.
+///
+/// Hằng số này `pub` để lớp xem thử bên frontend quy đổi cùng một hệ quy
+/// chiếu; `tests/hang_so_ui_test.rs` ghim cho hai bên không trôi khỏi nhau.
+pub const ASS_PLAY_RES_Y: u32 = 288;
+
+/// Lề dọc mặc định trong style `Default` mà ffmpeg ghi vào script ASS đó
+/// (`MarginL/R/V = 10`). Ở hệ quy chiếu 288 đơn vị, nó đặt đáy phần nét chữ
+/// thấp nhất (descender) cách đáy khung `10/288` ≈ 3.47% chiều cao khung.
+///
+/// Đo thật (cùng lần burn trên, chuỗi "Hgpq"): đáy descender cách đáy khung
+/// 3.33% ở 360p và 3.43% ở 1080p.
+pub const ASS_MARGIN_V: u32 = 10;
+
 /// Tên file phụ đề dùng trong filtergraph. Luôn là tên ASCII **tương đối**:
 /// ffmpeg chạy với `current_dir` đặt ở thư mục chứa nó, nên filtergraph không
 /// bao giờ phải mang đường dẫn tuyệt đối. Trên Windows, dấu hai chấm ổ đĩa kết

@@ -76,13 +76,192 @@ fn ui_bao_ro_mkv_khong_xem_thu_duoc() {
     assert!(tsx.contains("Xem thử phụ đề"), "phải chỉ sang nút khung hình ffmpeg");
 }
 
-/// Cỡ chữ ASS tính trên khung hình GỐC; trình phát hiện ở kích thước khác nên
-/// phải quy đổi, nếu không phụ đề xem thử to nhỏ sai hẳn so với bản xuất.
+/// Hệ quy chiếu của `FontSize` KHÔNG phải khung hình gốc. ffmpeg chuyển SRT
+/// sang ASS trước khi đưa cho libass, và header nó sinh ra ghi cứng
+/// `PlayResY: 288` bất kể video to nhỏ ra sao; libass vẽ trong lưới đó rồi
+/// phóng cả khung lên. Đo thật (ffmpeg 9.0.2, `FontSize=24,Outline=0` trên nền
+/// đen): cao chữ "H" là 19 / 39 / 57 / 115 px ở 360p / 720p / 1080p / 4K.
+///
+/// Bản đầu tiên quy đổi theo `clientHeight / videoHeight` nên vẽ nhỏ hơn bản
+/// xuất 3.75 lần trên 1080p và 7.5 lần trên 4K — không một test nào bắt được,
+/// vì con số 288 chỉ nằm trong đầu người viết. Test này đưa nó ra thành hằng số
+/// chung và ghim hai bên lại.
 #[test]
-fn ui_quy_doi_co_chu_theo_ti_le_khung_hinh() {
+fn ui_quy_doi_co_chu_theo_he_quy_chieu_ass() {
     let tsx = std::fs::read_to_string("../src/XemThu.tsx").expect("đọc được XemThu.tsx");
-    assert!(tsx.contains("videoHeight"), "phải quy đổi theo videoHeight");
-    assert!(tsx.contains("clientHeight"), "phải quy đổi theo clientHeight");
+    let mong_doi = format!("const ASS_PLAY_RES_Y = {};", app_lib::export::ASS_PLAY_RES_Y);
+    assert!(
+        tsx.contains(&mong_doi),
+        "XemThu.tsx phải khai `{mong_doi}` cho khớp export::ASS_PLAY_RES_Y"
+    );
+    assert!(
+        tsx.contains("v.clientHeight / ASS_PLAY_RES_Y"),
+        "phải quy cỡ chữ theo lưới ASS cao {}, không theo videoHeight",
+        app_lib::export::ASS_PLAY_RES_Y
+    );
+    assert!(
+        !tsx.contains("v.clientHeight / v.videoHeight"),
+        "quay lại quy đổi theo videoHeight là vẽ nhỏ hơn bản xuất 3.75 lần trên 1080p"
+    );
+    // Viền có ĐÚNG CÙNG lỗi và phải được sửa cùng chỗ.
+    assert!(
+        tsx.contains("sub.outline * tiLe"),
+        "độ dày viền cũng phải quy theo cùng hệ số lưới ASS"
+    );
+    assert!(
+        tsx.contains("sub.size * tiLe * ASS_EM_TREN_FONTSIZE"),
+        "cỡ chữ phải nhân thêm hệ số ascent+descent → ô em của CSS"
+    );
+}
+
+/// `MarginV=10` trong lưới `PlayResY=288` đặt đáy descender cách đáy khung
+/// 10/288 ≈ 3.47% chiều cao khung. Đo thật: 3.33% ở 360p, 3.43% ở 1080p. Con số
+/// `bottom: 8%` trước đây đẩy phụ đề xem thử lên cao hơn bản xuất gấp đôi. Giữ
+/// cho CSS còn suy ra từ hai hằng số Rust chứ không phải một số gõ tay.
+#[test]
+fn css_dat_phu_de_theo_margin_v_cua_libass() {
+    let css = std::fs::read_to_string("../src/App.css").expect("đọc được App.css");
+    assert!(
+        css.contains(&format!("--ass-play-res-y: {};", app_lib::export::ASS_PLAY_RES_Y)),
+        "App.css phải khai --ass-play-res-y cho khớp export::ASS_PLAY_RES_Y"
+    );
+    assert!(
+        css.contains(&format!("--ass-margin-v: {};", app_lib::export::ASS_MARGIN_V)),
+        "App.css phải khai --ass-margin-v cho khớp export::ASS_MARGIN_V"
+    );
+    assert!(
+        css.contains("bottom: calc(100% * var(--ass-margin-v) / var(--ass-play-res-y));"),
+        "vị trí đáy phụ đề phải tính từ hai biến trên, không gõ sẵn một con số"
+    );
+    assert!(
+        !css.contains("bottom: 8%"),
+        "bottom: 8% là con số sai cũ, cao hơn bản xuất hơn gấp đôi"
+    );
+}
+
+/// `line-height: 0` trên `.xem-thu` (dùng để khử khe trắng dưới thẻ <video>
+/// inline) DI TRUYỀN xuống mọi con cháu: đoạn ghi chú "chưa khớp khung" đặt
+/// trong khối đó bị ép mỗi dòng cao 0 và các dòng chồng đè lên nhau, không đọc
+/// nổi. Mà đúng câu đó mới là thứ ngăn người dùng nghe tiếng thử chồng nhau rồi
+/// kết luận bản lồng tiếng hỏng.
+///
+/// Thêm nữa, chiều cao của `.xem-thu` là hệ quy chiếu cho `bottom:` của logo và
+/// phụ đề, nên một đoạn <p> nằm trong đó còn đẩy cả hai lớp phủ lên khỏi mặt
+/// video. Vì vậy sửa ở CẢ HAI chỗ: khử khe bằng `display: block` trên thẻ
+/// video, và đưa ghi chú ra ngoài khối định vị.
+#[test]
+fn ui_ghi_chu_tieng_thu_khong_nam_trong_khoi_dinh_vi() {
+    let css = std::fs::read_to_string("../src/App.css").expect("đọc được App.css");
+    let khoi_video = css
+        .split(".xem-thu video {")
+        .nth(1)
+        .and_then(|s| s.split('}').next())
+        .expect("phải có quy tắc .xem-thu video");
+    assert!(
+        khoi_video.contains("display: block;"),
+        ".xem-thu video phải dùng display: block để khử khe trắng dưới video inline"
+    );
+    let khoi = css
+        .split(".xem-thu {")
+        .nth(1)
+        .and_then(|s| s.split('}').next())
+        .expect("phải có quy tắc .xem-thu");
+    assert!(
+        !khoi.contains("line-height: 0"),
+        ".xem-thu không được đặt line-height: 0 — nó di truyền và bóp chết đoạn ghi chú"
+    );
+
+    let tsx = std::fs::read_to_string("../src/XemThu.tsx").expect("đọc được XemThu.tsx");
+    let sau_khoi = tsx
+        .split(r#"<div className="xem-thu">"#)
+        .nth(1)
+        .expect("phải có khối .xem-thu");
+    let truoc_ghi_chu = sau_khoi
+        .split("chưa khớp khung")
+        .next()
+        .expect("phải còn ghi chú tiếng thử");
+    assert!(
+        truoc_ghi_chu.contains("</div>"),
+        "ghi chú tiếng thử phải nằm NGOÀI <div className=\"xem-thu\"> \
+         (trong đó thì line-height bóp chết chữ và <p> đẩy lớp phủ lên khỏi video)"
+    );
+    assert!(
+        truoc_ghi_chu.contains("<audio ref={am} />"),
+        "thẻ <audio> cũng ra ngoài khối định vị cùng ghi chú"
+    );
+}
+
+/// `run_export` đọc kiểu chữ và logo từ ĐĨA qua `load_config()`, không nhận qua
+/// tham số. Nếu việc lưu chỉ trông vào một cái nút thì người dùng chỉnh font,
+/// thấy trình phát đổi ngay trước mắt, sang Bước 7 bấm Xuất — và nhận về bản
+/// với kiểu chữ CŨ, không một lời cảnh báo, sau khi đã chờ hết một lượt mã hoá.
+/// (Nút "Lưu cấu hình" của Bước 6 còn từng nằm trong nhánh `wm.enabled`, nên ai
+/// không bật logo thì không có chỗ nào để lưu.)
+#[test]
+fn ui_xuat_video_tu_luu_cau_hinh_truoc() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let than = tsx
+        .split("async function onExport()")
+        .nth(1)
+        .and_then(|s| s.split("async function ").next())
+        .expect("phải có onExport");
+    assert!(
+        than.contains(r#"invoke("save_config", { cfg })"#),
+        "onExport phải tự lưu cấu hình trước khi gọi run_export"
+    );
+    // So theo LỜI GỌI thật, không so theo chữ "run_export" xuất hiện đầu tiên —
+    // nó còn nằm trong chú thích ngay phía trên.
+    let vi_tri_luu = than
+        .find(r#"invoke("save_config", { cfg })"#)
+        .expect("có lời gọi save_config");
+    let vi_tri_xuat = than
+        .find(r#"invoke<ExportResultDto>("run_export""#)
+        .expect("có lời gọi run_export");
+    assert!(
+        vi_tri_luu < vi_tri_xuat,
+        "phải lưu TRƯỚC khi gọi run_export, không phải sau"
+    );
+}
+
+/// `max` trên <input type="number"> chỉ chặn nút mũi tên, không chặn gõ tay.
+/// Rust kẹp lại trong `Watermark::moi`, nên gõ 150 làm TRÌNH PHÁT vẽ logo rộng
+/// gấp rưỡi khung trong khi bản xuất ra 100% — lớp xem thử nói dối đúng cái
+/// việc nó sinh ra để làm.
+#[test]
+fn ui_kep_tran_o_so_logo_khop_voi_rust() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    assert!(tsx.contains("const WM_SIZE_MAX = 100;"), "thiếu hằng trần cỡ logo");
+    assert!(tsx.contains("const WM_MARGIN_MAX = 40;"), "thiếu hằng trần lề logo");
+    assert!(
+        tsx.contains("Math.min(WM_SIZE_MAX, Math.max(1, n))"),
+        "ô cỡ logo phải kẹp cả trần lẫn sàn"
+    );
+    assert!(
+        tsx.contains("Math.min(WM_MARGIN_MAX, Math.max(0, n))"),
+        "ô lề logo phải kẹp cả trần lẫn sàn"
+    );
+    // Trần của UI phải là trần THẬT bên Rust, không phải một con số tự chọn.
+    let w = app_lib::export::Watermark::moi("br", 1000, 999, 999, 1.0);
+    assert_eq!(w.logo_w_px, 1000, "Rust vẫn kẹp size_pct về 100");
+    assert_eq!(w.margin_px, 400, "Rust vẫn kẹp margin_pct về 40");
+}
+
+/// Theo WHATWG, thuật toán tua bắn "timeupdate" RỒI mới tới "seeked" — ngược
+/// với chú thích cũ ở đây. Kết luận của code vẫn đúng nhưng vì lý do khác
+/// (`tMs` trong closure là giá trị của lần render cũ, bất kể thứ tự sự kiện).
+/// Quy ước chú thích của repo này là "giải thích VÌ SAO, và đúng"; một chú
+/// thích sai là một khiếm khuyết.
+#[test]
+fn ui_khong_con_chu_thich_sai_ve_thu_tu_seeked_timeupdate() {
+    let tsx = std::fs::read_to_string("../src/XemThu.tsx").expect("đọc được XemThu.tsx");
+    assert!(
+        !tsx.contains(r#""seeked" bắn TRƯỚC "timeupdate""#),
+        "chú thích nói seeked bắn trước timeupdate là sai theo WHATWG"
+    );
+    assert!(
+        tsx.contains(r#"bắn "timeupdate" RỒI mới tới "seeked""#),
+        "phải ghi đúng thứ tự sự kiện theo WHATWG"
+    );
 }
 
 /// `Number(e.target.value) || MAC_DINH` coi 0 là falsy nên gõ "0" vào ô lề bị

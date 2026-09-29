@@ -27,6 +27,45 @@ function phatDuoc(p: string): boolean {
 }
 
 /**
+ * Chiều cao hệ quy chiếu của script ASS mà ffmpeg sinh ra từ file SRT.
+ *
+ * libass KHÔNG lấy độ phân giải video làm hệ quy chiếu cho `FontSize`. ffmpeg
+ * chuyển SRT sang ASS trước khi đưa cho libass, và header nó sinh ra ghi cứng
+ * `PlayResX: 384 / PlayResY: 288` bất kể video 360p hay 4K. libass vẽ trong
+ * lưới 288 đơn vị đó rồi phóng cả khung lên kích thước thật, nên `FontSize=24`
+ * là 24/288 ≈ 8.3% CHIỀU CAO KHUNG — tỉ lệ với khung, không phải một số pixel
+ * tuyệt đối trên khung gốc.
+ *
+ * Đã đo thật (ffmpeg 9.0.2, burn `FontSize=24,Outline=0` lên nền đen, đếm hàng
+ * pixel sáng): chiều cao chữ "H" là 19 / 39 / 57 / 115 px ở 360p / 720p /
+ * 1080p / 4K — đúng tỉ lệ với chiều cao khung, không đứng yên ở một con số.
+ * Công thức cũ `size * clientHeight / videoHeight` (tin rằng 24 nghĩa là 24px
+ * trên khung gốc) vẽ nhỏ hơn bản xuất 3.75 lần trên video 1080p và 7.5 lần
+ * trên 4K.
+ *
+ * Phải khớp `export::ASS_PLAY_RES_Y` bên Rust; `tests/hang_so_ui_test.rs` ghim.
+ */
+const ASS_PLAY_RES_Y = 288;
+
+/**
+ * Hệ số quy `FontSize` của ASS sang `font-size` của CSS.
+ *
+ * libass đo `FontSize` bằng ascent+descent của font, còn CSS `font-size` là ô
+ * em. Arial có ascent 0.905 + descent 0.212 = 1.117 em, nên một em CSS ứng với
+ * 1/1.117 ≈ 0.895 lần FontSize. Kiểm lại bằng số đo ở trên: cao chữ "H" đo
+ * được chia cho `size * clientHeight / 288` ra 0.633…0.650; chia tiếp cho tỉ
+ * lệ cap-height của Arial (0.716 em) ra 0.88…0.91. Lấy tròn 0.9.
+ *
+ * Hệ số này KHÔNG áp cho độ dày viền: `Outline` của ASS là bề dày đường viền
+ * đo thẳng trong lưới 288, không dính gì tới metric của font.
+ */
+const ASS_EM_TREN_FONTSIZE = 0.9;
+
+// Lề dọc `MarginV=10` (cùng lưới 288) quyết định phụ đề nằm cách đáy bao
+// nhiêu. Nó không xuất hiện ở file này vì việc đặt vị trí nằm trọn trong CSS —
+// xem `.xem-thu-cap` trong App.css, nơi 10 và 288 được khai làm biến CSS.
+
+/**
  * Vị trí logo theo góc. Margin quy ra PX theo BỀ NGANG khung cho CẢ HAI trục,
  * khớp cách Rust tính (`Watermark::overlay_xy` trong export.rs):
  * `margin_px = video_w * margin_pct / 100`, dùng chung một giá trị đó cho cả x
@@ -48,7 +87,9 @@ function viTriLogo(corner: string, marginPct: number, rongPx: number): React.CSS
 export default function XemThu({ videoPath, cues, sub, wm }: XemThuProps) {
   const ref = useRef<HTMLVideoElement>(null);
   const [tMs, setTMs] = useState(0);
-  // Tỉ lệ khung hiển thị so với khung gốc, để quy đổi cỡ chữ.
+  // Số pixel hiển thị ứng với MỘT đơn vị của lưới ASS cao 288 — xem
+  // ASS_PLAY_RES_Y phía trên. Đây là hệ số quy mọi con số của libass (cỡ chữ,
+  // dày viền) sang px trên màn hình.
   const [tiLe, setTiLe] = useState(1);
   // Bề ngang thật của khung hiển thị (px), để quy margin logo ra px — xem
   // viTriLogo phía trên vì sao không dùng "%" trực tiếp.
@@ -90,8 +131,12 @@ export default function XemThu({ videoPath, cues, sub, wm }: XemThuProps) {
 
   function capNhatKichThuoc() {
     const v = ref.current;
+    // Chờ có videoHeight nội tại rồi mới đo: trước khi nạp xong metadata, thẻ
+    // <video> còn giữ tỉ lệ mặc định 2:1 nên clientHeight chưa phải chiều cao
+    // khung hình thật. Bản thân videoHeight KHÔNG tham gia phép quy đổi nữa —
+    // hệ quy chiếu là lưới ASS cao 288, không phải khung gốc.
     if (!v || !v.videoHeight) return;
-    setTiLe(v.clientHeight / v.videoHeight);
+    setTiLe(v.clientHeight / ASS_PLAY_RES_Y);
     setRongPx(v.clientWidth);
   }
 
@@ -126,9 +171,15 @@ export default function XemThu({ videoPath, cues, sub, wm }: XemThuProps) {
   // giờ cả dải: người dùng tua liên tục khi căn chỉnh, mọi lịch hẹn đều phải
   // huỷ và dựng lại sau mỗi lần tua.
   //
-  // Đọc `video.currentTime` trực tiếp thay vì state `tMs`/`cue`: sự kiện
-  // "seeked" bắn TRƯỚC "timeupdate", nên tại thời điểm đó `tMs` còn là vị trí
-  // cũ trước khi tua — nếu tính cue từ state sẽ chỉnh audio theo cue SAI.
+  // Đọc `video.currentTime` trực tiếp thay vì state `tMs`/`cue`: hàm này chạy
+  // trong handler sự kiện, mà `tMs` ở đó là giá trị của lần render đã tạo ra
+  // handler — React chỉ đưa giá trị mới vào ở lần render SAU.
+  //
+  // (Theo WHATWG, thuật toán tua bắn "timeupdate" RỒI mới tới "seeked" — tức
+  // ngược với những gì chú thích cũ ở đây viết. Nhưng thứ tự đó không cứu được
+  // gì: `setTMs` trong handler "timeupdate" chỉ xếp hàng một lần render mới,
+  // nó không sửa biến `tMs` mà closure đang chạy đọc. Kết luận giữ nguyên, lý
+  // do thì khác.)
   //
   // `batBuoc=true` bỏ qua việc so cue cũ/mới — dùng cho tua và phát tiếp: cả
   // hai đều có thể xảy ra TRONG CÙNG một cue (tua để căn chỉnh, hoặc tạm dừng
@@ -174,7 +225,23 @@ export default function XemThu({ videoPath, cues, sub, wm }: XemThuProps) {
   }
   if (loi) return <p className="warn">{loi}</p>;
 
+  // `.xem-thu` là khối định vị (position: relative) của logo và phụ đề, nên
+  // TRONG nó chỉ được có đúng khung hình. Thẻ <audio> và ghi chú bên dưới nằm
+  // NGOÀI, vì hai lý do độc lập:
+  //
+  //  1. Chiều cao của `.xem-thu` là hệ quy chiếu cho `bottom:` của hai lớp
+  //     phủ. Một đoạn <p> nằm trong đó cộng thêm chiều cao của mình vào khối
+  //     chứa, đẩy logo và phụ đề lên khỏi mặt video.
+  //  2. `.xem-thu` từng phải đặt `line-height: 0` để khử khe trắng dưới thẻ
+  //     <video> inline, và line-height DI TRUYỀN — các dòng của đoạn ghi chú
+  //     xuống dòng bị ép cao 0 và chồng đè lên nhau, không đọc được. (App.css
+  //     nay khử khe đó bằng `display: block` trên chính thẻ video, nhưng ghi
+  //     chú vẫn phải ra ngoài vì lý do 1.)
+  //
+  // Đưa ra ngoài chứ không vá lại `line-height` cho riêng đoạn <p>: vá thế chỉ
+  // chữa triệu chứng 2, còn triệu chứng 1 vẫn còn nguyên.
   return (
+    <>
     <div className="xem-thu">
       {!videoSanSang ? (
         <p className="muted">Đang xin quyền mở video để xem thử…</p>
@@ -211,10 +278,14 @@ export default function XemThu({ videoPath, cues, sub, wm }: XemThuProps) {
               className="xem-thu-cap"
               style={{
                 fontFamily: sub.font,
-                // Cỡ chữ ASS tính trên khung hình gốc: FontSize=24 nghĩa là 24px
-                // trên video 1080p, không phải 24px trên màn hình.
-                fontSize: `${sub.size * tiLe}px`,
+                // `tiLe` đã là px-hiển-thị trên mỗi đơn vị của lưới ASS cao
+                // 288; nhân thêm ASS_EM_TREN_FONTSIZE vì libass đo FontSize
+                // theo ascent+descent còn CSS đo theo ô em (xem hai khối chú
+                // thích đầu file, kèm số đo thật).
+                fontSize: `${sub.size * tiLe * ASS_EM_TREN_FONTSIZE}px`,
                 color: sub.color,
+                // Cùng lưới 288, nhưng KHÔNG nhân hệ số em: Outline của ASS là
+                // bề dày đường viền chứ không phải một số đo của font.
                 WebkitTextStrokeWidth: `${sub.outline * tiLe}px`,
                 WebkitTextStrokeColor: sub.outline_color,
                 paintOrder: "stroke fill",
@@ -225,12 +296,13 @@ export default function XemThu({ videoPath, cues, sub, wm }: XemThuProps) {
           )}
         </>
       )}
-      <audio ref={am} />
-      <p className="muted">
-        Tiếng lồng nghe thử lấy từ file của từng câu, chưa khớp khung — câu nào đọc
-        dài quá chỗ của nó sẽ chồng sang câu sau. Bản xuất thật có thêm bước ép vừa
-        khung nên không bị.
-      </p>
     </div>
+    <audio ref={am} />
+    <p className="muted">
+      Tiếng lồng nghe thử lấy từ file của từng câu, chưa khớp khung — câu nào đọc
+      dài quá chỗ của nó sẽ chồng sang câu sau. Bản xuất thật có thêm bước ép vừa
+      khung nên không bị.
+    </p>
+    </>
   );
 }

@@ -520,13 +520,22 @@ input[type="color"] {
 
 /* ---------- trình phát xem thử ---------- */
 
+/* Khối định vị của hai lớp phủ (logo, phụ đề). Chiều cao của nó là hệ quy
+   chiếu cho `bottom:` của chúng, nên bên trong CHỈ được có thẻ <video> — ghi
+   chú và thẻ <audio> nằm ngoài, xem chú thích ở XemThu.tsx.
+
+   KHÔNG dùng `line-height: 0` ở đây nữa. Nó từng dùng để khử khe trắng dưới
+   thẻ <video> inline, nhưng line-height di truyền xuống mọi con cháu: đoạn ghi
+   chú "chưa khớp khung" đặt trong khối này bị ép mỗi dòng cao 0 và các dòng
+   chồng đè lên nhau, không đọc nổi. `display: block` trên chính thẻ video khử
+   khe đó tận gốc mà không để lại thuộc tính di truyền nào. */
 .xem-thu {
   position: relative;
   width: 100%;
-  line-height: 0;
 }
 
 .xem-thu video {
+  display: block;
   width: 100%;
   border-radius: var(--radius-ui);
   background: #000;
@@ -537,12 +546,29 @@ input[type="color"] {
   pointer-events: none;
 }
 
-/* Phụ đề đặt ở đáy giữa, giống mặc định của libass (Alignment=2). */
+/* Phụ đề đặt ở đáy giữa, giống mặc định của libass (Alignment=2).
+
+   Khoảng cách tới đáy KHÔNG phải một con số chọn cho đẹp mắt. ffmpeg chuyển
+   SRT sang ASS trước khi đưa cho libass, và header nó sinh ra ghi cứng
+   `PlayResY: 288` cùng style mặc định `MarginV: 10` — bất kể video 360p hay
+   4K. Nên đáy phần nét chữ thấp nhất luôn cách đáy khung đúng 10/288 ≈ 3.47%
+   chiều cao khung. Con số 8% trước đây đẩy phụ đề xem thử cao hơn bản xuất hơn
+   gấp đôi.
+
+   Đã đo thật (ffmpeg 9.0.2, burn chuỗi "Hgpq" lên nền đen): đáy descender cách
+   đáy khung 3.33% ở 360p và 3.43% ở 1080p.
+
+   Viết hai hằng số ra thành biến rồi tính bằng calc() thay vì gõ sẵn "3.47%":
+   phép chia còn nhìn thấy được thì người sau sửa một số là ra đúng số kia, và
+   `tests/hang_so_ui_test.rs` ghim được hai con số này với
+   `export::ASS_PLAY_RES_Y` / `export::ASS_MARGIN_V` bên Rust. */
 .xem-thu-cap {
+  --ass-play-res-y: 288;
+  --ass-margin-v: 10;
   position: absolute;
   left: 5%;
   right: 5%;
-  bottom: 8%;
+  bottom: calc(100% * var(--ass-margin-v) / var(--ass-play-res-y));
   text-align: center;
   line-height: 1.2;
   font-weight: 600;

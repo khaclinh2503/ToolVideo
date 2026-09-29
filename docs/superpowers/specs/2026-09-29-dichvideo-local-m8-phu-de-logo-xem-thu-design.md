@@ -202,13 +202,32 @@ Phụ đề lấy từ `cues` mà `list_cues` đã trả (đã có sẵn ở Bư
 mới). Cue đang chạy = cue có `startMs <= t*1000 < endMs`, cập nhật theo sự kiện
 `timeupdate`.
 
-**Quy đổi cỡ chữ.** libass không thấy `PlayResX/Y` nên lấy độ phân giải video
-thật làm hệ quy chiếu: `FontSize=24` nghĩa là 24px trên khung gốc. Trình phát
-hiển thị ở kích thước khác, nên CSS phải là:
+**Quy đổi cỡ chữ.** *(Đoạn này đã SAI ở bản thiết kế đầu và được sửa sau khi đo
+thật — xem `final-fix-report.md`.)*
+
+libass **có** `PlayResX/Y`: ffmpeg chuyển SRT sang ASS trước khi đưa cho libass,
+và header nó sinh ra ghi cứng `PlayResX: 384 / PlayResY: 288` bất kể video 360p
+hay 4K. libass vẽ trong lưới 288 đơn vị đó rồi phóng cả khung lên kích thước
+thật, nên `FontSize=24` **không** phải 24px trên khung gốc — nó là 24/288 ≈ 8.3%
+chiều cao khung, tỉ lệ với khung.
+
+Đo thật (ffmpeg 9.0.2, burn `FontSize=24,Outline=0` lên nền đen, đếm hàng pixel
+sáng): chiều cao chữ "H" là **19 / 39 / 57 / 115 px** ở 360p / 720p / 1080p / 4K.
+Công thức `size * clientHeight / videoHeight` vẽ nhỏ hơn bản xuất 3.75 lần trên
+1080p và 7.5 lần trên 4K.
 
 ```
-fontSize = sub.size * (videoElement.clientHeight / videoElement.videoHeight)
+fontSize = sub.size * (videoElement.clientHeight / 288) * 0.9
 ```
+
+Hệ số 0.9 vì libass đo `FontSize` theo ascent+descent của font còn CSS đo theo ô
+em (Arial: 0.905 + 0.212 = 1.117 em ⇒ 1/1.117 ≈ 0.895). Độ dày viền dùng cùng hệ
+số `clientHeight / 288` nhưng **không** nhân 0.9 — `Outline` không phải số đo của
+font.
+
+Hai hằng số 288 (`ASS_PLAY_RES_Y`) và 10 (`ASS_MARGIN_V`, lề dọc mặc định, đặt
+đáy descender cách đáy khung 10/288 ≈ 3.47%) sống trong `export.rs` và được
+`tests/hang_so_ui_test.rs` ghim với `XemThu.tsx` / `App.css`.
 
 Viền vẽ bằng `-webkit-text-stroke: <outline>px <outline_color>` cộng
 `paint-order: stroke fill` để viền không ăn vào nét chữ.
