@@ -91,20 +91,30 @@ pub fn parse_video_size_json(json: &str) -> Option<(u32, u32)> {
     // Ưu tiên side_data (nhánh ffprobe hiện đại THẬT SỰ dùng — xem chú thích ở
     // probe_video_size); thẻ `rotate` kiểu cũ chỉ là lưới an toàn cho ffprobe
     // đời trước, không có trên bộ ffprobe đi kèm app.
+    // `as_i64()` chỉ trả Some khi serde_json đã PARSE số đó ở biểu diễn số
+    // nguyên nội bộ. Máy quay/điện thoại thật — đặc biệt file do Apple mux —
+    // hay ghi góc Display Matrix không tròn số kiểu -89.999992 thay vì -90.0,
+    // ffprobe in y nguyên số đó ra JSON dạng float; `as_i64()` trả None dù giá
+    // trị làm tròn ra đúng -90. Trước khi sửa, angle rơi về unwrap_or(0), khung
+    // không được đổi chỗ w/h — lặp lại chính bug mà hàm này được sửa để tránh,
+    // và im lặng vì vẫn trả Some (không None) chứ không panic hay báo lỗi gì.
+    // `as_f64()` đọc được cả hai dạng (int lẫn float) nên dùng nó rồi làm tròn
+    // về độ nguyên trước khi xét bội lẻ của 90.
     let angle = stream
         .get("side_data_list")
         .and_then(|l| l.as_array())
         .and_then(|arr| {
             arr.iter()
-                .find_map(|sd| sd.get("rotation").and_then(|r| r.as_i64()))
+                .find_map(|sd| sd.get("rotation").and_then(|r| r.as_f64()))
         })
         .or_else(|| {
             stream
                 .get("tags")
                 .and_then(|t| t.get("rotate"))
                 .and_then(|r| r.as_str())
-                .and_then(|s| s.trim().parse::<i64>().ok())
+                .and_then(|s| s.trim().parse::<f64>().ok())
         })
+        .map(|f| f.round() as i64)
         .unwrap_or(0);
 
     // Chỉ dấu và bội chẵn/lẻ của 90 là quan trọng — 90/-90/270/-270 đều đổi

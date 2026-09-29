@@ -537,3 +537,69 @@ fn video_zero_hoac_thieu_field_tra_ve_none() {
     assert_eq!(parse_video_size_json(r#"{"streams":[]}"#), None);
     assert_eq!(parse_video_size_json("không phải json"), None);
 }
+
+// --- Bug thật: máy quay/điện thoại (đặc biệt file mux bởi Apple) thường ghi
+// góc xoay Display Matrix KHÔNG tròn số, ví dụ -89.999992 thay vì -90.0 chẵn.
+// ffprobe in số đó ra JSON dạng float. `as_i64()` trả None cho mọi Value::Number
+// được parse dưới dạng float — kể cả khi giá trị đó về mặt số học là số nguyên
+// (ví dụ 90.0) — nên nhánh side_data coi như không tìm thấy rotation, rơi về
+// nhánh `rotate` tag (thường cũng trống), rồi `unwrap_or(0)`: KHÔNG đổi chỗ
+// w/h, lặp lại đúng bug mà `probe_video_size` được sửa để tránh, và im lặng
+// (không panic, không None) nên không ai nhận ra.
+#[test]
+fn video_xoay_90_am_khong_tron_so_tu_thiet_bi_thuc_van_doi_cho() {
+    // Giá trị đo được thật từ file iPhone mux lại: -89.999992 thay vì -90.
+    let j = r#"{"streams":[{"width":1920,"height":1080,"tags":{},"side_data_list":[{"side_data_type":"Display Matrix","rotation":-89.999992}]}]}"#;
+    assert_eq!(parse_video_size_json(j), Some((1080, 1920)));
+}
+
+#[test]
+fn video_xoay_90_duong_khong_tron_so_van_doi_cho() {
+    let j = r#"{"streams":[{"width":1920,"height":1080,"tags":{},"side_data_list":[{"side_data_type":"Display Matrix","rotation":89.999992}]}]}"#;
+    assert_eq!(parse_video_size_json(j), Some((1080, 1920)));
+}
+
+#[test]
+fn video_xoay_90_duong_dang_float_tron_so_van_doi_cho() {
+    // 90.0 (float tròn, không phải int JSON) — as_i64() cũng trả None cho ca này
+    // dù giá trị nguyên, vì serde_json giữ nó ở biểu diễn f64 nội bộ.
+    let j = r#"{"streams":[{"width":1920,"height":1080,"tags":{},"side_data_list":[{"side_data_type":"Display Matrix","rotation":90.0}]}]}"#;
+    assert_eq!(parse_video_size_json(j), Some((1080, 1920)));
+}
+
+#[test]
+fn video_xoay_270_dang_float_van_doi_cho() {
+    let j = r#"{"streams":[{"width":1920,"height":1080,"tags":{},"side_data_list":[{"side_data_type":"Display Matrix","rotation":270.0}]}]}"#;
+    assert_eq!(parse_video_size_json(j), Some((1080, 1920)));
+}
+
+#[test]
+fn video_xoay_90_int_chinh_xac_van_doi_cho_nhu_cu() {
+    // Số nguyên chẵn qua như trước — không được để bản sửa làm hỏng ca cũ.
+    let j = r#"{"streams":[{"width":1920,"height":1080,"tags":{},"side_data_list":[{"side_data_type":"Display Matrix","rotation":-90}]}]}"#;
+    assert_eq!(parse_video_size_json(j), Some((1080, 1920)));
+}
+
+#[test]
+fn video_khong_xoay_dang_float_0_giu_nguyen() {
+    let j = r#"{"streams":[{"width":1920,"height":1080,"tags":{},"side_data_list":[{"side_data_type":"Display Matrix","rotation":0.0}]}]}"#;
+    assert_eq!(parse_video_size_json(j), Some((1920, 1080)));
+}
+
+#[test]
+fn video_thieu_side_data_list_giu_nguyen_khong_panic() {
+    let j = r#"{"streams":[{"width":1920,"height":1080,"tags":{}}]}"#;
+    assert_eq!(parse_video_size_json(j), Some((1920, 1080)));
+}
+
+#[test]
+fn video_side_data_list_meo_giu_nguyen_khong_panic_khong_none() {
+    // side_data_list là chuỗi thay vì mảng, và mảng chứa phần tử thiếu field
+    // rotation — cả hai phải suy biến về kích thước không xoay, không panic
+    // và không trả None (None ở tầng gọi làm ứng dụng bỏ hẳn watermark).
+    let j1 = r#"{"streams":[{"width":1920,"height":1080,"tags":{},"side_data_list":"không phải mảng"}]}"#;
+    assert_eq!(parse_video_size_json(j1), Some((1920, 1080)));
+
+    let j2 = r#"{"streams":[{"width":1920,"height":1080,"tags":{},"side_data_list":[{"side_data_type":"Display Matrix"}]}]}"#;
+    assert_eq!(parse_video_size_json(j2), Some((1920, 1080)));
+}
