@@ -15,10 +15,15 @@ interface SubtitleConfig {
   font: string; size: number; color: string;
   outline_color: string; outline: number;
 }
+interface WatermarkConfig {
+  enabled: boolean; path: string; corner: string;
+  size_pct: number; opacity: number; margin_pct: number;
+}
 interface AppConfig {
   translate: { default_provider: string; target_lang: string; openai: OpenAiConfig };
   tts: TtsConfig;
   subtitle: SubtitleConfig;
+  watermark: WatermarkConfig;
 }
 
 /** Font có sẵn trên mọi máy Windows và đủ dấu tiếng Việt. */
@@ -51,6 +56,17 @@ const MODEL_GOI_Y: Record<string, { ten: string; ghi_chu: string }[]> = {
 // Phải khớp với srt::MAX_MOT_DONG bên Rust — chỉ dùng để hiển thị, bộ cắt thật
 // nằm ở backend.
 const MAX_MOT_DONG = 42;
+
+// Phải khớp config::WatermarkConfig bên Rust — có test hang_so_ui_test giữ.
+const WM_SIZE_MAC_DINH = 12;
+const WM_MARGIN_MAC_DINH = 3;
+
+const WM_GOC = [
+  { id: "tl", ten: "Trên trái" },
+  { id: "tr", ten: "Trên phải" },
+  { id: "bl", ten: "Dưới trái" },
+  { id: "br", ten: "Dưới phải" },
+];
 
 const FONT_GOI_Y = [
   "Arial", "Segoe UI", "Tahoma", "Verdana",
@@ -481,6 +497,18 @@ function App() {
   const sub = cfg?.subtitle;
   const setSub = (patch: Partial<SubtitleConfig>) =>
     cfg && setCfg({ ...cfg, subtitle: { ...cfg.subtitle, ...patch } });
+
+  const wm = cfg?.watermark;
+  const setWm = (patch: Partial<WatermarkConfig>) =>
+    cfg && setCfg({ ...cfg, watermark: { ...cfg.watermark, ...patch } });
+
+  async function onPickLogo() {
+    const f = await open({ filters: [{ name: "Ảnh", extensions: ["png"] }] });
+    if (!f) return;
+    // Khai phạm vi ngay để trình phát hiện được logo mà không phải lưu config.
+    try { await invoke("cho_phep_xem", { path: f as string }); } catch { /* xem thử sẽ không hiện logo */ }
+    setWm({ path: f as string, enabled: true });
+  }
 
   async function onXemThuPhuDe() {
     if (!projectDir) { setStatus("Mở một dự án đã dịch trước."); return; }
@@ -967,6 +995,69 @@ function App() {
             </div>
             {subPreview && (
               <img className="sub-preview" src={subPreview} alt="Xem thử phụ đề" />
+            )}
+          </>
+        )}
+        {wm && (
+          <>
+            <label>
+              <input
+                type="checkbox"
+                checked={wm.enabled}
+                onChange={(e) => setWm({ enabled: e.target.checked })}
+                disabled={running}
+              />
+              Đóng dấu logo lên video
+            </label>
+            {wm.enabled && (
+              <>
+                <p className="warn">
+                  Bật logo thì video phải mã hoá lại toàn bộ — lâu ngang "Ghi phụ đề vào
+                  hình". Không bật thì xuất chỉ chép luồng hình nên nhanh hơn nhiều.
+                </p>
+                <div className="row">
+                  <button type="button" onClick={onPickLogo} disabled={running}>Chọn file PNG…</button>
+                  <span className="muted">{wm.path ? baseName(wm.path) : "chưa chọn"}</span>
+                  {wm.path && (
+                    <button type="button" onClick={() => setWm({ path: "" })} disabled={running}>Bỏ</button>
+                  )}
+                </div>
+                <div className="row">
+                  <label className="muted" htmlFor="wm-goc">Góc</label>
+                  <select id="wm-goc" value={wm.corner} onChange={(e) => setWm({ corner: e.target.value })} disabled={running}>
+                    {WM_GOC.map((g) => <option key={g.id} value={g.id}>{g.ten}</option>)}
+                  </select>
+
+                  <label className="muted" htmlFor="wm-size">Cỡ (% bề ngang)</label>
+                  <input
+                    id="wm-size" type="number" min={1} max={100} className="input-lang"
+                    value={wm.size_pct}
+                    onChange={(e) => setWm({ size_pct: Number(e.target.value) || WM_SIZE_MAC_DINH })}
+                    disabled={running}
+                  />
+
+                  <label className="muted" htmlFor="wm-margin">Lề (%)</label>
+                  <input
+                    id="wm-margin" type="number" min={0} max={40} className="input-lang"
+                    value={wm.margin_pct}
+                    onChange={(e) => setWm({ margin_pct: Number(e.target.value) || WM_MARGIN_MAC_DINH })}
+                    disabled={running}
+                  />
+
+                  <label className="muted" htmlFor="wm-opacity">Độ mờ</label>
+                  <input
+                    id="wm-opacity" type="range" min={0} max={100}
+                    value={Math.round(wm.opacity * 100)}
+                    onChange={(e) => setWm({ opacity: Number(e.target.value) / 100 })}
+                    disabled={running}
+                  />
+                  <span className="muted">{Math.round(wm.opacity * 100)}%</span>
+                </div>
+                <div className="row">
+                  <button type="button" onClick={onSaveCfg} disabled={running}>Lưu cấu hình</button>
+                  <span className="muted">Nhớ bấm lưu thì lúc xuất mới dùng thiết lập này.</span>
+                </div>
+              </>
             )}
           </>
         )}
