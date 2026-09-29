@@ -457,3 +457,51 @@ fn ui_font_rong_khong_bi_bao_thieu() {
         "ô font rỗng phải được coi là chưa có gì để báo thiếu, không phải font thiếu"
     );
 }
+
+/// Đã đo thật bằng Edge headless (cùng lõi Chromium với WebView2): trên máy
+/// dựng bản này, generic `monospace` map ra đúng "Consolas" — một font có
+/// thật, cài sẵn trên Windows. Chỉ so với MỘT lính canh `monospace` thì gõ
+/// đúng "Consolas" cho ra bề rộng bằng khớp lính canh (vì đó chính là font mà
+/// `monospace` trỏ tới), nên hàm báo "thiếu" một font đang cài thật trên máy.
+/// Phải so với HAI lính canh không liên quan (`monospace` VÀ `sans-serif`) —
+/// coi là "có" nếu khác với MỘT TRONG HAI — vì hai keyword đó hiếm khi trỏ
+/// cùng một font vật lý.
+#[test]
+fn ui_kiem_font_so_hai_linh_canh_khong_chi_mot() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    assert!(
+        tsx.contains(r#""sans-serif""#),
+        "phải có lính canh thứ hai sans-serif, không chỉ mỗi monospace"
+    );
+    assert!(
+        tsx.contains("!== linh1") && tsx.contains("!== linh2"),
+        "phải so bề rộng với CẢ HAI lính canh"
+    );
+    assert!(
+        tsx.contains("co1 !== linh1 || co2 !== linh2"),
+        "coi font là có thật nếu khác lính canh này HOẶC lính canh kia — chỉ cần một trong hai đủ"
+    );
+}
+
+/// Đã đo thật: một tên font kết thúc bằng backslash lẻ (vd người dùng gõ nhầm
+/// `Foo\`) làm dấu backslash đó "ăn" luôn dấu nháy đôi mà code chèn vào để
+/// đóng chuỗi CSS, gộp cả phần lính canh phía sau vào MỘT family duy nhất.
+/// `ctx.font` vẫn gán "thành công" (không phải no-op) nhưng rơi vào font mặc
+/// định của canvas — bề rộng đó khác CẢ HAI lính canh, nên hàm báo "có thật"
+/// cho một tên chưa từng tồn tại. Phải thoát backslash thành `\\` TRƯỚC khi
+/// thoát dấu nháy đôi (đúng thứ tự escape chuỗi CSS) để tên đó quay lại đúng
+/// nghĩa một chuỗi ký tự thường, không phá cấu trúc `family, lính-canh`.
+#[test]
+fn ui_kiem_font_thoat_backslash_truoc_khi_thoat_dau_nhay() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let vi_tri_backslash = tsx
+        .find(r#"replace(/\\/g, "\\\\")"#)
+        .expect("phải thoát backslash thành \\\\ trước khi ghép vào font shorthand");
+    let vi_tri_quote = tsx
+        .find(r#"replace(/"/g, '\\"')"#)
+        .expect("phải thoát dấu nháy đôi thành \\\" (escape CSS thật, không đổi thành dấu nháy đơn)");
+    assert!(
+        vi_tri_backslash < vi_tri_quote,
+        "phải thoát backslash TRƯỚC dấu nháy đôi — ngược lại sẽ thoát luôn backslash mới sinh ra từ bước thoát dấu nháy"
+    );
+}

@@ -84,8 +84,19 @@ const FONT_GOI_Y = [
   "Times New Roman", "Calibri", "Roboto",
 ];
 
-// Phông "lính canh" dùng làm mốc so bề rộng — xem fontCoTonTai() ngay dưới.
-const PHONG_LINH_CANH = "monospace";
+// Hai phông "lính canh" dùng làm mốc so bề rộng — xem fontCoTonTai() ngay
+// dưới. PHẢI dùng HAI keyword không liên quan, không phải một: đã đo thật
+// bằng Edge headless (cùng lõi Chromium với WebView2) trên máy dựng bản này —
+// generic `monospace` map ra đúng "Consolas", một font có thật cài sẵn trên
+// Windows. Nếu chỉ so với lính canh `monospace`, gõ đúng "Consolas" cho bề
+// rộng KHỚP lính canh (vì nó chính là font `monospace` trỏ tới), nên hàm báo
+// "thiếu" một font đang cài thật — cảnh báo bắn nhầm trên input ĐÚNG, tệ hơn
+// không báo vì dạy người dùng lơ cảnh báo. Thêm lính canh `sans-serif` (map
+// ra "Arial" trên máy đo) và coi font là có thật nếu khác với MỘT TRONG HAI —
+// hai generic hiếm khi trỏ cùng một font vật lý nên luôn còn một phép so
+// phân biệt được.
+const PHONG_LINH_CANH_1 = "monospace";
+const PHONG_LINH_CANH_2 = "sans-serif";
 
 /**
  * Phương thức `check` của `FontFaceSet` (`document.fonts`) KHÔNG dùng được để
@@ -115,12 +126,33 @@ function boRongDoVoiFont(family: string): number {
   return ctx.measureText("mmmmmmmmmmlli0123456789").width;
 }
 
+/**
+ * Thoát tên font để ghép an toàn vào font shorthand dạng `"tên", lính-canh`.
+ * PHẢI thoát backslash trước rồi mới thoát dấu nháy đôi — đảo thứ tự sẽ thoát
+ * luôn backslash mới sinh ra ở bước thoát dấu nháy, sai lại từ đầu.
+ *
+ * Đã đo thật (Edge headless): một tên kết thúc bằng backslash lẻ (vd gõ nhầm
+ * "Foo\") mà không thoát, dấu backslash đó "ăn" luôn dấu nháy đôi mà code
+ * chèn vào để đóng chuỗi — toàn bộ phần `", lính-canh` phía sau bị gộp vào
+ * LÀM MỘT với tên font thành một family duy nhất. `ctx.font` vẫn gán "thành
+ * công" (không phải no-op) nhưng rơi vào font mặc định của canvas, bề rộng đó
+ * khác CẢ HAI lính canh — hàm báo "có thật" cho một tên chưa từng tồn tại.
+ * Thoát đúng chuẩn CSS-string (\\ rồi \") giữ tên đó nguyên nghĩa một chuỗi ký
+ * tự thường, không phá cấu trúc `family, lính-canh` nữa.
+ */
+function thoatTenFont(ten: string): string {
+  return ten.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
 function fontCoTonTai(ten: string): boolean {
   const sach = ten.trim();
   if (!sach) return true;
-  const linhCanh = boRongDoVoiFont(PHONG_LINH_CANH);
-  const coTen = boRongDoVoiFont(`"${sach.replace(/"/g, "'")}", ${PHONG_LINH_CANH}`);
-  return coTen !== linhCanh;
+  const thoat = thoatTenFont(sach);
+  const linh1 = boRongDoVoiFont(PHONG_LINH_CANH_1);
+  const linh2 = boRongDoVoiFont(PHONG_LINH_CANH_2);
+  const co1 = boRongDoVoiFont(`"${thoat}", ${PHONG_LINH_CANH_1}`);
+  const co2 = boRongDoVoiFont(`"${thoat}", ${PHONG_LINH_CANH_2}`);
+  return co1 !== linh1 || co2 !== linh2;
 }
 
 // Bảy bước của quy trình, mỗi bước một tab. `id` cũng là số hiệu bước hiện
