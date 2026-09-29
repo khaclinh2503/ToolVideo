@@ -62,6 +62,16 @@ const MAX_MOT_DONG = 42;
 const WM_SIZE_MAC_DINH = 12;
 const WM_MARGIN_MAC_DINH = 3;
 
+// Trần của hai ô số logo. Phải khớp hai mốc `clamp` trong `Watermark::moi`
+// (export.rs): Rust kẹp size_pct về 1..=100 và margin_pct về 0..=40.
+//
+// Không kẹp ở UI thì `max` trên thẻ <input type="number"> chỉ chặn nút mũi tên
+// chứ không chặn gõ tay: gõ 150 làm TRÌNH PHÁT xem thử vẽ logo rộng gấp rưỡi
+// khung hình, còn bản xuất vẫn ra 100% — lớp xem thử nói dối đúng cái việc nó
+// sinh ra để làm.
+const WM_SIZE_MAX = 100;
+const WM_MARGIN_MAX = 40;
+
 const WM_GOC = [
   { id: "tl", ten: "Trên trái" },
   { id: "tr", ten: "Trên phải" },
@@ -98,6 +108,8 @@ interface VoiceDto {
 interface ExportResultDto {
   outputPath: string; adjusted: number; capped: number;
   placed: number; truncated: number; saturated: number;
+  /** Thứ đã bị bỏ qua mà bản xuất vẫn thành công — hiện chỉ có logo. */
+  warnings: string[];
 }
 interface ProjectSummaryDto {
   projectDir: string; videoPath: string; videoName: string;
@@ -169,6 +181,10 @@ function App() {
   const [pickedVideo, setPickedVideo] = useState("");
   // Đường dẫn file vừa xuất, để mở thẳng thư mục chứa nó.
   const [exported, setExported] = useState("");
+  // Những thứ backend đã BỎ QUA trong lượt xuất vừa rồi mà vẫn xuất xong (hiện
+  // chỉ có logo). Không hiện ra thì người dùng chờ hết một lượt mã hoá lại
+  // toàn bộ video rồi mở file ra thấy trống logo, không biết vì sao.
+  const [xuatCanhBao, setXuatCanhBao] = useState<string[]>([]);
   const [url, setUrl] = useState("");
   const [dlPct, setDlPct] = useState<number | null>(null);
   // "" = tải vào chỗ mặc định trong thư mục dữ liệu của app.
@@ -476,8 +492,18 @@ function App() {
   }
 
   async function onExport() {
-    setRunning(true); setExported(""); setStatus("Đang xuất video...");
+    setRunning(true); setExported(""); setXuatCanhBao([]); setStatus("Đang xuất video...");
     try {
+      // Lưu cấu hình TRƯỚC khi xuất, luôn luôn. `run_export` đọc kiểu chữ và
+      // logo từ đĩa qua `load_config()`, nó không nhận qua tham số. Nếu chỉ
+      // trông vào nút "Lưu cấu hình" ở Bước 6 thì người dùng chỉnh font, thấy
+      // trình phát đổi ngay trước mắt, sang Bước 7 bấm Xuất — và nhận về bản
+      // với kiểu chữ CŨ, không một lời cảnh báo. Đó là cách hỏng tệ nhất: im
+      // lặng và chỉ lộ ra sau khi đã chờ hết một lượt mã hoá.
+      //
+      // Lỗi lưu thì DỪNG hẳn chứ không xuất tiếp: xuất bằng cấu hình cũ trong
+      // khi người dùng tưởng là cấu hình mới chính là thứ đang tránh.
+      if (cfg) await invoke("save_config", { cfg });
       const r = await invoke<ExportResultDto>("run_export", {
         projectDir, videoPath, tgt, burnSubs, softSubs,
         outDir: outDir || null,
@@ -486,6 +512,7 @@ function App() {
         ? ` (${r.capped} câu phải đọc nhanh hết cỡ mà vẫn tràn)`
         : "";
       setExported(r.outputPath);
+      setXuatCanhBao(r.warnings ?? []);
       setStatus(`Xuất xong: ${baseName(r.outputPath)} — ${r.placed} câu lồng tiếng${canhBao}`);
       await refreshProjects();
     } catch (e) {
@@ -1038,7 +1065,7 @@ function App() {
 
                   <label className="muted" htmlFor="wm-size">Cỡ (% bề ngang)</label>
                   <input
-                    id="wm-size" type="number" min={1} max={100} className="input-lang"
+                    id="wm-size" type="number" min={1} max={WM_SIZE_MAX} className="input-lang"
                     value={wm.size_pct}
                     onChange={(e) => {
                       const raw = e.target.value;
@@ -1050,14 +1077,21 @@ function App() {
                       // đây 0 dưới min=1 mới thật vô nghĩa, nên clamp lên 1 chứ không
                       // nhảy hẳn về WM_SIZE_MAC_DINH; chỉ giá trị không phải số (rỗng,
                       // "abc") mới rơi về mặc định.
-                      setWm({ size_pct: Number.isFinite(n) ? Math.max(1, n) : WM_SIZE_MAC_DINH });
+                      // Kẹp CẢ TRẦN: `max` của <input> không chặn gõ tay, mà Rust thì
+                      // kẹp về WM_SIZE_MAX — không kẹp ở đây thì xem thử vẽ một cỡ còn
+                      // bản xuất ra một cỡ khác.
+                      setWm({
+                        size_pct: Number.isFinite(n)
+                          ? Math.min(WM_SIZE_MAX, Math.max(1, n))
+                          : WM_SIZE_MAC_DINH,
+                      });
                     }}
                     disabled={running}
                   />
 
                   <label className="muted" htmlFor="wm-margin">Lề (%)</label>
                   <input
-                    id="wm-margin" type="number" min={0} max={40} className="input-lang"
+                    id="wm-margin" type="number" min={0} max={WM_MARGIN_MAX} className="input-lang"
                     value={wm.margin_pct}
                     onChange={(e) => {
                       const raw = e.target.value;
@@ -1068,7 +1102,13 @@ function App() {
                       // (logo sát mép) là giá trị hợp lệ, không phải lỗi. Dùng
                       // Number.isFinite để tách "không phải số" (rỗng, "abc") khỏi "bằng
                       // 0"; chỉ trường hợp đầu mới rơi về mặc định.
-                      setWm({ margin_pct: Number.isFinite(n) ? n : WM_MARGIN_MAC_DINH });
+                      // Kẹp về 0..WM_MARGIN_MAX cho khớp `Watermark::moi` bên Rust —
+                      // như ô "Cỡ" ở trên.
+                      setWm({
+                        margin_pct: Number.isFinite(n)
+                          ? Math.min(WM_MARGIN_MAX, Math.max(0, n))
+                          : WM_MARGIN_MAC_DINH,
+                      });
                     }}
                     disabled={running}
                   />
@@ -1082,14 +1122,22 @@ function App() {
                   />
                   <span className="muted">{Math.round(wm.opacity * 100)}%</span>
                 </div>
-                <div className="row">
-                  <button type="button" onClick={onSaveCfg} disabled={running}>Lưu cấu hình</button>
-                  <span className="muted">Nhớ bấm lưu thì lúc xuất mới dùng thiết lập này.</span>
-                </div>
               </>
             )}
           </>
         )}
+        {/* Nút lưu đứng ở cấp BƯỚC, không nằm trong nhánh `wm.enabled`. Trước
+            đây nó nằm trong đó, nên ai không bật logo thì cả bước 6 không có
+            một chỗ nào để lưu kiểu chữ. Lưu thủ công giờ chỉ còn là tiện ích —
+            `onExport` đã tự lưu trước khi xuất (xem chú thích ở đó), nên quên
+            bấm cũng không xuất ra nhầm kiểu chữ nữa. */}
+        <div className="row">
+          <button type="button" onClick={onSaveCfg} disabled={running}>Lưu cấu hình</button>
+          <span className="muted">
+            Không bắt buộc: lúc bấm "Xuất video" ở Bước 7, thiết lập đang hiển thị ở
+            đây được lưu tự động trước khi xuất.
+          </span>
+        </div>
         <h3 className="muted">Xem thử</h3>
         <div className="row">
           <button type="button" onClick={onLoadCues} disabled={running || !projectDir}>
@@ -1149,6 +1197,12 @@ function App() {
           </button>
           {exportPhase && <span className="muted">{exportPhase}</span>}
         </div>
+        {/* Cảnh báo chứ không phải lỗi: file đã xuất xong và dùng được, chỉ
+            thiếu logo. Đặt ngay TRÊN nút mở thư mục để người dùng đọc trước
+            khi mở file ra và tự đoán mò vì sao trống logo. */}
+        {xuatCanhBao.map((w, i) => (
+          <p className="warn" key={i}>{w}</p>
+        ))}
         {exported && (
           <div className="row">
             <button type="button" onClick={() => onReveal(exported)} disabled={running}>Mở thư mục chứa file</button>

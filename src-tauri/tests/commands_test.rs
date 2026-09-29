@@ -74,10 +74,15 @@ fn export_dto_serialize_ra_camel_case() {
         placed: 42,
         truncated: 0,
         saturated: 0,
+        warnings: vec!["Đã xuất KHÔNG có logo: không đọc được file logo".into()],
     };
     let j = serde_json::to_string(&dto).unwrap();
     assert!(j.contains("\"outputPath\""), "UI đọc camelCase: {j}");
     assert!(!j.contains("output_path"), "{j}");
+    // Cảnh báo bỏ logo phải đi được tới UI: bỏ qua im lặng đúng là lớp lỗi mà
+    // trường này sinh ra để chặn (xem chú thích ở pipeline::ExportResult).
+    assert!(j.contains("\"warnings\""), "phải mang được cảnh báo lên UI: {j}");
+    assert!(j.contains("KHÔNG có logo"), "{j}");
 }
 
 #[test]

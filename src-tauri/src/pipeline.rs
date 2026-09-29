@@ -428,6 +428,13 @@ pub struct ExportResult {
     pub output_path: PathBuf,
     pub retime: RetimeResult,
     pub dub: DubStats,
+    /// Những thứ đã bị BỎ QUA trong lượt xuất này mà bản xuất vẫn thành công —
+    /// hiện tại chỉ có logo. Phải trả ngược lên UI chứ không `eprintln!`: app
+    /// GUI không có console nào để đọc, nên "im lặng bỏ qua" là im lặng thật.
+    /// Repo này đã trả giá đúng một lần cho lớp lỗi đó (nghe thử cue câm suốt
+    /// mấy milestone vì asset protocol từ chối không tiếng động — xem chú
+    /// thích đầu `lib.rs`), không lặp lại.
+    pub warnings: Vec<String>,
 }
 
 /// Điều kiện trước: đã chạy Lồng tiếng (có `tts/manifest.json`). Hàm này KHÔNG
@@ -513,28 +520,51 @@ pub fn run_export_stage(
     // Logo chỉ được thêm khi ĐỦ CẢ BA: bật, có đường dẫn, và file đọc được.
     // Thiếu bất cứ cái nào thì xuất bình thường không logo — một file bị xoá
     // sau khi chọn không đáng làm hỏng cả buổi xuất video.
+    //
+    // Nhưng "không đáng làm hỏng" KHÁC "không đáng nói". Người dùng bật logo
+    // rồi chờ hết một lượt mã hoá lại toàn bộ video mới thấy khung hình trống;
+    // không có một dòng giải thích nào thì họ chỉ biết là app hỏng. Mọi nhánh
+    // bỏ logo dưới đây đều phải nạp một câu vào `warnings`.
+    let mut warnings: Vec<String> = Vec::new();
     let logo_path: Option<std::path::PathBuf> = if watermark.enabled
         && !watermark.path.trim().is_empty()
     {
         let p = std::path::PathBuf::from(watermark.path.trim());
         if p.is_file() { Some(p) } else {
-            eprintln!("bỏ qua logo: không đọc được {}", p.display());
+            warnings.push(format!(
+                "Đã xuất KHÔNG có logo: không đọc được file logo ({}). \
+                 File có thể đã bị xoá hoặc đổi tên sau khi chọn — chọn lại ở Bước 6 rồi xuất lần nữa.",
+                p.display()
+            ));
             None
         }
     } else {
         None
     };
 
-    let wm = logo_path.as_ref().and_then(|_| {
-        let (w, _h) = crate::export::probe_video_size(ffprobe, video)?;
-        Some(crate::export::Watermark::moi(
-            &watermark.corner,
-            w,
-            watermark.size_pct,
-            watermark.margin_pct,
-            watermark.opacity,
-        ))
-    });
+    let wm = match logo_path.as_ref() {
+        None => None,
+        // Quy %→pixel cần bề ngang video thật, nên không đo được là không đặt
+        // được logo. Nhánh này trước đây rơi vào `?` của `and_then` và biến
+        // mất không để lại dấu vết nào, kể cả trên stderr.
+        Some(_) => match crate::export::probe_video_size(ffprobe, video) {
+            Some((w, _h)) => Some(crate::export::Watermark::moi(
+                &watermark.corner,
+                w,
+                watermark.size_pct,
+                watermark.margin_pct,
+                watermark.opacity,
+            )),
+            None => {
+                warnings.push(
+                    "Đã xuất KHÔNG có logo: ffprobe không đọc được kích thước khung hình của video \
+                     nên không quy được cỡ logo ra pixel."
+                        .to_string(),
+                );
+                None
+            }
+        },
+    };
     // Không đo được kích thước video thì không đặt được logo — bỏ luôn cả input
     // để args không trỏ vào một file mà filtergraph không dùng.
     let logo_path = if wm.is_some() { logo_path } else { None };
@@ -561,5 +591,5 @@ pub fn run_export_stage(
     export::run_export(ffmpeg, &sub_dir, &args)?;
 
     on_phase("done");
-    Ok(ExportResult { output_path, retime: retimed, dub })
+    Ok(ExportResult { output_path, retime: retimed, dub, warnings })
 }

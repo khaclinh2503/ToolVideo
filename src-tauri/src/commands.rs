@@ -520,6 +520,9 @@ pub struct ExportResultDto {
     pub placed: usize,
     pub truncated: usize,
     pub saturated: usize,
+    /// Thứ đã bị bỏ qua mà bản xuất vẫn thành công (hiện chỉ có logo). UI phải
+    /// in ra cạnh kết quả — xem chú thích ở `pipeline::ExportResult::warnings`.
+    pub warnings: Vec<String>,
 }
 
 #[derive(Clone, serde::Serialize)]
@@ -582,6 +585,7 @@ pub async fn run_export(
             placed: r.dub.placed,
             truncated: r.dub.truncated,
             saturated: r.dub.saturated,
+            warnings: r.warnings,
         })
     })
     .await
