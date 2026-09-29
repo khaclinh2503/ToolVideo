@@ -84,3 +84,23 @@ fn ui_quy_doi_co_chu_theo_ti_le_khung_hinh() {
     assert!(tsx.contains("videoHeight"), "phải quy đổi theo videoHeight");
     assert!(tsx.contains("clientHeight"), "phải quy đổi theo clientHeight");
 }
+
+/// `Number(e.target.value) || MAC_DINH` coi 0 là falsy nên gõ "0" vào ô lề bị
+/// đẩy về mặc định — lề 0 (logo sát mép) lại là giá trị hợp lệ. Giữ test này
+/// để không ai lỡ quay lại lối `||` cũ ở hai ô số của khối logo.
+#[test]
+fn ui_watermark_khong_dung_or_de_gia_tri_mac_dinh() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    assert!(
+        !tsx.contains("Number(e.target.value) || WM_SIZE_MAC_DINH"),
+        "ô cỡ logo vẫn dùng `||`, gõ 0 sẽ bị nhảy về mặc định"
+    );
+    assert!(
+        !tsx.contains("Number(e.target.value) || WM_MARGIN_MAC_DINH"),
+        "ô lề logo vẫn dùng `||`, gõ 0 sẽ bị nhảy về mặc định"
+    );
+    assert!(
+        tsx.contains("Number.isFinite(n)"),
+        "phải dùng Number.isFinite để tách \"không phải số\" khỏi \"bằng 0\""
+    );
+}

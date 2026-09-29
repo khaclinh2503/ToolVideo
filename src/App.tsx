@@ -507,7 +507,14 @@ function App() {
     const f = await open({ filters: [{ name: "Ảnh", extensions: ["png"] }] });
     if (!f) return;
     // Khai phạm vi ngay để trình phát hiện được logo mà không phải lưu config.
-    try { await invoke("cho_phep_xem", { path: f as string }); } catch { /* xem thử sẽ không hiện logo */ }
+    // KHÔNG nuốt lỗi ở đây: asset protocol từ chối im lặng đúng là lớp lỗi
+    // từng làm nghe thử cue câm suốt mấy milestone trước — báo cho người dùng
+    // biết logo đã chọn nhưng xem thử sẽ trống, kẻo họ tưởng app hỏng.
+    try {
+      await invoke("cho_phep_xem", { path: f as string });
+    } catch (e) {
+      setStatus(`Đã chọn logo nhưng không xem thử được: ${String(e)} (xuất video vẫn dùng file này bình thường).`);
+    }
     setWm({ path: f as string, enabled: true });
   }
 
@@ -1033,7 +1040,18 @@ function App() {
                   <input
                     id="wm-size" type="number" min={1} max={100} className="input-lang"
                     value={wm.size_pct}
-                    onChange={(e) => setWm({ size_pct: Number(e.target.value) || WM_SIZE_MAC_DINH })}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      // Bỏ trống giữa lúc xoá để gõ lại: đừng nhảy về mặc định ngay khi
+                      // ô còn rỗng, kẻo người dùng không xoá hết số cũ được.
+                      if (raw === "") return;
+                      const n = Number(raw);
+                      // `||` coi 0 là falsy nên gõ "0" cũng bị đẩy về mặc định — nhưng ở
+                      // đây 0 dưới min=1 mới thật vô nghĩa, nên clamp lên 1 chứ không
+                      // nhảy hẳn về WM_SIZE_MAC_DINH; chỉ giá trị không phải số (rỗng,
+                      // "abc") mới rơi về mặc định.
+                      setWm({ size_pct: Number.isFinite(n) ? Math.max(1, n) : WM_SIZE_MAC_DINH });
+                    }}
                     disabled={running}
                   />
 
@@ -1041,7 +1059,17 @@ function App() {
                   <input
                     id="wm-margin" type="number" min={0} max={40} className="input-lang"
                     value={wm.margin_pct}
-                    onChange={(e) => setWm({ margin_pct: Number(e.target.value) || WM_MARGIN_MAC_DINH })}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      // Bỏ trống giữa lúc xoá để gõ lại — như ô "Cỡ" ở trên.
+                      if (raw === "") return;
+                      const n = Number(raw);
+                      // `||` coi 0 là falsy nên gõ "0" tự nhảy về mặc định — nhưng lề 0
+                      // (logo sát mép) là giá trị hợp lệ, không phải lỗi. Dùng
+                      // Number.isFinite để tách "không phải số" (rỗng, "abc") khỏi "bằng
+                      // 0"; chỉ trường hợp đầu mới rơi về mặc định.
+                      setWm({ margin_pct: Number.isFinite(n) ? n : WM_MARGIN_MAC_DINH });
+                    }}
                     disabled={running}
                   />
 
