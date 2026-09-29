@@ -230,3 +230,32 @@ fn cue_dto_audio_path_null_khi_chua_co_giong() {
     let j = serde_json::to_string(&app_lib::commands::cue_to_dto(&v)).unwrap();
     assert!(j.contains("\"audioPath\":null"), "{j}");
 }
+
+#[test]
+fn duong_dan_xem_duoc_chi_nhan_file_that() {
+    let d = tempfile::tempdir().unwrap();
+    let f = d.path().join("clip.mp4");
+    std::fs::write(&f, b"x").unwrap();
+
+    let ok = app_lib::commands::duong_dan_xem_duoc(&f.display().to_string()).unwrap();
+    assert_eq!(ok, f);
+
+    // Thư mục không được: khai cả thư mục là mở rộng phạm vi ngoài ý định.
+    assert!(app_lib::commands::duong_dan_xem_duoc(&d.path().display().to_string()).is_err());
+    // File không tồn tại.
+    assert!(app_lib::commands::duong_dan_xem_duoc(&d.path().join("khong-co.mp4").display().to_string()).is_err());
+    // Rỗng.
+    assert!(app_lib::commands::duong_dan_xem_duoc("   ").is_err());
+}
+
+/// KHÔNG canonicalize: trên Windows nó trả về dạng verbatim `\\?\E:\...`, còn
+/// `convertFileSrc` bên UI dùng đường dẫn thường. Hai chuỗi khác nhau ⇒ scope
+/// khai một đằng, trình duyệt xin một nẻo, và video câm lặng không phát.
+#[test]
+fn duong_dan_giu_nguyen_dang_khong_verbatim() {
+    let d = tempfile::tempdir().unwrap();
+    let f = d.path().join("clip.mp4");
+    std::fs::write(&f, b"x").unwrap();
+    let ok = app_lib::commands::duong_dan_xem_duoc(&f.display().to_string()).unwrap();
+    assert!(!ok.display().to_string().starts_with(r"\\?\"), "{}", ok.display());
+}

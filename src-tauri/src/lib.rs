@@ -62,6 +62,7 @@ pub fn run() {
             commands::tts_voices,
             commands::preview_voice,
             commands::preview_subtitle,
+            commands::cho_phep_xem,
             commands::run_tts,
             commands::run_export,
             commands::list_projects,

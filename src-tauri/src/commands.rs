@@ -233,6 +233,37 @@ pub async fn preview_voice(provider: String, voice: String) -> Result<String, St
     .map_err(|e| e.to_string())?
 }
 
+/// Kiểm một đường dẫn trước khi khai vào phạm vi asset protocol.
+///
+/// Tách khỏi lệnh Tauri để test được không cần AppHandle.
+pub fn duong_dan_xem_duoc(path: &str) -> Result<std::path::PathBuf, String> {
+    let p = std::path::PathBuf::from(path.trim());
+    if path.trim().is_empty() {
+        return Err("đường dẫn rỗng".into());
+    }
+    if !p.is_file() {
+        return Err(format!("không phải file đọc được: {}", p.display()));
+    }
+    Ok(p)
+}
+
+/// Cho webview đọc MỘT file cụ thể qua asset protocol.
+///
+/// Phạm vi mặc định chỉ có `projects/` và `demo/` (xem lib.rs). Video gốc nằm ở
+/// chỗ người dùng chọn, còn logo thì ở đâu cũng được — không khai thì
+/// `convertFileSrc` bị từ chối IM LẶNG và thẻ <video> ra ô đen, không lỗi,
+/// không log. Đúng lớp bug đã làm nghe thử cue câm suốt từ M6.
+///
+/// Khai từng file một, không bao giờ khai thư mục.
+#[tauri::command]
+pub fn cho_phep_xem(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    use tauri::Manager;
+    let p = duong_dan_xem_duoc(&path)?;
+    app.asset_protocol_scope()
+        .allow_file(&p)
+        .map_err(|e| format!("không khai được phạm vi cho {}: {e}", p.display()))
+}
+
 /// Dựng một khung hình có phụ đề đã cháy vào, để xem thử kiểu chữ trước khi
 /// xuất cả video (có thể mất vài phút).
 ///
