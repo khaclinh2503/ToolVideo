@@ -113,3 +113,67 @@ fn ui_noi_ro_tieng_thu_chua_retime() {
     let tsx = std::fs::read_to_string("../src/XemThu.tsx").expect("đọc được XemThu.tsx");
     assert!(tsx.contains("chưa khớp khung"), "thiếu ghi chú tiếng thử chưa retime");
 }
+
+/// useEffect chạy SAU khi trình duyệt đã commit và vẽ khung hình. Nếu <video>
+/// nhận src ngay từ lần render đầu (dựa vào một cờ "đã sẵn sàng" mặc định),
+/// trình duyệt bắt đầu tải trước khi cho_phep_xem resolve — asset protocol từ
+/// chối im lặng và src không bao giờ đổi lại để nạp lần hai. Test này giữ cho
+/// <video> chỉ được vẽ SAU khi biết chắc quyền đã cấp cho đúng videoPath hiện
+/// tại, không phải một cờ boolean rời có thể bị "thừa hưởng" từ dự án trước.
+#[test]
+fn ui_video_khong_gan_src_truoc_khi_co_quyen() {
+    let tsx = std::fs::read_to_string("../src/XemThu.tsx").expect("đọc được XemThu.tsx");
+    assert!(
+        tsx.contains("videoCapChoDuongDan === videoPath"),
+        "phải so trực tiếp với videoPath hiện tại, không dùng cờ boolean rời dễ bị trôi qua dự án khác"
+    );
+    assert!(
+        tsx.contains("!videoSanSang ? ("),
+        "phải gate việc vẽ <video src=...> theo trạng thái đã cấp quyền cho đúng videoPath"
+    );
+}
+
+/// Cùng lỗi đua với video, logo cũng convertFileSrc một file cần cho_phep_xem
+/// riêng — phải đợi quyền của đúng wm.path hiện tại rồi mới vẽ <img>.
+#[test]
+fn ui_logo_khong_gan_src_truoc_khi_co_quyen() {
+    let tsx = std::fs::read_to_string("../src/XemThu.tsx").expect("đọc được XemThu.tsx");
+    assert!(
+        tsx.contains("wmCapChoDuongDan === wm.path"),
+        "phải so trực tiếp với wm.path hiện tại trước khi vẽ logo"
+    );
+    assert!(
+        tsx.contains("wmSanSang && wm?.enabled && wm.path"),
+        "phải gate việc vẽ <img> logo theo trạng thái đã cấp quyền"
+    );
+}
+
+/// `onResize` của <video> chỉ bắn khi videoWidth/videoHeight NỘI TẠI đổi
+/// (đổi nguồn phát), không bắn khi khung HIỂN THỊ đổi cỡ — đổi cỡ cửa sổ ứng
+/// dụng không kích hoạt nó. Phải dùng ResizeObserver để tỉ lệ chữ và lề logo
+/// không bị tính một lần lúc nạp xong rồi trôi sai khi người dùng đổi cỡ cửa
+/// sổ.
+#[test]
+fn ui_dung_resize_observer_chu_khong_chi_dua_vao_onresize_cua_video() {
+    let tsx = std::fs::read_to_string("../src/XemThu.tsx").expect("đọc được XemThu.tsx");
+    assert!(tsx.contains("new ResizeObserver("), "phải dùng ResizeObserver để bắt khung hiển thị đổi cỡ");
+    assert!(tsx.contains("ro.disconnect()"), "phải ngắt ResizeObserver khi unmount, không rò rỉ observer");
+}
+
+/// Rust tính margin logo bằng `video_w * margin_pct / 100` rồi dùng CHUNG giá
+/// trị đó cho cả hai trục (export.rs, Watermark::overlay_xy). CSS % của
+/// top/bottom lại quy theo chiều CAO khối chứa, không phải bề ngang — gán
+/// thẳng "${marginPct}%" cho top/bottom làm lề dọc trên video 16:9 chỉ còn
+/// ~0.56 lần lề thật. Phải quy ra px từ bề ngang cho cả hai trục.
+#[test]
+fn ui_le_logo_quy_ra_px_theo_be_ngang_ca_hai_truc() {
+    let tsx = std::fs::read_to_string("../src/XemThu.tsx").expect("đọc được XemThu.tsx");
+    assert!(
+        !tsx.contains("`${marginPct}%`"),
+        "không được gán thẳng phần trăm cho top/bottom — % của top/bottom quy theo chiều cao, lệch so với Rust"
+    );
+    assert!(
+        tsx.contains("(rongPx * marginPct) / 100"),
+        "phải quy margin ra px theo bề ngang khung, khớp cách Rust tính margin_px"
+    );
+}

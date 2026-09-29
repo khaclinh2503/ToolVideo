@@ -26,11 +26,17 @@ function phatDuoc(p: string): boolean {
   return !p.toLowerCase().endsWith(".mkv");
 }
 
-/** Vị trí logo theo góc, khớp với `Watermark::overlay_xy` bên Rust. */
-function viTriLogo(corner: string, marginPct: number): React.CSSProperties {
-  // Lề tính theo % BỀ NGANG ở cả hai trục, đúng như bên Rust (margin_px dùng
-  // chung cho x và y) — không đổi sang % chiều cao, sẽ lệch trên video 16:9.
-  const m = `${marginPct}%`;
+/**
+ * Vị trí logo theo góc. Margin quy ra PX theo BỀ NGANG khung cho CẢ HAI trục,
+ * khớp cách Rust tính (`Watermark::overlay_xy` trong export.rs):
+ * `margin_px = video_w * margin_pct / 100`, dùng chung một giá trị đó cho cả x
+ * lẫn y. Không được gán thẳng marginPct kèm ký hiệu "%" cho top/bottom như
+ * bản trước: CSS % của top/bottom quy theo chiều CAO khối chứa chứ không phải
+ * bề ngang, nên trên video 16:9 lề dọc hiện ra chỉ bằng ~0.56 lần lề thật
+ * trong bản xuất.
+ */
+function viTriLogo(corner: string, marginPct: number, rongPx: number): React.CSSProperties {
+  const m = `${(rongPx * marginPct) / 100}px`;
   switch (corner) {
     case "tl": return { left: m, top: m };
     case "tr": return { right: m, top: m };
@@ -44,27 +50,64 @@ export default function XemThu({ videoPath, cues, sub, wm }: XemThuProps) {
   const [tMs, setTMs] = useState(0);
   // Tỉ lệ khung hiển thị so với khung gốc, để quy đổi cỡ chữ.
   const [tiLe, setTiLe] = useState(1);
+  // Bề ngang thật của khung hiển thị (px), để quy margin logo ra px — xem
+  // viTriLogo phía trên vì sao không dùng "%" trực tiếp.
+  const [rongPx, setRongPx] = useState(0);
   const [loi, setLoi] = useState("");
+
+  // Đường dẫn video mà lệnh cho_phep_xem đã CHẮC CHẮN trả về thành công. So
+  // sánh trực tiếp với videoPath (thay vì một cờ boolean bật/tắt thủ công) để
+  // khi người dùng mở dự án khác, giá trị cũ tự động không còn khớp nữa — nếu
+  // dùng một boolean rời thì phải nhớ reset nó, quên một chỗ là dự án thứ hai
+  // "thừa hưởng" cờ đã cấp của dự án đầu và lại vẽ src trước khi có quyền.
+  const [videoCapChoDuongDan, setVideoCapChoDuongDan] = useState("");
+  const videoSanSang = videoPath !== "" && videoCapChoDuongDan === videoPath;
 
   useEffect(() => {
     if (!videoPath || !phatDuoc(videoPath)) return;
-    // Phải khai phạm vi TRƯỚC khi gán src, nếu không lần nạp đầu bị từ chối im
-    // lặng và thẻ video ra ô đen.
+    // Phải khai phạm vi và CHỜ nó resolve trước khi thẻ <video> được gán src —
+    // xem điều kiện videoSanSang ở JSX bên dưới. useEffect chạy SAU khi trình
+    // duyệt đã commit và vẽ khung hình, nên nếu thẻ video có src ngay từ lần
+    // render đầu (dựa trên một cờ mặc định "đã sẵn sàng"), trình duyệt đã kịp
+    // bắt đầu tải trước khi invoke này resolve — asset protocol từ chối im
+    // lặng và src không bao giờ đổi lại để nạp lần hai.
     invoke("cho_phep_xem", { path: videoPath })
-      .then(() => setLoi(""))
+      .then(() => { setLoi(""); setVideoCapChoDuongDan(videoPath); })
       .catch((e) => setLoi(`Không mở được video để xem thử: ${String(e)}`));
   }, [videoPath]);
 
+  // Cùng logic reset-tự-nhiên như trên, áp cho logo.
+  const [wmCapChoDuongDan, setWmCapChoDuongDan] = useState("");
+  const wmSanSang = !!wm?.path && wmCapChoDuongDan === wm.path;
+
   useEffect(() => {
     if (!wm?.enabled || !wm.path) return;
-    invoke("cho_phep_xem", { path: wm.path }).catch(() => { /* logo sẽ không hiện */ });
+    const p = wm.path;
+    invoke("cho_phep_xem", { path: p })
+      .then(() => setWmCapChoDuongDan(p))
+      .catch(() => { /* logo sẽ không hiện, không phải lỗi chặn cả trình phát */ });
   }, [wm?.enabled, wm?.path]);
 
-  function doTiLe() {
+  function capNhatKichThuoc() {
     const v = ref.current;
     if (!v || !v.videoHeight) return;
     setTiLe(v.clientHeight / v.videoHeight);
+    setRongPx(v.clientWidth);
   }
+
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    // `onResize` của thẻ <video> chỉ bắn khi videoWidth/videoHeight NỘI TẠI
+    // đổi (đổi nguồn phát), không bắn khi khung HIỂN THỊ đổi cỡ. Đổi cỡ cửa sổ
+    // ứng dụng thì clientHeight/clientWidth đổi nhưng videoHeight nội tại giữ
+    // nguyên, nên phải nghe qua ResizeObserver mới bắt được, nếu không tỉ lệ
+    // chữ và lề logo tính một lần lúc nạp xong rồi cứ thế trôi sai.
+    const ro = new ResizeObserver(capNhatKichThuoc);
+    ro.observe(v);
+    capNhatKichThuoc();
+    return () => ro.disconnect();
+  }, [videoSanSang]);
 
   // Tính TRƯỚC mọi lệnh return sớm bên dưới. Task 8 treo thêm một useEffect ăn
   // theo `cue`, mà hook nằm sau một nhánh return là lỗi "rendered more hooks
@@ -108,39 +151,44 @@ export default function XemThu({ videoPath, cues, sub, wm }: XemThuProps) {
 
   return (
     <div className="xem-thu">
-      <video
-        ref={ref}
-        src={convertFileSrc(videoPath)}
-        controls
-        onLoadedMetadata={(e) => { doTiLe(); e.currentTarget.volume = 0.18; }}
-        onResize={doTiLe}
-        onTimeUpdate={(e) => setTMs(e.currentTarget.currentTime * 1000)}
-        onError={() => setLoi("Không phát được video — file có thể đã bị xoá hoặc đổi tên.")}
-      />
-      {wm?.enabled && wm.path && (
-        <img
-          className="xem-thu-logo"
-          src={convertFileSrc(wm.path)}
-          alt=""
-          style={{ ...viTriLogo(wm.corner, wm.margin_pct), width: `${wm.size_pct}%`, opacity: wm.opacity }}
-        />
-      )}
-      {cue && (
-        <div
-          className="xem-thu-cap"
-          style={{
-            fontFamily: sub.font,
-            // Cỡ chữ ASS tính trên khung hình gốc: FontSize=24 nghĩa là 24px
-            // trên video 1080p, không phải 24px trên màn hình.
-            fontSize: `${sub.size * tiLe}px`,
-            color: sub.color,
-            WebkitTextStrokeWidth: `${sub.outline * tiLe}px`,
-            WebkitTextStrokeColor: sub.outline_color,
-            paintOrder: "stroke fill",
-          }}
-        >
-          {cue.text}
-        </div>
+      {!videoSanSang ? (
+        <p className="muted">Đang xin quyền mở video để xem thử…</p>
+      ) : (
+        <>
+          <video
+            ref={ref}
+            src={convertFileSrc(videoPath)}
+            controls
+            onLoadedMetadata={(e) => { capNhatKichThuoc(); e.currentTarget.volume = 0.18; }}
+            onTimeUpdate={(e) => setTMs(e.currentTarget.currentTime * 1000)}
+            onError={() => setLoi("Không phát được video — file có thể đã bị xoá hoặc đổi tên.")}
+          />
+          {wmSanSang && wm?.enabled && wm.path && (
+            <img
+              className="xem-thu-logo"
+              src={convertFileSrc(wm.path)}
+              alt=""
+              style={{ ...viTriLogo(wm.corner, wm.margin_pct, rongPx), width: `${wm.size_pct}%`, opacity: wm.opacity }}
+            />
+          )}
+          {cue && (
+            <div
+              className="xem-thu-cap"
+              style={{
+                fontFamily: sub.font,
+                // Cỡ chữ ASS tính trên khung hình gốc: FontSize=24 nghĩa là 24px
+                // trên video 1080p, không phải 24px trên màn hình.
+                fontSize: `${sub.size * tiLe}px`,
+                color: sub.color,
+                WebkitTextStrokeWidth: `${sub.outline * tiLe}px`,
+                WebkitTextStrokeColor: sub.outline_color,
+                paintOrder: "stroke fill",
+              }}
+            >
+              {cue.text}
+            </div>
+          )}
+        </>
       )}
       <audio ref={am} />
       <p className="muted">
