@@ -84,6 +84,45 @@ const FONT_GOI_Y = [
   "Times New Roman", "Calibri", "Roboto",
 ];
 
+// Phông "lính canh" dùng làm mốc so bề rộng — xem fontCoTonTai() ngay dưới.
+const PHONG_LINH_CANH = "monospace";
+
+/**
+ * Phương thức `check` của `FontFaceSet` (`document.fonts`) KHÔNG dùng được để
+ * phát hiện font thiếu trong WebView2: đã đo thật bằng Chrome/Edge headless
+ * (cùng lõi Chromium với WebView2 trên Windows) — gọi nó với một tên bịa
+ * hoàn toàn ("TenBiaKhongCoThat123") vẫn trả về `true`. Chromium coi mọi
+ * shorthand hợp cú pháp là "sẵn sàng để vẽ" (nó SẼ vẽ được bằng font thay
+ * thế), không phải "family này có thật".
+ *
+ * Kỹ thuật chuẩn thay thế: ghép [tên cần kiểm, phông lính canh] vào một font
+ * shorthand rồi đo `measureText` — nếu trình duyệt tìm được đúng tên, nó vẽ
+ * bằng font đó và bề rộng khác với khi chỉ có lính canh; nếu không tìm được,
+ * nó rơi thẳng về lính canh và bề rộng bằng NHAU TUYỆT ĐỐI (canvas trả số
+ * thực chính xác, không phải ước lượng nên không lo sai số nhoè ranh giới).
+ *
+ * Đã kiểm thêm trường hợp gõ dở một tiền tố của font thật (vd "Aria" giữa
+ * chừng gõ "Arial", hay "Segoe" giữa chừng gõ "Segoe UI"): kỹ thuật này đúng
+ * là báo tiền tố đó "không tồn tại", vì bản thân "Aria" không phải tên font
+ * nào cả — đó là kết quả ĐÚNG. Cái cần chặn không phải ở hàm này mà ở việc
+ * chờ người dùng ngừng gõ trước khi hiện cảnh báo (xem debounce trong App()).
+ */
+function boRongDoVoiFont(family: string): number {
+  const c = document.createElement("canvas");
+  const ctx = c.getContext("2d");
+  if (!ctx) return 0;
+  ctx.font = `72px ${family}`;
+  return ctx.measureText("mmmmmmmmmmlli0123456789").width;
+}
+
+function fontCoTonTai(ten: string): boolean {
+  const sach = ten.trim();
+  if (!sach) return true;
+  const linhCanh = boRongDoVoiFont(PHONG_LINH_CANH);
+  const coTen = boRongDoVoiFont(`"${sach.replace(/"/g, "'")}", ${PHONG_LINH_CANH}`);
+  return coTen !== linhCanh;
+}
+
 // Bảy bước của quy trình, mỗi bước một tab. `id` cũng là số hiệu bước hiện
 // trên màn hình, nên đừng đánh lại số nếu chỉ muốn đổi thứ tự hiển thị.
 const BUOC = [
@@ -525,6 +564,22 @@ function App() {
   const sub = cfg?.subtitle;
   const setSub = (patch: Partial<SubtitleConfig>) =>
     cfg && setCfg({ ...cfg, subtitle: { ...cfg.subtitle, ...patch } });
+
+  // Font gõ vào ô có thể không có trên máy này — nếu vậy, trình xem thử
+  // (WebView2) và bản xuất (ffmpeg/libass) MỖI NƠI TỰ CHỌN một font thay thế
+  // RIÊNG mà không ai báo cho ai biết, giống hệt kiểu hỏng-câm-lặng đã có
+  // tiền lệ với vụ asset-scope ở lib.rs. Chờ người dùng NGỪNG gõ rồi mới
+  // kiểm (debounce), không kiểm ngay mỗi phím: gõ dở một tiền tố của font
+  // thật (vd "Aria" giữa chừng gõ "Arial") tự nó không phải tên font nào cả
+  // nên kiểm ngay sẽ báo "thiếu" suốt cả quá trình gõ — đúng về kỹ thuật
+  // nhưng phiền hơn là không báo.
+  const [fontThieu, setFontThieu] = useState(false);
+  useEffect(() => {
+    if (!sub) { setFontThieu(false); return; }
+    const ten = sub.font;
+    const hen = window.setTimeout(() => setFontThieu(!fontCoTonTai(ten)), 500);
+    return () => window.clearTimeout(hen);
+  }, [sub?.font]);
 
   const wm = cfg?.watermark;
   const setWm = (patch: Partial<WatermarkConfig>) =>
@@ -1008,6 +1063,15 @@ function App() {
                 disabled={running}
               />
             </div>
+            {fontThieu && (
+              <p className="warn">
+                Máy này không có font "{sub.font}" — trình xem thử và bản xuất video
+                sẽ mỗi nơi TỰ CHỌN một font thay thế KHÁC NHAU (WebView2 rơi về font
+                mặc định của hệ điều hành, còn ffmpeg/libass rơi về font mà
+                fontconfig/DirectWrite chọn), nên chữ trên màn hình xem thử có thể
+                không giống chữ trong video xuất ra.
+              </p>
+            )}
             <div className="row">
               <button
                 type="button"

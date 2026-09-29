@@ -393,3 +393,67 @@ fn ui_dong_bo_am_thanh_so_ca_index_lan_duong_dan() {
         "phải so cả index lẫn audioPath khi quyết định có đồng bộ lại audio hay không"
     );
 }
+
+/// `document.fonts.check()` KHÔNG dùng được để phát hiện font thiếu trong
+/// WebView2 (Chromium): đã đo thật bằng Chrome/Edge headless (cùng lõi
+/// Chromium) — `document.fonts.check('16px "TenBiaKhongCoThat123"')` vẫn trả
+/// `true` cho một tên bịa hoàn toàn, tức API này không phân biệt được font
+/// thật với font không tồn tại trên máy. Test này giữ cho UI dùng kỹ thuật đo
+/// bề rộng (`measureText` so với một phông "lính canh") thay vì tin nhầm vào
+/// `document.fonts.check`.
+#[test]
+fn ui_kiem_font_bang_do_be_rong_khong_dua_vao_document_fonts_check() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    assert!(
+        tsx.contains("measureText"),
+        "phải kiểm font có tồn tại hay không bằng đo bề rộng canvas (measureText)"
+    );
+    assert!(
+        !tsx.contains("document.fonts.check"),
+        "document.fonts.check() luôn trả true trong WebView2 kể cả với tên bịa — đã đo thật, không dùng được"
+    );
+}
+
+/// Kiểm font tra ngay mỗi phím gõ sẽ báo sai suốt lúc người dùng đang gõ dở
+/// một tiền tố của font thật (vd "Aria" giữa chừng gõ "Arial") — bản thân
+/// "Aria" không phải tên font nào cả nên kỹ thuật đo bề rộng báo "thiếu" ĐÚNG
+/// về mặt kỹ thuật, nhưng đúng-quá-sớm còn tệ hơn không báo. Phải chờ người
+/// dùng ngừng gõ (debounce) rồi mới kiểm và hiện cảnh báo.
+#[test]
+fn ui_canh_bao_font_thieu_cho_nguoi_dung_ngung_go_moi_kiem() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    assert!(
+        tsx.contains("window.setTimeout") && tsx.contains("window.clearTimeout"),
+        "phải debounce việc kiểm font bằng setTimeout/clearTimeout, không kiểm ngay mỗi phím gõ"
+    );
+}
+
+/// Font gõ vào không có trên máy thì WebView2 (bản xem thử) và ffmpeg/libass
+/// (bản xuất) MỖI NƠI TỰ CHỌN một font thay thế khác nhau, không ai báo cho
+/// người dùng biết — cùng kiểu hỏng-câm-lặng đã có tiền lệ với vụ asset-scope
+/// ở lib.rs. Test giữ cho cảnh báo nói thẳng hai bên thay thế khác nhau, theo
+/// đúng style cảnh báo `.warn` đã có sẵn trong panel này (chỉ hiện khi font
+/// thật sự thiếu, không phải cảnh báo tĩnh luôn hiện).
+#[test]
+fn ui_canh_bao_font_thieu_noi_ro_hai_ben_the_font_khac_nhau() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    assert!(
+        tsx.contains("{fontThieu && ("),
+        "cảnh báo font thiếu phải gate theo state fontThieu, chỉ hiện khi thật sự thiếu"
+    );
+    assert!(
+        tsx.contains("font thay thế") && tsx.contains("KHÁC NHAU"),
+        "cảnh báo phải nói rõ trình xem thử và bản xuất dùng font thay thế khác nhau"
+    );
+}
+
+/// Ô rỗng (chưa gõ gì) không phải là "font thiếu" — không được ăn cảnh báo
+/// ngay khi người dùng xoá trắng ô để gõ lại từ đầu.
+#[test]
+fn ui_font_rong_khong_bi_bao_thieu() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    assert!(
+        tsx.contains("if (!sach) return true;") || tsx.contains("if (!ten.trim()) return true;"),
+        "ô font rỗng phải được coi là chưa có gì để báo thiếu, không phải font thiếu"
+    );
+}
