@@ -104,3 +104,12 @@ fn ui_watermark_khong_dung_or_de_gia_tri_mac_dinh() {
         "phải dùng Number.isFinite để tách \"không phải số\" khỏi \"bằng 0\""
     );
 }
+
+/// Tiếng lồng xem thử là bản CHƯA retime — pha retime lúc xuất mới ép từng cue
+/// vừa khung của nó. Không nói rõ thì người dùng nghe thấy câu chồng lên nhau
+/// và tưởng bản xuất cũng hỏng.
+#[test]
+fn ui_noi_ro_tieng_thu_chua_retime() {
+    let tsx = std::fs::read_to_string("../src/XemThu.tsx").expect("đọc được XemThu.tsx");
+    assert!(tsx.contains("chưa khớp khung"), "thiếu ghi chú tiếng thử chưa retime");
+}

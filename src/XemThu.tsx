@@ -72,6 +72,26 @@ export default function XemThu({ videoPath, cues, sub, wm }: XemThuProps) {
   // theo tên.
   const cue = cues.find((c) => c.startMs <= tMs && tMs < c.endMs);
 
+  const am = useRef<HTMLAudioElement>(null);
+  const cueDangPhat = useRef<number>(-1);
+
+  // Phát wav của cue đang chạy. Dùng MỘT thẻ audio đổi src thay vì hẹn giờ cả
+  // dải: người dùng tua liên tục khi căn chỉnh, mà mọi lịch hẹn đều phải huỷ và
+  // dựng lại sau mỗi lần tua — một thẻ theo cue hiện tại là đủ và không lệch.
+  useEffect(() => {
+    const a = am.current;
+    const v = ref.current;
+    if (!a || !v) return;
+    const idx = cue?.index ?? -1;
+    if (idx === cueDangPhat.current) return;
+    cueDangPhat.current = idx;
+    if (!cue?.audioPath || v.paused) { a.pause(); return; }
+    a.src = convertFileSrc(cue.audioPath);
+    // Vào giữa cue (do tua) thì phát từ đúng chỗ đó, không quay về đầu câu.
+    a.currentTime = Math.max(0, (tMs - cue.startMs) / 1000);
+    a.play().catch(() => { /* chưa có wav cho cue này */ });
+  }, [cue?.index, cue?.audioPath]);
+
   if (!videoPath) {
     return <p className="muted">Mở một dự án để xem thử.</p>;
   }
@@ -92,7 +112,7 @@ export default function XemThu({ videoPath, cues, sub, wm }: XemThuProps) {
         ref={ref}
         src={convertFileSrc(videoPath)}
         controls
-        onLoadedMetadata={doTiLe}
+        onLoadedMetadata={(e) => { doTiLe(); e.currentTarget.volume = 0.18; }}
         onResize={doTiLe}
         onTimeUpdate={(e) => setTMs(e.currentTarget.currentTime * 1000)}
         onError={() => setLoi("Không phát được video — file có thể đã bị xoá hoặc đổi tên.")}
@@ -122,6 +142,12 @@ export default function XemThu({ videoPath, cues, sub, wm }: XemThuProps) {
           {cue.text}
         </div>
       )}
+      <audio ref={am} />
+      <p className="muted">
+        Tiếng lồng nghe thử lấy từ file của từng câu, chưa khớp khung — câu nào đọc
+        dài quá chỗ của nó sẽ chồng sang câu sau. Bản xuất thật có thêm bước ép vừa
+        khung nên không bị.
+      </p>
     </div>
   );
 }
