@@ -39,6 +39,8 @@ pub struct AppConfig {
     pub tts: TtsConfig,
     #[serde(default)]
     pub compose: ComposeConfig,
+    #[serde(default)]
+    pub watermark: WatermarkConfig,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -79,6 +81,53 @@ impl Default for SubtitleConfig {
             color: d.color,
             outline_color: d.outline_color,
             outline: d.outline,
+        }
+    }
+}
+
+/// Logo đóng dấu lên video lúc xuất.
+///
+/// Mọi trường đều `#[serde(default = "…")]` trỏ tới hàm riêng chứ không phải
+/// `#[serde(default)]` trần: serde lấy `Default` của KIỂU, nên `size_pct` thiếu
+/// khoá sẽ thành 0 và ffmpeg nhận `scale=0:-1` — logo biến mất mà không báo gì.
+/// `impl Default` của struct KHÔNG được serde dùng cho từng trường.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct WatermarkConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    /// Đường dẫn file PNG. "" = chưa chọn.
+    #[serde(default)]
+    pub path: String,
+    /// "tl" | "tr" | "bl" | "br". Là String chứ không phải enum: một giá trị lạ
+    /// trong enum làm hỏng deserialize CẢ file config, mà hậu quả của việc đó
+    /// (mất sạch cấu hình) nặng hơn nhiều so với việc logo đặt nhầm góc.
+    #[serde(default = "wm_goc")]
+    pub corner: String,
+    /// Bề ngang logo, tính theo % bề ngang video.
+    #[serde(default = "wm_size_pct")]
+    pub size_pct: u32,
+    /// 0.0–1.0.
+    #[serde(default = "wm_opacity")]
+    pub opacity: f32,
+    /// Khoảng cách từ mép, tính theo % bề ngang video.
+    #[serde(default = "wm_margin_pct")]
+    pub margin_pct: u32,
+}
+
+fn wm_goc() -> String { "br".into() }
+fn wm_size_pct() -> u32 { 12 }
+fn wm_opacity() -> f32 { 0.85 }
+fn wm_margin_pct() -> u32 { 3 }
+
+impl Default for WatermarkConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            path: String::new(),
+            corner: wm_goc(),
+            size_pct: wm_size_pct(),
+            opacity: wm_opacity(),
+            margin_pct: wm_margin_pct(),
         }
     }
 }
