@@ -75,6 +75,27 @@ pub fn probe_duration_ms(ffprobe: &Path, video: &Path) -> Result<u64, PipelineEr
     })
 }
 
+/// Bề ngang × bề cao video, hỏi ffprobe. `None` nếu không đọc được — chỗ gọi
+/// phải coi đó là "không đặt được logo" chứ không phải lỗi xuất.
+pub fn probe_video_size(ffprobe: &Path, video: &Path) -> Option<(u32, u32)> {
+    let out = std::process::Command::new(ffprobe)
+        .args([
+            "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries", "stream=width,height",
+            "-of", "csv=s=x:p=0",
+        ])
+        .arg(video)
+        .output()
+        .ok()?;
+    let s = String::from_utf8_lossy(&out.stdout);
+    let (w, h) = s.trim().split_once('x')?;
+    let w: u32 = w.trim().parse().ok()?;
+    let h: u32 = h.trim().parse().ok()?;
+    if w == 0 || h == 0 { return None; }
+    Some((w, h))
+}
+
 /// Video câm là chuyện bình thường (màn hình quay, slide). Không có tiếng gốc
 /// thì nhánh `[0:a]` của filtergraph sẽ làm ffmpeg chết ngay, nên phải hỏi trước.
 pub fn probe_has_audio(ffprobe: &Path, video: &Path) -> Result<bool, PipelineError> {
@@ -195,6 +216,7 @@ pub fn build_export_args(
     video: &Path,
     dub: &Path,
     srt: Option<&Path>,
+    logo: Option<&Path>,
     out: &Path,
     o: &ExportOpts,
 ) -> Vec<OsString> {
@@ -210,12 +232,22 @@ pub fn build_export_args(
         a.push("-i".into());
         a.push(s.into());
     }
+    // Logo LUÔN là input cuối cùng — chỉ số của nó trong filtergraph được tính
+    // từ việc có srt hay không, xem build_filter_complex.
+    if let Some(l) = logo {
+        a.push("-i".into());
+        a.push(l.into());
+    }
 
     a.push("-filter_complex".into());
     a.push(build_filter_complex(o, soft_srt.is_some()).into());
 
+    // Có bất cứ filter hình nào cũng buộc mã hoá lại: `-c:v copy` chép luồng
+    // nén nguyên vẹn, không có chỗ nào để chèn phụ đề hay logo vào.
+    let co_filter_video = o.burn_subs || o.watermark.is_some();
+
     a.push("-map".into());
-    a.push(OsString::from(if o.burn_subs { "[v]" } else { "0:v:0" }));
+    a.push(OsString::from(if co_filter_video { "[v]" } else { "0:v:0" }));
     a.push("-map".into());
     a.push("[aout]".into());
     if soft_srt.is_some() {
@@ -227,7 +259,7 @@ pub fn build_export_args(
         a.push("language=vie".into());
     }
 
-    if o.burn_subs {
+    if co_filter_video {
         a.push("-c:v".into());
         a.push("libx264".into());
         a.push("-preset".into());

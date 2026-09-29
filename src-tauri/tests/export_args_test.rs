@@ -34,10 +34,15 @@ fn opts(burn: bool, soft: bool, has_audio: bool) -> ExportOpts {
 }
 
 fn args_of(o: &ExportOpts, srt: Option<&Path>) -> Vec<String> {
+    args_of_logo(o, srt, None)
+}
+
+fn args_of_logo(o: &ExportOpts, srt: Option<&Path>, logo: Option<&Path>) -> Vec<String> {
     build_export_args(
         Path::new(r"E:\phim\clip.mp4"),
         Path::new(r"E:\du an\tts\dub.wav"),
         srt,
+        logo,
         Path::new(r"E:\du an\output\final.mp4"),
         o,
     )
@@ -420,4 +425,67 @@ fn khong_co_logo_thi_filter_giu_nguyen_nhu_cu() {
     assert!(f.contains(&format!("[0:v]subtitles={BURN_SRT_NAME}[v]")), "{f}");
     assert!(!f.contains("overlay"), "{f}");
     assert!(!f.contains("[wm]"), "{f}");
+}
+
+/// Không burn-in nhưng có logo ⇒ vẫn phải mã hoá lại. `-c:v copy` ở đây là
+/// ffmpeg lỗi "filter output [v] not used", hoặc tệ hơn: xuất xong mà không có
+/// logo và không ai biết.
+#[test]
+fn logo_bat_thi_khong_con_c_v_copy() {
+    let mut o = opts(false, false, true);
+    o.watermark = Some(wm("br"));
+    let a = args_of_logo(&o, None, Some(Path::new(r"E:\anh\logo.png")));
+    assert!(!a.contains(&"copy".to_string()), "{a:?}");
+    assert!(a.contains(&"libx264".to_string()), "{a:?}");
+    assert!(a.contains(&"-pix_fmt".to_string()), "{a:?}");
+    // Phải map nhánh đã lọc, không phải luồng gốc.
+    let i = a.iter().position(|s| s == "-map").unwrap();
+    assert_eq!(a[i + 1], "[v]", "{a:?}");
+}
+
+#[test]
+fn logo_duoc_them_lam_input_cuoi_cung() {
+    let mut o = opts(false, false, true);
+    o.watermark = Some(wm("br"));
+    let a = args_of_logo(&o, None, Some(Path::new(r"E:\anh\logo.png")));
+    let inputs: Vec<&String> = a
+        .iter()
+        .enumerate()
+        .filter(|(i, s)| *s == "-i" && *i + 1 < a.len())
+        .map(|(i, _)| &a[i + 1])
+        .collect();
+    assert_eq!(inputs.len(), 3, "{a:?}");
+    assert_eq!(inputs[2], r"E:\anh\logo.png", "logo phải là input cuối: {a:?}");
+}
+
+#[test]
+fn logo_dung_sau_srt_khi_co_soft_subs() {
+    let mut o = opts(false, true, true);
+    o.watermark = Some(wm("br"));
+    let a = args_of_logo(
+        &o,
+        Some(Path::new(r"E:\du an\subtitles\translated.vi.srt")),
+        Some(Path::new(r"E:\anh\logo.png")),
+    );
+    let inputs: Vec<&String> = a
+        .iter()
+        .enumerate()
+        .filter(|(i, s)| *s == "-i" && *i + 1 < a.len())
+        .map(|(i, _)| &a[i + 1])
+        .collect();
+    assert_eq!(inputs.len(), 4, "{a:?}");
+    assert!(inputs[2].ends_with(".srt"), "{a:?}");
+    assert_eq!(inputs[3], r"E:\anh\logo.png", "{a:?}");
+    assert!(filter_arg(&a).contains("[3:v]format=rgba"), "{}", filter_arg(&a));
+}
+
+/// Bật logo nhưng không truyền được file (đã bị xoá, hoặc path rỗng): phải xuất
+/// bình thường KHÔNG có logo, chứ không sinh args trỏ vào input không tồn tại.
+#[test]
+fn logo_thieu_file_thi_xuat_nhu_khong_co_logo() {
+    let mut o = opts(false, false, true);
+    o.watermark = None; // pipeline đã lọc bỏ vì file không đọc được
+    let a = args_of_logo(&o, None, None);
+    assert!(a.contains(&"copy".to_string()), "{a:?}");
+    assert!(!filter_arg(&a).contains("overlay"), "{}", filter_arg(&a));
 }

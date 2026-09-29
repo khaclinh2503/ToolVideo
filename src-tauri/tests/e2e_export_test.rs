@@ -89,6 +89,7 @@ fn chay(burn: bool, soft: bool, ten: &str) {
             outline_color: "#101010".into(),
             outline: 3,
         }),
+        &app_lib::config::WatermarkConfig::default(),
         &mut |ph| println!("  [{ph}] {:.1}s", t0.elapsed().as_secs_f32()),
     )
     .unwrap_or_else(|e| panic!("Xuất lỗi: {e}"));

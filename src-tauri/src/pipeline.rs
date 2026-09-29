@@ -451,6 +451,7 @@ pub fn run_export_stage(
     out_dir: Option<&Path>,
     // Kiểu chữ phụ đề khi ghi vào hình; `None` ⇒ mặc định của libass.
     style: Option<export::SubStyle>,
+    watermark: &crate::config::WatermarkConfig,
     on_phase: &mut dyn FnMut(&str),
 ) -> Result<ExportResult, PipelineError> {
     // Cùng lý do trim ở run_tts_stage/run_retime_stage: hàm này tự dựng lại
@@ -509,6 +510,35 @@ pub fn run_export_stage(
         }
     };
 
+    // Logo chỉ được thêm khi ĐỦ CẢ BA: bật, có đường dẫn, và file đọc được.
+    // Thiếu bất cứ cái nào thì xuất bình thường không logo — một file bị xoá
+    // sau khi chọn không đáng làm hỏng cả buổi xuất video.
+    let logo_path: Option<std::path::PathBuf> = if watermark.enabled
+        && !watermark.path.trim().is_empty()
+    {
+        let p = std::path::PathBuf::from(watermark.path.trim());
+        if p.is_file() { Some(p) } else {
+            eprintln!("bỏ qua logo: không đọc được {}", p.display());
+            None
+        }
+    } else {
+        None
+    };
+
+    let wm = logo_path.as_ref().and_then(|_| {
+        let (w, _h) = crate::export::probe_video_size(ffprobe, video)?;
+        Some(crate::export::Watermark::moi(
+            &watermark.corner,
+            w,
+            watermark.size_pct,
+            watermark.margin_pct,
+            watermark.opacity,
+        ))
+    });
+    // Không đo được kích thước video thì không đặt được logo — bỏ luôn cả input
+    // để args không trỏ vào một file mà filtergraph không dùng.
+    let logo_path = if wm.is_some() { logo_path } else { None };
+
     let export_opts = export::ExportOpts {
         burn_subs,
         soft_subs,
@@ -518,13 +548,13 @@ pub fn run_export_stage(
         crf: cfg.crf,
         preset: cfg.preset.clone(),
         style,
-        // Task 3 nối logo từ config vào đây; task này chỉ dựng nhánh filter.
-        watermark: None,
+        watermark: wm,
     };
     let args = export::build_export_args(
         video,
         &dub_path,
         if soft_subs && !burn_subs { Some(translated.as_path()) } else { None },
+        logo_path.as_deref(),
         &output_path,
         &export_opts,
     );
