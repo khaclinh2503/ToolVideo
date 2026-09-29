@@ -56,6 +56,18 @@ const FONT_GOI_Y = [
   "Arial", "Segoe UI", "Tahoma", "Verdana",
   "Times New Roman", "Calibri", "Roboto",
 ];
+
+// Sáu bước của quy trình, mỗi bước một tab. `id` cũng là số hiệu bước hiện
+// trên màn hình, nên đừng đánh lại số nếu chỉ muốn đổi thứ tự hiển thị.
+const BUOC = [
+  { id: 1, ten: "Chọn video" },
+  { id: 2, ten: "Lời thoại gốc" },
+  { id: 3, ten: "Dịch phụ đề" },
+  { id: 4, ten: "Sửa & nghe thử" },
+  { id: 5, ten: "Lồng tiếng" },
+  { id: 6, ten: "Xuất video" },
+] as const;
+
 /** Một giọng đọc mà một nhà cung cấp TTS hỗ trợ (trả về từ lệnh `tts_voices`). */
 interface VoiceDto {
   id: string;
@@ -116,6 +128,8 @@ function voiceLabel(v: VoiceDto): string {
 function App() {
   const [status, setStatus] = useState("");
   const [running, setRunning] = useState(false);
+  // Bước đang mở. Chỉ đổi được khi `running` tắt — xem thanh tab ở phần render.
+  const [tab, setTab] = useState(1);
   const [projectDir, setProjectDir] = useState("");
   const [cfg, setCfg] = useState<AppConfig | null>(null);
   const [provider, setProvider] = useState("google_free");
@@ -268,6 +282,7 @@ function App() {
       // onPickVideo, nên phải xoá trạng thái dự án cũ y hệt.
       setProjectDir(""); setVideoPath(""); setCues([]); setCueAudio(""); setCueNote(""); setExported("");
       setPickedVideo(path);
+      setTab(2);
       setStatus(`Đã tải: ${baseName(path)} — sang Bước 2 để lấy lời thoại.`);
     } catch (e) {
       setStatus(`Lỗi tải video: ${String(e)}`);
@@ -283,6 +298,7 @@ function App() {
     // án đang mở, nếu không các bước sau vẫn trỏ vào dự án cũ.
     setProjectDir(""); setVideoPath(""); setCues([]); setCueAudio(""); setCueNote(""); setExported("");
     setPickedVideo(selected as string);
+    setTab(2);
     setStatus(`Đã chọn video: ${baseName(selected as string)}`);
   }
 
@@ -295,6 +311,7 @@ function App() {
       // Đã thành dự án thật rồi thì không còn là "video vừa chọn" nữa — nút nhận
       // dạng phải tắt đi, kẻo bấm lần nữa là đẻ thêm một dự án trùng.
       setPickedVideo("");
+      setTab(3);
       setStatus(`Đã lấy lời thoại gốc: ${r.cueCount} câu → ${r.srtPath}`);
       await refreshProjects();
     } catch (e) { setStatus(`Lỗi: ${String(e)}`); } finally { setRunning(false); }
@@ -310,6 +327,9 @@ function App() {
       setExported(d.exportPath ?? "");
       setTgt(d.tgtLang);
       setSrcLang(d.srcLang);
+      // Nhảy thẳng tới bước còn dở thay vì bắt người dùng bấm lại từ Bước 1.
+      // Đã lồng tiếng rồi thì chỉ còn việc xuất; đã dịch thì tới lồng tiếng.
+      setTab(d.hasTts ? 6 : d.hasTranslation ? 5 : d.hasStt ? 3 : 1);
       setStatus(
         d.videoExists
           ? `Đã mở dự án: ${d.videoName}`
@@ -336,6 +356,9 @@ function App() {
       if (projectDir === p.projectDir) {
         setProjectDir("");
         setVideoPath("");
+        // Các bước sau không còn dự án để làm gì nữa, về Bước 1 cho khỏi nhìn
+        // vào một tab rỗng.
+        setTab(1);
       }
       await refreshProjects();
       setStatus(`Đã xoá dự án: ${p.videoName}`);
@@ -365,6 +388,7 @@ function App() {
       }
       const src = srcLang || "auto";
       const r = await invoke<TranslateResultDto>("run_translate", { projectDir, provider, src, tgt });
+      setTab(4);
       setStatus(`Dịch xong: ${r.cueCount} cue → ${r.srtPath}`);
       await refreshProjects();
     } catch (e) { setStatus(`Lỗi: ${String(e)}`); } finally { setRunning(false); }
@@ -375,6 +399,7 @@ function App() {
     setRunning(true); setStatus("Đang lồng tiếng...");
     try {
       const r = await invoke<TtsResultDto>("run_tts", { projectDir, tgt });
+      setTab(6);
       setStatus(`Lồng tiếng xong: ${r.cueCount} cue (sinh mới ${r.generated}, dùng lại ${r.cached}) → ${r.manifestPath}`);
       await refreshProjects();
     } catch (e) { setStatus(`Lỗi: ${String(e)}`); } finally { setRunning(false); }
@@ -522,6 +547,16 @@ function App() {
   const tts = cfg?.tts;
   const setTts = (patch: Partial<TtsConfig>) => cfg && setCfg({ ...cfg, tts: { ...cfg.tts, ...patch } });
 
+  /**
+   * Bước đã đủ nguyên liệu để làm hay chưa. Chỉ dùng để làm mờ nhãn tab —
+   * tab nào cũng bấm vào xem trước được, nút bên trong mới là chỗ chặn thật.
+   */
+  function thieuGi(id: number): string {
+    if (id === 2) return pickedVideo ? "" : "Chọn video ở Bước 1 trước.";
+    if (id >= 3) return projectDir ? "" : "Cần lấy lời thoại ở Bước 2 trước.";
+    return "";
+  }
+
   return (
     <main className="container">
       <h1>DichVideo-Local</h1>
@@ -578,7 +613,7 @@ function App() {
             </span>
             <button type="button" onClick={() => onOpenProject(p)} disabled={running}>Mở</button>
             {p.exportPath && (
-              <button type="button" onClick={() => onReveal(p.exportPath!)}>
+              <button type="button" onClick={() => onReveal(p.exportPath!)} disabled={running}>
                 Mở thư mục
               </button>
             )}
@@ -587,6 +622,33 @@ function App() {
         ))}
       </section>
 
+      <nav className={`tabs${running ? " locked" : ""}`} aria-label="Các bước">
+        {BUOC.map((b) => {
+          const thieu = thieuGi(b.id);
+          return (
+            <button
+              key={b.id}
+              type="button"
+              className={[
+                tab === b.id ? "active" : "",
+                thieu ? "chua-san" : "",
+              ].filter(Boolean).join(" ")}
+              aria-current={tab === b.id ? "step" : undefined}
+              title={running ? "Đang chạy — không chuyển bước được." : thieu}
+              onClick={() => setTab(b.id)}
+              disabled={running}
+            >
+              <span className="tab-so">{b.id}</span>
+              {b.ten}
+            </button>
+          );
+        })}
+      </nav>
+      {running && (
+        <p className="muted tabs-khoa">Đang chạy — không chuyển bước được.</p>
+      )}
+
+      {tab === 1 && (
       <section>
         <h2>Bước 1 · Chọn video</h2>
         <div className="row">
@@ -627,7 +689,9 @@ function App() {
           <p className="muted">Mở một file mp4, mkv hoặc mov.</p>
         )}
       </section>
+      )}
 
+      {tab === 2 && (
       <section>
         <h2>Bước 2 · Lấy lời thoại gốc</h2>
         <div className="row">
@@ -657,7 +721,9 @@ function App() {
             : "Chọn video ở Bước 1 trước. Mở lại một dự án cũ thì lời thoại đã có sẵn, không cần chạy lại."}
         </p>
       </section>
+      )}
 
+      {tab === 3 && (
       <section>
         <h2>Bước 3 · Dịch phụ đề</h2>
         <div className="row">
@@ -728,7 +794,9 @@ function App() {
           </div>
         )}
       </section>
+      )}
 
+      {tab === 4 && (
       <section>
         <h2>Bước 4 · Sửa phụ đề và nghe thử (tuỳ chọn)</h2>
         <div className="row">
@@ -747,7 +815,9 @@ function App() {
           </div>
         )}
       </section>
+      )}
 
+      {tab === 5 && (
       <section>
         <h2>Bước 5 · Lồng tiếng</h2>
         {tts && (
@@ -805,7 +875,9 @@ function App() {
           cue ở Bước 4 sẽ không dùng được vì hai mức tần số không khớp nhau.
         </p>
       </section>
+      )}
 
+      {tab === 6 && (
       <section>
         <h2>Bước 6 · Xuất video</h2>
         <label>
@@ -933,11 +1005,12 @@ function App() {
         </div>
         {exported && (
           <div className="row">
-            <button type="button" onClick={() => onReveal(exported)}>Mở thư mục chứa file</button>
+            <button type="button" onClick={() => onReveal(exported)} disabled={running}>Mở thư mục chứa file</button>
             <span className="muted">{baseName(exported)}</span>
           </div>
         )}
       </section>
+      )}
 
       {status && <p className="status">{status}</p>}
     </main>
