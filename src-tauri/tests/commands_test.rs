@@ -259,3 +259,37 @@ fn duong_dan_giu_nguyen_dang_khong_verbatim() {
     let ok = app_lib::commands::duong_dan_xem_duoc(&f.display().to_string()).unwrap();
     assert!(!ok.display().to_string().starts_with(r"\\?\"), "{}", ok.display());
 }
+
+/// Chặn theo đuôi file: `cho_phep_xem` gọi được từ webview, nên
+/// `duong_dan_xem_duoc` không được nhận bừa mọi file tồn tại — chỉ đúng các
+/// đuôi mà tính năng cần (video người dùng chọn được ở onPickVideo, hoặc ảnh
+/// logo). Các case reject dưới đây dùng file THẬT TỒN TẠI trên đĩa, để chứng
+/// minh chính việc lọc đuôi từ chối chứ không phải do is_file() thất bại.
+#[test]
+fn duong_dan_xem_duoc_chan_theo_duoi_file() {
+    let d = tempfile::tempdir().unwrap();
+
+    for ten in ["a.mp4", "a.mkv", "a.mov", "a.png"] {
+        let f = d.path().join(ten);
+        std::fs::write(&f, b"x").unwrap();
+        assert!(
+            app_lib::commands::duong_dan_xem_duoc(&f.display().to_string()).is_ok(),
+            "{ten} phải được nhận"
+        );
+    }
+
+    // Hoa/thường không quan trọng: Windows có file .PNG.
+    let hoa = d.path().join("logo.PNG");
+    std::fs::write(&hoa, b"x").unwrap();
+    assert!(app_lib::commands::duong_dan_xem_duoc(&hoa.display().to_string()).is_ok());
+
+    // File thật tồn tại, đuôi lạ: phải bị từ chối vì đuôi, không phải vì thiếu file.
+    let txt = d.path().join("ghi-chu.txt");
+    std::fs::write(&txt, b"x").unwrap();
+    assert!(app_lib::commands::duong_dan_xem_duoc(&txt.display().to_string()).is_err());
+
+    // File thật tồn tại, không có đuôi: cũng phải bị từ chối.
+    let khong_duoi = d.path().join("noduoi");
+    std::fs::write(&khong_duoi, b"x").unwrap();
+    assert!(app_lib::commands::duong_dan_xem_duoc(&khong_duoi.display().to_string()).is_err());
+}

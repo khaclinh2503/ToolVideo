@@ -236,13 +236,36 @@ pub async fn preview_voice(provider: String, voice: String) -> Result<String, St
 /// Kiểm một đường dẫn trước khi khai vào phạm vi asset protocol.
 ///
 /// Tách khỏi lệnh Tauri để test được không cần AppHandle.
+///
+/// Chỉ nhận đúng các đuôi file mà tính năng này cần: `mp4`/`mkv`/`mov` là danh
+/// sách filter video của chính `onPickVideo` bên `src/App.tsx` (người dùng đã
+/// có thể chọn những file này rồi, nên khai lại không mở thêm gì mới), và
+/// `png` cho ảnh logo watermark. So đuôi không phân biệt hoa/thường vì Windows
+/// có file `.PNG`. KHÔNG coi đây là "an toàn" tuyệt đối: `cho_phep_xem` vẫn có
+/// thể bị gọi từ một webview đã bị chiếm để đọc bất kỳ file `.mp4` nào trên
+/// đĩa — allowlist này chỉ thu hẹp từ "mọi file" xuống "đúng loại media mà
+/// người dùng lẽ ra đã có thể tự chọn", không hơn.
 pub fn duong_dan_xem_duoc(path: &str) -> Result<std::path::PathBuf, String> {
+    const DUOI_CHO_PHEP: &[&str] = &["mp4", "mkv", "mov", "png"];
     let p = std::path::PathBuf::from(path.trim());
     if path.trim().is_empty() {
         return Err("đường dẫn rỗng".into());
     }
     if !p.is_file() {
         return Err(format!("không phải file đọc được: {}", p.display()));
+    }
+    let duoi = p
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_ascii_lowercase());
+    match duoi {
+        Some(d) if DUOI_CHO_PHEP.contains(&d.as_str()) => {}
+        _ => {
+            return Err(format!(
+                "chỉ chấp nhận file mp4/mkv/mov/png, không phải: {}",
+                p.display()
+            ))
+        }
     }
     Ok(p)
 }
@@ -254,7 +277,8 @@ pub fn duong_dan_xem_duoc(path: &str) -> Result<std::path::PathBuf, String> {
 /// `convertFileSrc` bị từ chối IM LẶNG và thẻ <video> ra ô đen, không lỗi,
 /// không log. Đúng lớp bug đã làm nghe thử cue câm suốt từ M6.
 ///
-/// Khai từng file một, không bao giờ khai thư mục.
+/// Khai từng file một, không bao giờ khai thư mục. `duong_dan_xem_duoc` còn
+/// chặn theo đuôi file — xem comment ở đó về giới hạn của lớp chặn này.
 #[tauri::command]
 pub fn cho_phep_xem(app: tauri::AppHandle, path: String) -> Result<(), String> {
     use tauri::Manager;
