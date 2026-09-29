@@ -177,3 +177,40 @@ fn ui_le_logo_quy_ra_px_theo_be_ngang_ca_hai_truc() {
         "phải quy margin ra px theo bề ngang khung, khớp cách Rust tính margin_px"
     );
 }
+
+/// Round 1 sửa lỗi: tạm dừng video mà giọng lồng vẫn chạy tiếp trên khung
+/// hình đứng yên là bug rõ nhất trong số ba lỗi review chỉ ra. Test này giữ
+/// cho onPause của <video> còn dừng theo thẻ audio, onSeeked còn ÉP đồng bộ
+/// lại vị trí trong audio bất kể cue có đổi hay không (tua liên tục trong
+/// cùng một cue lúc căn chỉnh vẫn phải khớp lại), và onPlay còn chỉnh vị trí
+/// audio theo cue hiện tại trước khi phát tiếp (video có thể đã bị tua trong
+/// lúc tạm dừng) thay vì phát tiếp từ chỗ audio dừng lại trước đó.
+#[test]
+fn ui_video_pause_seek_play_dieu_khien_am_thanh_long_tieng() {
+    let tsx = std::fs::read_to_string("../src/XemThu.tsx").expect("đọc được XemThu.tsx");
+    assert!(
+        tsx.contains("onPause={() => am.current?.pause()}"),
+        "onPause của <video> phải dừng theo thẻ audio lồng tiếng"
+    );
+    assert!(
+        tsx.contains("onSeeked={(e) => dongBoTiengLong(e.currentTarget, true)}"),
+        "onSeeked phải ép đồng bộ lại audio kể cả khi tua trong cùng một cue"
+    );
+    assert!(
+        tsx.contains("onPlay={(e) => dongBoTiengLong(e.currentTarget, true)}"),
+        "onPlay phải chỉnh lại vị trí audio theo cue hiện tại trước khi phát tiếp"
+    );
+}
+
+/// Guard cũ chỉ so `idx === cueDangPhat.current` (số), bỏ qua audioPath — một
+/// cue lồng tiếng lại (audioPath đổi, index giữ nguyên) bị bỏ qua trong lúc
+/// người dùng đứng nguyên tại cue đó. Test giữ cho việc so sánh dùng CẢ HAI
+/// trường (idx lẫn path) trong state đã đồng bộ.
+#[test]
+fn ui_dong_bo_am_thanh_so_ca_index_lan_duong_dan() {
+    let tsx = std::fs::read_to_string("../src/XemThu.tsx").expect("đọc được XemThu.tsx");
+    assert!(
+        tsx.contains("idx !== daDongBo.current.idx || path !== daDongBo.current.path"),
+        "phải so cả index lẫn audioPath khi quyết định có đồng bộ lại audio hay không"
+    );
+}

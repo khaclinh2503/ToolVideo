@@ -116,23 +116,48 @@ export default function XemThu({ videoPath, cues, sub, wm }: XemThuProps) {
   const cue = cues.find((c) => c.startMs <= tMs && tMs < c.endMs);
 
   const am = useRef<HTMLAudioElement>(null);
-  const cueDangPhat = useRef<number>(-1);
+  // Cue + đường dẫn audio đã đồng bộ lần gần nhất. So CẢ HAI, không chỉ index:
+  // một cue được lồng lại tiếng (audioPath đổi, index giữ nguyên) mà chỉ so
+  // index thì người dùng đứng nguyên trên cue đó sẽ tiếp tục nghe bản ghi cũ.
+  const daDongBo = useRef<{ idx: number; path: string | null }>({ idx: -1, path: null });
 
-  // Phát wav của cue đang chạy. Dùng MỘT thẻ audio đổi src thay vì hẹn giờ cả
-  // dải: người dùng tua liên tục khi căn chỉnh, mà mọi lịch hẹn đều phải huỷ và
-  // dựng lại sau mỗi lần tua — một thẻ theo cue hiện tại là đủ và không lệch.
-  useEffect(() => {
+  // Đưa thẻ audio về đúng vị trí BÊN TRONG cue đang đứng và phát/dừng theo
+  // đúng trạng thái của video. Dùng lại MỘT thẻ audio (đổi src) thay vì hẹn
+  // giờ cả dải: người dùng tua liên tục khi căn chỉnh, mọi lịch hẹn đều phải
+  // huỷ và dựng lại sau mỗi lần tua.
+  //
+  // Đọc `video.currentTime` trực tiếp thay vì state `tMs`/`cue`: sự kiện
+  // "seeked" bắn TRƯỚC "timeupdate", nên tại thời điểm đó `tMs` còn là vị trí
+  // cũ trước khi tua — nếu tính cue từ state sẽ chỉnh audio theo cue SAI.
+  //
+  // `batBuoc=true` bỏ qua việc so cue cũ/mới — dùng cho tua và phát tiếp: cả
+  // hai đều có thể xảy ra TRONG CÙNG một cue (tua để căn chỉnh, hoặc tạm dừng
+  // rồi tua rồi phát lại) mà vẫn phải chỉnh lại vị trí trong audio, không chỉ
+  // khi đổi sang cue khác. Nhánh timeupdate/effect bình thường thì không cần
+  // ép: cue không đổi thì audio đang ở đúng chỗ, khỏi nạp lại src mỗi lần.
+  function dongBoTiengLong(video: HTMLVideoElement, batBuoc: boolean) {
     const a = am.current;
+    if (!a) return;
+    const tHienTai = video.currentTime * 1000;
+    const cueHienTai = cues.find((c) => c.startMs <= tHienTai && tHienTai < c.endMs);
+    const idx = cueHienTai?.index ?? -1;
+    const path = cueHienTai?.audioPath ?? null;
+    const doiCue = idx !== daDongBo.current.idx || path !== daDongBo.current.path;
+    if (!batBuoc && !doiCue) return;
+    daDongBo.current = { idx, path };
+    if (!path) { a.pause(); return; }
+    const src = convertFileSrc(path);
+    if (a.src !== src) a.src = src;
+    a.currentTime = Math.max(0, (tHienTai - (cueHienTai?.startMs ?? 0)) / 1000);
+    if (video.paused) a.pause();
+    else a.play().catch(() => { /* chưa có wav cho cue này */ });
+  }
+
+  // Cue tiến bình thường theo thời gian phát (không tua, không tạm dừng).
+  useEffect(() => {
     const v = ref.current;
-    if (!a || !v) return;
-    const idx = cue?.index ?? -1;
-    if (idx === cueDangPhat.current) return;
-    cueDangPhat.current = idx;
-    if (!cue?.audioPath || v.paused) { a.pause(); return; }
-    a.src = convertFileSrc(cue.audioPath);
-    // Vào giữa cue (do tua) thì phát từ đúng chỗ đó, không quay về đầu câu.
-    a.currentTime = Math.max(0, (tMs - cue.startMs) / 1000);
-    a.play().catch(() => { /* chưa có wav cho cue này */ });
+    if (!v) return;
+    dongBoTiengLong(v, false);
   }, [cue?.index, cue?.audioPath]);
 
   if (!videoPath) {
@@ -161,6 +186,16 @@ export default function XemThu({ videoPath, cues, sub, wm }: XemThuProps) {
             controls
             onLoadedMetadata={(e) => { capNhatKichThuoc(); e.currentTarget.volume = 0.18; }}
             onTimeUpdate={(e) => setTMs(e.currentTarget.currentTime * 1000)}
+            // Tua có thể đứng nguyên trong cùng một cue (đúng lúc căn chỉnh) —
+            // ép đồng bộ lại vị trí trong audio bất kể cue có đổi hay không.
+            onSeeked={(e) => dongBoTiengLong(e.currentTarget, true)}
+            // Tạm dừng video mà không dừng theo giọng lồng là bug rõ nhất:
+            // người dùng nghe tiếng chạy tiếp trên khung hình đứng yên.
+            onPause={() => am.current?.pause()}
+            // Phát tiếp thì chỉnh lại vị trí trong audio theo cue hiện tại
+            // (video có thể đã bị tua trong lúc tạm dừng), không phát tiếp từ
+            // chỗ audio dừng lại trước đó.
+            onPlay={(e) => dongBoTiengLong(e.currentTarget, true)}
             onError={() => setLoi("Không phát được video — file có thể đã bị xoá hoặc đổi tên.")}
           />
           {wmSanSang && wm?.enabled && wm.path && (
