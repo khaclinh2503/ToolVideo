@@ -489,3 +489,51 @@ fn logo_thieu_file_thi_xuat_nhu_khong_co_logo() {
     assert!(a.contains(&"copy".to_string()), "{a:?}");
     assert!(!filter_arg(&a).contains("overlay"), "{}", filter_arg(&a));
 }
+
+// --- probe_video_size: video xoay phải trả về kích thước NHƯ FILTER CHAIN SẼ
+// THẤY (đã autorotate), không phải kích thước "coded" trong container. Xem
+// chú thích tại định nghĩa hàm để biết ffprobe bundled in ra cái gì thật.
+use app_lib::export::parse_video_size_json;
+
+#[test]
+fn video_khong_xoay_giu_nguyen_kich_thuoc() {
+    let j = r#"{"streams":[{"width":1920,"height":1080,"tags":{},"side_data_list":[]}]}"#;
+    assert_eq!(parse_video_size_json(j), Some((1920, 1080)));
+}
+
+#[test]
+fn video_xoay_90_side_data_thi_doi_cho_w_h() {
+    // Đo thật trên ffprobe bundled (9.0.2, gyan.dev): clip có ma trận xoay
+    // -90° (CCW) coded 1920x1080 in ra side_data_list[].rotation = -90, và
+    // ffmpeg thật sự autorotate khung giải mã thành 1080x1920.
+    let j = r#"{"streams":[{"width":1920,"height":1080,"tags":{},"side_data_list":[{"side_data_type":"Display Matrix","rotation":-90}]}]}"#;
+    assert_eq!(parse_video_size_json(j), Some((1080, 1920)));
+}
+
+#[test]
+fn video_xoay_90_duong_cung_doi_cho() {
+    let j = r#"{"streams":[{"width":1920,"height":1080,"tags":{},"side_data_list":[{"side_data_type":"Display Matrix","rotation":90}]}]}"#;
+    assert_eq!(parse_video_size_json(j), Some((1080, 1920)));
+}
+
+#[test]
+fn video_xoay_180_khong_doi_cho() {
+    let j = r#"{"streams":[{"width":1920,"height":1080,"tags":{},"side_data_list":[{"side_data_type":"Display Matrix","rotation":180}]}]}"#;
+    assert_eq!(parse_video_size_json(j), Some((1920, 1080)));
+}
+
+#[test]
+fn video_xoay_qua_the_rotate_cu_khi_khong_co_side_data() {
+    // Bản ffprobe cũ hơn báo xoay qua stream_tags=rotate thay vì side_data —
+    // xem chú thích ở probe_video_size. Bundled ffprobe không đi nhánh này,
+    // nhưng giữ lại để không vỡ trên ffprobe khác.
+    let j = r#"{"streams":[{"width":1920,"height":1080,"tags":{"rotate":"90"}}]}"#;
+    assert_eq!(parse_video_size_json(j), Some((1080, 1920)));
+}
+
+#[test]
+fn video_zero_hoac_thieu_field_tra_ve_none() {
+    assert_eq!(parse_video_size_json(r#"{"streams":[{"width":0,"height":1080}]}"#), None);
+    assert_eq!(parse_video_size_json(r#"{"streams":[]}"#), None);
+    assert_eq!(parse_video_size_json("không phải json"), None);
+}

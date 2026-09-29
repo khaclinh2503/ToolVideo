@@ -75,25 +75,88 @@ pub fn probe_duration_ms(ffprobe: &Path, video: &Path) -> Result<u64, PipelineEr
     })
 }
 
-/// Bề ngang × bề cao video, hỏi ffprobe. `None` nếu không đọc được — chỗ gọi
-/// phải coi đó là "không đặt được logo" chứ không phải lỗi xuất.
+/// Rút `(width, height)` từ JSON `ffprobe -show_entries
+/// stream=width,height:stream_tags=rotate:stream_side_data=rotation -of json`,
+/// đổi chỗ width/height nếu góc xoay là bội lẻ của 90°. Hàm thuần để test
+/// không cần ffprobe thật — xem chú thích ở `probe_video_size` về góc xoay.
+pub fn parse_video_size_json(json: &str) -> Option<(u32, u32)> {
+    let v: serde_json::Value = serde_json::from_str(json).ok()?;
+    let stream = v.get("streams")?.as_array()?.first()?;
+    let w = stream.get("width")?.as_u64()? as u32;
+    let h = stream.get("height")?.as_u64()? as u32;
+    if w == 0 || h == 0 {
+        return None;
+    }
+
+    // Ưu tiên side_data (nhánh ffprobe hiện đại THẬT SỰ dùng — xem chú thích ở
+    // probe_video_size); thẻ `rotate` kiểu cũ chỉ là lưới an toàn cho ffprobe
+    // đời trước, không có trên bộ ffprobe đi kèm app.
+    let angle = stream
+        .get("side_data_list")
+        .and_then(|l| l.as_array())
+        .and_then(|arr| {
+            arr.iter()
+                .find_map(|sd| sd.get("rotation").and_then(|r| r.as_i64()))
+        })
+        .or_else(|| {
+            stream
+                .get("tags")
+                .and_then(|t| t.get("rotate"))
+                .and_then(|r| r.as_str())
+                .and_then(|s| s.trim().parse::<i64>().ok())
+        })
+        .unwrap_or(0);
+
+    // Chỉ dấu và bội chẵn/lẻ của 90 là quan trọng — 90/-90/270/-270 đều đổi
+    // chỗ w/h, 0/180/-180 đều giữ nguyên. Không cần phân biệt chiều xoay ở
+    // đây, chỉ cần biết khung có "nằm ngang" hay không sau khi autorotate.
+    if angle.rem_euclid(180) == 90 {
+        Some((h, w))
+    } else {
+        Some((w, h))
+    }
+}
+
+/// Bề ngang × bề cao mà FILTER CHAIN sẽ thấy — không phải kích thước "coded"
+/// trong container. `None` nếu không đọc được — chỗ gọi phải coi đó là "không
+/// đặt được logo" chứ không phải lỗi xuất.
+///
+/// ffmpeg CLI tự chèn một bước xoay TRƯỚC filter_complex dựa theo metadata xoay
+/// của luồng (autorotate mặc định bật, không tắt ở đâu trong app này). Video
+/// quay dọc trên điện thoại thường được MÃ HOÁ ngang (coded 1920x1080) kèm ma
+/// trận xoay 90°; hỏi ffprobe `stream=width,height` trơn chỉ ra kích thước
+/// coded đó, nên nếu dùng thẳng để tính `Watermark::moi` thì logo bị tính sai
+/// theo khung ĐÃ xoay (ví dụ 230px trên khung 1080 rộng thật = 21% chứ không
+/// phải 12% người dùng chọn).
+///
+/// Đã đo thật với ffprobe/ffmpeg bundled (`9.0.2-essentials_build-www.gyan.dev`):
+///   - Dựng một clip coded 1920x1080 mang ma trận xoay -90° (Display Matrix,
+///     qua `-display_rotation`), `ffprobe -show_entries stream_side_data=rotation`
+///     in ra `rotation=-90`; decode thật một khung của clip đó ra đúng
+///     1080x1920 — xác nhận ffmpeg CLI có autorotate và side_data là nơi lộ
+///     thông tin đó trên bản ffprobe này.
+///   - Thẻ xoay kiểu cũ (`stream_tags=rotate`, ví dụ `-metadata:s:v rotate=90`)
+///     KHÔNG xuất hiện trên bản ffprobe này khi đọc lại một mp4/mov thật —
+///     chỉ side_data mới có. Vẫn đọc thêm thẻ này làm lưới an toàn cho ffprobe
+///     đời cũ hơn (theo tài liệu ffmpeg), nhưng trên bộ ffprobe đi kèm app,
+///     nhánh side_data là nhánh duy nhất có tác dụng thật.
+///   - QUY ƯỚC DẤU (dễ nhầm): `rotation` của side_data là góc xoay NGƯỢC chiều
+///     kim đồng hồ (CCW) cần áp để đưa khung về đúng chiều hiển thị — âm nghĩa
+///     là xoay THEO chiều kim đồng hồ. Thẻ `rotate` kiểu cũ mang quy ước NGƯỢC
+///     lại (thuận chiều kim đồng hồ). May là không cần quan tâm dấu ở đây: chỉ
+///     cần |góc| là bội lẻ của 90° thì đổi chỗ width/height.
 pub fn probe_video_size(ffprobe: &Path, video: &Path) -> Option<(u32, u32)> {
     let out = std::process::Command::new(ffprobe)
         .args([
             "-v", "error",
             "-select_streams", "v:0",
-            "-show_entries", "stream=width,height",
-            "-of", "csv=s=x:p=0",
+            "-show_entries", "stream=width,height:stream_tags=rotate:stream_side_data=rotation",
+            "-of", "json",
         ])
         .arg(video)
         .output()
         .ok()?;
-    let s = String::from_utf8_lossy(&out.stdout);
-    let (w, h) = s.trim().split_once('x')?;
-    let w: u32 = w.trim().parse().ok()?;
-    let h: u32 = h.trim().parse().ok()?;
-    if w == 0 || h == 0 { return None; }
-    Some((w, h))
+    parse_video_size_json(&String::from_utf8_lossy(&out.stdout))
 }
 
 /// Video câm là chuyện bình thường (màn hình quay, slide). Không có tiếng gốc

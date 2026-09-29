@@ -153,7 +153,24 @@ Toạ độ theo góc, với `m = W*margin_pct/100`:
 | br | `W-w-m` | `H-h-m` |
 
 Dùng biến `main_w`/`overlay_w` của ffmpeg thay vì số cứng, để không phải probe
-kích thước video.
+kích thước video cho phần TOẠ ĐỘ. Nhưng bề rộng logo (`size_pct` → pixel) thì
+buộc phải probe trước, vì nó đi vào tham số `scale=` chứ không phải biểu thức
+`overlay=` — và ở đây có một cái bẫy: `probe_video_size` phải trả về kích thước
+mà FILTER CHAIN sẽ thấy, không phải kích thước "coded" trong container. Video
+quay dọc trên điện thoại thường mã hoá ngang (1920×1080) kèm ma trận xoay
+90°/−90°; ffmpeg CLI tự autorotate trước khi filter_complex chạy, nên filter
+thấy khung 1080×1920 dù ffprobe hỏi thẳng `stream=width,height` vẫn trả về
+1920×1080. Dùng số coded đó để tính `size_pct` sẽ ra logo sai gần gấp đôi tỉ lệ
+người dùng chọn. `probe_video_size` phải đọc góc xoay (`stream_side_data=rotation`
+trên ffprobe hiện đại; `stream_tags=rotate` trên bản cũ hơn) và đổi chỗ
+width/height khi góc là bội lẻ của 90°.
+
+### 5.2b Kiểm được rồi mới đóng gói
+
+Nhánh logo, sau khi chạy ffmpeg thật (`e2e_export_test.rs`), được kiểm bằng
+cách dựng nền + logo qua `lavfi` (không cần clip người dùng), chạy đúng
+`build_export_args`/`run_export`, rồi lấy mẫu điểm ảnh ở trong vùng logo và ở
+góc đối diện — kiểm ở hai góc khác nhau để một vị trí đóng cứng cũng bị bắt.
 
 ### 5.3 Hệ quả phải nói với người dùng
 
