@@ -57,7 +57,7 @@ const FONT_GOI_Y = [
   "Times New Roman", "Calibri", "Roboto",
 ];
 
-// Sáu bước của quy trình, mỗi bước một tab. `id` cũng là số hiệu bước hiện
+// Bảy bước của quy trình, mỗi bước một tab. `id` cũng là số hiệu bước hiện
 // trên màn hình, nên đừng đánh lại số nếu chỉ muốn đổi thứ tự hiển thị.
 const BUOC = [
   { id: 1, ten: "Chọn video" },
@@ -65,7 +65,8 @@ const BUOC = [
   { id: 3, ten: "Dịch phụ đề" },
   { id: 4, ten: "Sửa & nghe thử" },
   { id: 5, ten: "Lồng tiếng" },
-  { id: 6, ten: "Xuất video" },
+  { id: 6, ten: "Phụ đề & Logo" },
+  { id: 7, ten: "Xuất video" },
 ] as const;
 
 /** Một giọng đọc mà một nhà cung cấp TTS hỗ trợ (trả về từ lệnh `tts_voices`). */
@@ -879,17 +880,16 @@ function App() {
 
       {tab === 6 && (
       <section>
-        <h2>Bước 6 · Xuất video</h2>
-        <label>
-          <input
-            type="checkbox"
-            checked={burnSubs}
-            onChange={(e) => setBurnSubs(e.target.checked)}
-          />
-          Ghi phụ đề vào hình (burn-in, phải mã hoá lại video nên lâu hơn nhiều)
-        </label>
-        {burnSubs && sub && (
+        <h2>Bước 6 · Phụ đề & Logo</h2>
+        {sub && (
           <>
+            {!burnSubs && (
+              <p className="warn">
+                Kiểu chữ dưới đây chỉ áp dụng khi bạn tick "Ghi phụ đề vào hình" ở Bước 7.
+                Phụ đề bật/tắt được không mang kiểu chữ nào — trình phát của người xem tự
+                quyết định font.
+              </p>
+            )}
             <div className="row">
               <label className="muted" htmlFor="sub-font">Font</label>
               <input
@@ -954,8 +954,8 @@ function App() {
                 {subBusy ? "Đang dựng…" : "Xem thử phụ đề"}
               </button>
               <span className="muted">
-                Dựng một khung hình thật của video để xem kiểu chữ trước khi
-                xuất — xuất cả video có thể mất vài phút.
+                Dựng một khung hình thật của video để chấm kiểu chữ. Khung này chưa gồm
+                logo — xem logo ở trình phát bên dưới.
               </span>
             </div>
             <div className="row">
@@ -970,6 +970,20 @@ function App() {
             )}
           </>
         )}
+      </section>
+      )}
+
+      {tab === 7 && (
+      <section>
+        <h2>Bước 7 · Xuất video</h2>
+        <label>
+          <input
+            type="checkbox"
+            checked={burnSubs}
+            onChange={(e) => setBurnSubs(e.target.checked)}
+          />
+          Ghi phụ đề vào hình (burn-in, phải mã hoá lại video nên lâu hơn nhiều)
+        </label>
         <label>
           <input
             type="checkbox"
