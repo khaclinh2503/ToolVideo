@@ -517,3 +517,35 @@ input[type="color"] {
   color: #fbbf24;
   font-size: 0.8125rem;
 }
+
+/* ---------- trình phát xem thử ---------- */
+
+.xem-thu {
+  position: relative;
+  width: 100%;
+  line-height: 0;
+}
+
+.xem-thu video {
+  width: 100%;
+  border-radius: var(--radius-ui);
+  background: #000;
+}
+
+.xem-thu-logo {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* Phụ đề đặt ở đáy giữa, giống mặc định của libass (Alignment=2). */
+.xem-thu-cap {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  bottom: 8%;
+  text-align: center;
+  line-height: 1.2;
+  font-weight: 600;
+  pointer-events: none;
+  white-space: pre-wrap;
+}

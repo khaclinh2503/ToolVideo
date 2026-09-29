@@ -66,3 +66,21 @@ fn ui_khai_dung_mac_dinh_watermark() {
     assert!(tsx.contains(&format!("WM_SIZE_MAC_DINH = {}", w.size_pct)));
     assert!(tsx.contains(&format!("WM_MARGIN_MAC_DINH = {}", w.margin_pct)));
 }
+
+/// WebView2 là Chromium, không mở container Matroska. Phải nói rõ thay vì để
+/// người dùng nhìn một ô đen câm lặng và tưởng app hỏng.
+#[test]
+fn ui_bao_ro_mkv_khong_xem_thu_duoc() {
+    let tsx = std::fs::read_to_string("../src/XemThu.tsx").expect("đọc được XemThu.tsx");
+    assert!(tsx.contains(".mkv"), "phải nhận diện .mkv");
+    assert!(tsx.contains("Xem thử phụ đề"), "phải chỉ sang nút khung hình ffmpeg");
+}
+
+/// Cỡ chữ ASS tính trên khung hình GỐC; trình phát hiện ở kích thước khác nên
+/// phải quy đổi, nếu không phụ đề xem thử to nhỏ sai hẳn so với bản xuất.
+#[test]
+fn ui_quy_doi_co_chu_theo_ti_le_khung_hinh() {
+    let tsx = std::fs::read_to_string("../src/XemThu.tsx").expect("đọc được XemThu.tsx");
+    assert!(tsx.contains("videoHeight"), "phải quy đổi theo videoHeight");
+    assert!(tsx.contains("clientHeight"), "phải quy đổi theo clientHeight");
+}

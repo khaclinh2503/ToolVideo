@@ -3,6 +3,7 @@ import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open, confirm } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { listen } from "@tauri-apps/api/event";
+import XemThu from "./XemThu";
 import "./App.css";
 
 interface SttResultDto { srtPath: string; cueCount: number; projectDir: string }
@@ -1061,6 +1062,18 @@ function App() {
             )}
           </>
         )}
+        <h3 className="muted">Xem thử</h3>
+        <div className="row">
+          <button type="button" onClick={onLoadCues} disabled={running || !projectDir}>
+            Nạp phụ đề để xem thử
+          </button>
+          <span className="muted">
+            Lớp xem thử này vẽ bằng trình duyệt nên nét chữ và cách ngắt dòng lệch chút
+            ít so với bản xuất — dùng để căn bố cục và thời điểm. Chấm kiểu chữ thì
+            dùng nút "Xem thử phụ đề" ở trên.
+          </span>
+        </div>
+        {sub && <XemThu videoPath={videoPath} cues={cues} sub={sub} wm={wm} />}
       </section>
       )}
 
