@@ -113,6 +113,8 @@ pub struct ExportOpts {
     /// Kiểu chữ khi ghi phụ đề vào hình. `None` ⇒ để libass dùng mặc định,
     /// giữ nguyên hành vi của dự án trước khi có tính năng này.
     pub style: Option<SubStyle>,
+    /// Logo đóng dấu. `None` ⇒ không có nhánh overlay nào, giữ nguyên hành vi cũ.
+    pub watermark: Option<Watermark>,
 }
 
 /// `0.18` chứ không phải `0.180`; `3` chứ không phải `3.000`.
@@ -122,14 +124,35 @@ fn fmt_vol(v: f32) -> String {
     s.trim_end_matches('.').to_string()
 }
 
-pub fn build_filter_complex(o: &ExportOpts) -> String {
+pub fn build_filter_complex(o: &ExportOpts, co_srt_input: bool) -> String {
     let mut parts: Vec<String> = Vec::new();
 
-    if o.burn_subs {
-        parts.push(format!(
-            "[0:v]{}[v]",
-            subtitles_filter(BURN_SRT_NAME, o.style.as_ref())
-        ));
+    // Nhánh video chỉ tồn tại khi có việc phải làm với hình. Cả burn-in lẫn
+    // logo đều buộc mã hoá lại — xem chỗ chọn `-c:v` ở build_export_args.
+    if o.burn_subs || o.watermark.is_some() {
+        // Nhãn luồng video đang cầm, không có ngoặc vuông.
+        let mut cur = "0:v".to_string();
+        if o.burn_subs {
+            // Nếu còn logo phía sau thì đây chưa phải đầu ra cuối cùng.
+            let ra = if o.watermark.is_some() { "vs" } else { "v" };
+            parts.push(format!(
+                "[{cur}]{}[{ra}]",
+                subtitles_filter(BURN_SRT_NAME, o.style.as_ref())
+            ));
+            cur = ra.to_string();
+        }
+        if let Some(w) = &o.watermark {
+            // Input: 0 video, 1 dub.wav, 2 srt (chỉ khi soft-subs), rồi tới logo.
+            let idx = if co_srt_input { 3 } else { 2 };
+            // format=rgba TRƯỚC colorchannelmixer: PNG không có alpha thì kênh
+            // aa không tồn tại và hệ số độ mờ bị bỏ qua im lặng.
+            parts.push(format!(
+                "[{idx}:v]format=rgba,colorchannelmixer=aa={},scale={}:-1[wm]",
+                fmt_vol(w.opacity),
+                w.logo_w_px
+            ));
+            parts.push(format!("[{cur}][wm]overlay={}[v]", w.overlay_xy()));
+        }
     }
 
     if o.has_audio {
@@ -189,7 +212,7 @@ pub fn build_export_args(
     }
 
     a.push("-filter_complex".into());
-    a.push(build_filter_complex(o).into());
+    a.push(build_filter_complex(o, soft_srt.is_some()).into());
 
     a.push("-map".into());
     a.push(OsString::from(if o.burn_subs { "[v]" } else { "0:v:0" }));
@@ -326,6 +349,75 @@ pub struct SubStyle {
     pub outline_color: String,
     /// Độ dày viền, 0 = không viền.
     pub outline: u32,
+}
+
+/// Góc đặt logo trên khung hình.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Goc {
+    TrenTrai,
+    TrenPhai,
+    DuoiTrai,
+    DuoiPhai,
+}
+
+impl Goc {
+    /// Giá trị lạ lùi về dưới-phải thay vì lỗi: `corner` trong config là String
+    /// nên nó có thể mang bất cứ thứ gì người dùng gõ vào, và đặt nhầm góc thì
+    /// nhìn là thấy, còn làm hỏng cả file config thì không.
+    pub fn tu_chuoi(s: &str) -> Goc {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "tl" => Goc::TrenTrai,
+            "tr" => Goc::TrenPhai,
+            "bl" => Goc::DuoiTrai,
+            _ => Goc::DuoiPhai,
+        }
+    }
+}
+
+/// Logo đã quy ra pixel trên khung hình thật.
+///
+/// Quy đổi %→pixel làm ở đây chứ không nhét vào filtergraph, vì filter `scale`
+/// đặt trên luồng logo không thấy được kích thước video (`main_w` chỉ tồn tại
+/// trong ngữ cảnh của `overlay`). Có `scale2ref` làm được việc đó nhưng nó đã
+/// bị đánh dấu loại bỏ ở ffmpeg mới. Tính sẵn bằng Rust cho chuỗi filter thành
+/// hàm thuần, test được không cần chạy ffmpeg.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Watermark {
+    pub corner: Goc,
+    pub logo_w_px: u32,
+    pub margin_px: u32,
+    pub opacity: f32,
+}
+
+impl Watermark {
+    /// `video_w` là bề ngang video thật, lấy từ `probe_video_size`.
+    ///
+    /// Mọi giá trị bị kẹp: `scale=0:-1` làm ffmpeg lỗi cứng giữa chừng buổi
+    /// xuất, còn lề quá lớn đẩy logo ra khỏi khung — cả hai đều là "người dùng
+    /// gõ một con số" chứ không phải lỗi lập trình, nên xử lý chứ không panic.
+    pub fn moi(corner: &str, video_w: u32, size_pct: u32, margin_pct: u32, opacity: f32) -> Watermark {
+        let size_pct = size_pct.clamp(1, 100);
+        let margin_pct = margin_pct.clamp(0, 40);
+        let w = video_w.max(1);
+        Watermark {
+            corner: Goc::tu_chuoi(corner),
+            logo_w_px: (w * size_pct / 100).max(1),
+            margin_px: w * margin_pct / 100,
+            opacity: opacity.clamp(0.0, 1.0),
+        }
+    }
+
+    /// Phần `x:y` của filter `overlay`. Dùng biến `main_w`/`overlay_w` của
+    /// ffmpeg cho hai góc phải/dưới để khỏi phải biết bề cao logo sau khi scale.
+    pub fn overlay_xy(&self) -> String {
+        let m = self.margin_px;
+        match self.corner {
+            Goc::TrenTrai => format!("{m}:{m}"),
+            Goc::TrenPhai => format!("main_w-overlay_w-{m}:{m}"),
+            Goc::DuoiTrai => format!("{m}:main_h-overlay_h-{m}"),
+            Goc::DuoiPhai => format!("main_w-overlay_w-{m}:main_h-overlay_h-{m}"),
+        }
+    }
 }
 
 impl Default for SubStyle {

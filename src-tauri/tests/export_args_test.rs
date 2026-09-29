@@ -29,6 +29,7 @@ fn opts(burn: bool, soft: bool, has_audio: bool) -> ExportOpts {
         crf: 20,
         preset: "medium".into(),
         style: None,
+        watermark: None,
     }
 }
 
@@ -54,7 +55,7 @@ fn filter_arg(a: &[String]) -> String {
 fn amix_phai_tat_normalize() {
     // Mặc định amix normalize=1 chia lại biên độ theo số input và xoá sạch
     // tỉ lệ 0.18/3.0. Đây là bất biến quan trọng nhất của cả module.
-    let f = build_filter_complex(&opts(false, false, true));
+    let f = build_filter_complex(&opts(false, false, true), false);
     assert!(f.contains("normalize=0"), "filtergraph: {f}");
     assert!(
         f.contains("duration=longest"),
@@ -79,7 +80,7 @@ fn amix_phai_tat_normalize() {
 #[test]
 fn khong_co_tieng_goc_thi_khong_nhan_3_lan() {
     // Hệ số 3.0 chỉ có nghĩa khi đứng cạnh nền 0.18; đứng một mình nó chỉ làm vỡ tiếng.
-    let f = build_filter_complex(&opts(false, false, false));
+    let f = build_filter_complex(&opts(false, false, false), false);
     assert!(!f.contains("[0:a]"), "video câm không có luồng audio để lấy: {f}");
     assert!(!f.contains("amix"), "một nguồn thì không trộn: {f}");
     assert!(f.contains("[1:a]volume=1[mx]"), "filtergraph: {f}");
@@ -331,4 +332,92 @@ fn khung_xem_thu_giu_moc_thoi_gian_de_phu_de_hien_ra() {
     let vf = a.iter().position(|x| x == "-vf").unwrap();
     assert!(a[vf + 1].starts_with("subtitles=burn.srt:force_style="), "{}", a[vf + 1]);
     assert_eq!(a.last().unwrap(), "C:/p/xem-thu.jpg");
+}
+
+use app_lib::export::{Goc, Watermark};
+
+fn wm(corner: &str) -> Watermark {
+    // video 1920 rộng, 12% ⇒ 230px; lề 3% ⇒ 57px
+    Watermark::moi(corner, 1920, 12, 3, 0.85)
+}
+
+#[test]
+fn watermark_tinh_pixel_tu_phan_tram() {
+    let w = wm("br");
+    assert_eq!(w.logo_w_px, 230);
+    assert_eq!(w.margin_px, 57);
+    assert_eq!(w.opacity, 0.85);
+}
+
+#[test]
+fn goc_la_lui_ve_duoi_phai() {
+    assert_eq!(Goc::tu_chuoi("tl"), Goc::TrenTrai);
+    assert_eq!(Goc::tu_chuoi("TR"), Goc::TrenPhai);
+    assert_eq!(Goc::tu_chuoi("bl"), Goc::DuoiTrai);
+    assert_eq!(Goc::tu_chuoi("br"), Goc::DuoiPhai);
+    // Người dùng sửa tay config, hoặc khoá thiếu nên thành "".
+    assert_eq!(Goc::tu_chuoi("xyz"), Goc::DuoiPhai);
+    assert_eq!(Goc::tu_chuoi(""), Goc::DuoiPhai);
+}
+
+#[test]
+fn toa_do_bon_goc() {
+    assert_eq!(wm("tl").overlay_xy(), "57:57");
+    assert_eq!(wm("tr").overlay_xy(), "main_w-overlay_w-57:57");
+    assert_eq!(wm("bl").overlay_xy(), "57:main_h-overlay_h-57");
+    assert_eq!(wm("br").overlay_xy(), "main_w-overlay_w-57:main_h-overlay_h-57");
+}
+
+/// Giá trị vô lý phải bị kẹp chứ không đẻ ra `scale=0:-1` (ffmpeg lỗi cứng)
+/// hay logo đẩy hẳn ra ngoài khung hình.
+#[test]
+fn gia_tri_vo_ly_bi_kep() {
+    assert_eq!(Watermark::moi("br", 1920, 0, 3, 0.85).logo_w_px, 19, "0% phải kẹp lên 1%");
+    assert_eq!(Watermark::moi("br", 1920, 500, 3, 0.85).logo_w_px, 1920, "quá 100% kẹp về bề ngang video");
+    assert_eq!(Watermark::moi("br", 1920, 12, 90, 0.85).margin_px, 768, "lề kẹp ở 40%");
+    assert_eq!(Watermark::moi("br", 1920, 12, 3, 5.0).opacity, 1.0);
+    assert_eq!(Watermark::moi("br", 1920, 12, 3, -2.0).opacity, 0.0);
+    // Video bé xíu vẫn phải ra ít nhất 1px, không bao giờ 0.
+    assert_eq!(Watermark::moi("br", 4, 12, 3, 0.85).logo_w_px, 1);
+}
+
+#[test]
+fn filter_co_logo_khong_burn_in() {
+    let mut o = opts(false, false, true);
+    o.watermark = Some(wm("br"));
+    let f = build_filter_complex(&o, false);
+    // Không burn-in ⇒ logo ăn thẳng [0:v]; input logo là index 2.
+    assert!(f.contains("[2:v]format=rgba,colorchannelmixer=aa=0.85,scale=230:-1[wm]"), "{f}");
+    assert!(f.contains("[0:v][wm]overlay=main_w-overlay_w-57:main_h-overlay_h-57[v]"), "{f}");
+    assert!(!f.contains("subtitles="), "không tick burn-in thì không được có filter subtitles: {f}");
+}
+
+#[test]
+fn filter_co_ca_burn_in_lan_logo_noi_tiep_nhau() {
+    let mut o = opts(true, false, true);
+    o.watermark = Some(wm("tl"));
+    let f = build_filter_complex(&o, false);
+    assert!(f.contains(&format!("[0:v]subtitles={BURN_SRT_NAME}[vs]")), "{f}");
+    assert!(f.contains("[vs][wm]overlay=57:57[v]"), "{f}");
+    // Chỉ đúng MỘT nhãn [v] ở đầu ra cuối cùng.
+    assert_eq!(f.matches("[v]").count(), 1, "{f}");
+}
+
+/// Chỉ số input của logo trượt khi có thêm input srt cho phụ đề bật/tắt được.
+#[test]
+fn chi_so_input_logo_truot_khi_co_soft_srt() {
+    let mut o = opts(false, true, true);
+    o.watermark = Some(wm("br"));
+    let co_srt = build_filter_complex(&o, true);
+    assert!(co_srt.contains("[3:v]format=rgba"), "có srt ⇒ logo là input 3: {co_srt}");
+    let khong_srt = build_filter_complex(&o, false);
+    assert!(khong_srt.contains("[2:v]format=rgba"), "không srt ⇒ logo là input 2: {khong_srt}");
+}
+
+#[test]
+fn khong_co_logo_thi_filter_giu_nguyen_nhu_cu() {
+    let f = build_filter_complex(&opts(true, false, true), false);
+    assert!(f.contains(&format!("[0:v]subtitles={BURN_SRT_NAME}[v]")), "{f}");
+    assert!(!f.contains("overlay"), "{f}");
+    assert!(!f.contains("[wm]"), "{f}");
 }

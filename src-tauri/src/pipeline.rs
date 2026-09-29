@@ -518,6 +518,8 @@ pub fn run_export_stage(
         crf: cfg.crf,
         preset: cfg.preset.clone(),
         style,
+        // Task 3 nối logo từ config vào đây; task này chỉ dựng nhánh filter.
+        watermark: None,
     };
     let args = export::build_export_args(
         video,
