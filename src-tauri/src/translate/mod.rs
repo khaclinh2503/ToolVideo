@@ -1,6 +1,7 @@
 use crate::{config::TranslateConfig, error::PipelineError, srt::Segment};
 
 pub mod google_free;
+pub mod llama_server;
 pub mod openai_compat;
 
 /// Hạn chờ cho endpoint LLM. Đo thật trên NVIDIA: một lô 40 cue mất 11–17 giây
