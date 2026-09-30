@@ -20,8 +20,9 @@ fn manifest_liet_ke_du_moi_artifact_va_dung_hinh_dang() {
     // Con số ở đây là bản kiểm kê có chủ ý, không phải chi tiết cài đặt: thêm
     // hay bớt một artifact thì phải sửa cả danh sách id bên dưới, để không ai
     // lặng lẽ thêm một thứ được tải về rồi đem chạy mà không ai soát.
-    // 10 (M1-M6) + 15 file model VieNeu-TTS đã pin ở Task 4 (M7) = 25.
-    assert_eq!(s.len(), 25, "components.json phải có đủ 25 artifact");
+    // 10 (M1-M6) + 15 file model VieNeu-TTS đã pin ở Task 4 (M7)
+    // + 3 (llama-bin, llama-cudart, qwen3-14b) ở Task 2 (M9) = 28.
+    assert_eq!(s.len(), 28, "components.json phải có đủ 28 artifact");
 
     let ids: Vec<&str> = s.iter().map(|c| c.id.as_str()).collect();
     for want in [
@@ -43,6 +44,9 @@ fn manifest_liet_ke_du_moi_artifact_va_dung_hinh_dang() {
         "vieneu-moss_audio_tokenizer_decode_step-onnx",
         "vieneu-moss_audio_tokenizer_encode-data",
         "vieneu-moss_audio_tokenizer_encode-onnx",
+        "llama-bin",
+        "llama-cudart",
+        "qwen3-14b",
     ] {
         assert!(ids.contains(&want), "thiếu component '{want}' trong {ids:?}");
     }
@@ -582,4 +586,43 @@ fn cac_dang_from_cu_khong_doi() {
     r2.sort();
     assert_eq!(r2, vec!["dich/a.txt".to_string(), "dich/sub/b.txt".to_string()]);
     assert!(!models.join("dich/ngoai.txt").exists());
+}
+
+/// Ba component của M9 phải có mặt, ghim sha256, và đổ vào đúng chỗ mà
+/// `LlamaServer` sẽ đi tìm.
+#[test]
+fn manifest_co_du_bo_llm_tren_may() {
+    let ss = app_lib::components::specs().unwrap();
+    let lay = |id: &str| ss.iter().find(|s| s.id == id)
+        .unwrap_or_else(|| panic!("thiếu component '{id}'"));
+
+    for id in ["llama-bin", "llama-cudart", "qwen3-14b"] {
+        let s = lay(id);
+        assert!(!s.sha256.trim().is_empty(), "'{id}' chưa ghim sha256");
+        assert!(s.size > 0, "'{id}' chưa ghi size");
+    }
+
+    // Hai gói zip lấy trọn, cùng đổ vào một thư mục: llama-server.exe cần các
+    // DLL của cudart nằm CẠNH nó thì Windows mới nạp được.
+    for id in ["llama-bin", "llama-cudart"] {
+        let s = lay(id);
+        assert_eq!(s.files.len(), 1, "'{id}' chỉ cần một khai trọn gói");
+        assert_eq!(s.files[0].from.as_deref(), Some("**"), "'{id}' phải khai from=\"**\"");
+        assert_eq!(s.files[0].to, "llm/bin", "'{id}' phải đổ vào llm/bin");
+    }
+
+    let g = lay("qwen3-14b");
+    assert_eq!(g.files[0].to, "llm/gguf/Qwen3-14B-Q5_K_M.gguf");
+}
+
+/// Bản CUDA phải là 13.4. RTX 50-series là Blackwell (sm_120); bản 12.4 không
+/// biên dịch cho kiến trúc này và server sẽ không chạy nổi.
+#[test]
+fn llama_dung_ban_cuda_13() {
+    let ss = app_lib::components::specs().unwrap();
+    for id in ["llama-bin", "llama-cudart"] {
+        let s = ss.iter().find(|s| s.id == id).unwrap();
+        assert!(s.url.contains("cuda-13"), "'{id}' phải là bản CUDA 13.x, đang là: {}", s.url);
+        assert!(!s.url.contains("cuda-12"), "'{id}' không được dùng bản CUDA 12.x");
+    }
 }

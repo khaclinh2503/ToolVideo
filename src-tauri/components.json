@@ -203,5 +203,29 @@
     "size": 815775,
     "archive": "raw",
     "files": [{ "from": null, "to": "vieneu/moss/moss_audio_tokenizer_encode.onnx" }]
+  },
+  {
+    "id": "llama-bin",
+    "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11256/llama-b11256-bin-win-cuda-13.4-x64.zip",
+    "sha256": "39b5c2bf0395fe26d35b1feb712e9c67ec1e1b3505f26f42e53a1c961eaade4b",
+    "size": 153546182,
+    "archive": "zip",
+    "files": [{ "from": "**", "to": "llm/bin" }]
+  },
+  {
+    "id": "llama-cudart",
+    "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11256/cudart-llama-bin-win-cuda-13.4-x64.zip",
+    "sha256": "738f8c251ac22b70c3ae6f83a10cf222725df0395246a2cf58f32bdb85fbe668",
+    "size": 423535356,
+    "archive": "zip",
+    "files": [{ "from": "**", "to": "llm/bin" }]
+  },
+  {
+    "id": "qwen3-14b",
+    "url": "https://huggingface.co/Qwen/Qwen3-14B-GGUF/resolve/main/Qwen3-14B-Q5_K_M.gguf",
+    "sha256": "e7c9aba1129ca2936be9eca01419d9f86af40e08caa01230d5574b34d08e3e31",
+    "size": 10514569568,
+    "archive": "raw",
+    "files": [{ "from": null, "to": "llm/gguf/Qwen3-14B-Q5_K_M.gguf" }]
   }
 ]
