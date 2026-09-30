@@ -169,3 +169,64 @@ fn tien_trinh_chet_thi_bao_chet_ngay_khong_doi_het_gio() {
         "thông báo phải nói rõ tiến trình đã tắt, không phải 'chưa nạp xong': {msg}"
     );
 }
+
+/// Chặn theo DÒNG thôi thì chưa đủ để nói "không rò rỉ bộ nhớ": "dòng" ở đây là
+/// những gì `read_until(b'\n')` trả về, nên một luồng chỉ ngắt bằng `\r` (thanh
+/// tiến trình) phình đúng MỘT mẩu không giới hạn. Phải chặn cả theo byte — và
+/// vẫn giữ phần mới nhất, vì đó là chỗ có lỗi.
+#[test]
+fn dem_stderr_bi_chan_theo_byte_khong_chi_theo_dong() {
+    let dem = DemStderr::moi();
+    let mut data = vec![b'A'; 1_000_000];
+    data.extend_from_slice(b"LOI-CUOI-CUNG");
+    // Cả luồng KHÔNG có lấy một byte '\n' nào.
+    assert!(!data.contains(&b'\n'));
+    hut_stderr_lien_tuc(std::io::Cursor::new(data), dem.clone());
+
+    let ra = dem.doc_ra();
+    assert!(
+        ra.len() <= 20 * 4096 + 1024,
+        "bộ đệm phải bị chặn theo byte (feed vào 1 MB không xuống dòng), đang giữ {} byte",
+        ra.len()
+    );
+    assert!(
+        ra.contains("LOI-CUOI-CUNG"),
+        "phải giữ phần MỚI NHẤT của luồng, không phải phần đầu"
+    );
+}
+
+/// Hết giờ nạp model là hàng "VRAM đang bị việc khác chiếm" của spec §6, và
+/// spec nói rõ phải GHI VÀO THÔNG BÁO để người dùng biết nhìn đâu. Trước đây
+/// nhánh này chỉ trả về một con số giây trần trụi, trong khi nhánh tiến trình
+/// chết thì có đuôi stderr — người gặp lỗi thường xuyên nhất lại là người không
+/// nhận được chẩn đoán nào.
+#[test]
+fn het_gio_nap_van_kem_chan_doan_stderr() {
+    let mut child = Command::new("cmd")
+        .args(["/C", "ping -n 6 127.0.0.1 >NUL"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("cmd.exe phải chạy được trên Windows");
+
+    // Cổng 1 không có ai nghe ⇒ không bao giờ sẵn sàng, mà tiến trình con thì
+    // VẪN SỐNG suốt — đúng hình dạng của "model nạp chưa xong".
+    let r = doi_san_sang_va_kiem_song(
+        &mut child,
+        "http://127.0.0.1:1/v1",
+        Duration::from_millis(900),
+        || "DAU-VET-STDERR-CUOI-CUNG".to_string(),
+    );
+    let _ = child.kill();
+    let _ = child.wait();
+
+    let msg = format!("{}", r.err().expect("không sẵn sàng thì phải lỗi"));
+    assert!(
+        msg.contains("DAU-VET-STDERR-CUOI-CUNG"),
+        "nhánh hết giờ cũng phải kèm đuôi stderr: {msg}"
+    );
+    assert!(
+        msg.contains("VRAM"),
+        "phải chỉ người dùng nhìn vào VRAM đang bị chiếm (spec §6): {msg}"
+    );
+}

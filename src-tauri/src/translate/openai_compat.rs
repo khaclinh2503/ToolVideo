@@ -90,6 +90,14 @@ pub fn loc_khoi_json(noi_dung: &str) -> &str {
 }
 
 pub struct OpenAiCompat {
+    /// Mã nhà cung cấp mà NGƯỜI DÙNG đã chọn, dùng nguyên văn trong mọi lỗi.
+    ///
+    /// Không đóng cứng "openai_compat": `llm_tren_may` mượn lại đúng thân
+    /// request này để nói chuyện với `llama-server` ở `127.0.0.1`, nên nếu lỗi
+    /// nào cũng tự xưng "openai_compat" thì một trục trặc của tiến trình chạy
+    /// ngay trên máy lại hiện ra như một dịch vụ cloud hỏng — người dùng đi
+    /// kiểm tra mạng và API key, trong khi chẳng có cái nào dính dáng.
+    pub chu_so_huu: &'static str,
     pub base_url: String,
     pub api_key: String,
     pub model: String,
@@ -127,7 +135,7 @@ struct ChatResp {
 impl OpenAiCompat {
     fn perr(&self, status: Option<u16>, msg: impl Into<String>) -> PipelineError {
         PipelineError::ProviderError {
-            provider: "openai_compat".into(),
+            provider: self.chu_so_huu.into(),
             status,
             msg: msg.into(),
         }
@@ -182,14 +190,17 @@ impl OpenAiCompat {
             body["chat_template_kwargs"] = serde_json::json!({ "thinking": false });
         }
         let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
-        let resp = crate::translate::http_client_voi(crate::translate::CHO_LLM)?
-            .post(url)
+        // `http_client_cho_url` chứ không phải `http_client_voi`: khi base_url
+        // là loopback (đường chạy của `llm_tren_may`, hoặc một LM Studio người
+        // dùng tự dựng) thì phải TẮT proxy môi trường, xem comment ở hàm đó.
+        let resp = crate::translate::http_client_cho_url(&url, crate::translate::CHO_LLM)?
+            .post(&url)
             .bearer_auth(&self.api_key)
             .json(&body)
             .send()
-            .map_err(|e| map_http_err("openai_compat", e))?;
+            .map_err(|e| map_http_err(self.chu_so_huu, e))?;
         let status = resp.status().as_u16();
-        let text = resp.text().map_err(|e| map_http_err("openai_compat", e))?;
+        let text = resp.text().map_err(|e| map_http_err(self.chu_so_huu, e))?;
         if !(200..300).contains(&status) {
             return Err(self.perr(Some(status), text.chars().take(200).collect::<String>()));
         }
@@ -217,7 +228,7 @@ impl OpenAiCompat {
 
 impl TranslateProvider for OpenAiCompat {
     fn id(&self) -> &'static str {
-        "openai_compat"
+        self.chu_so_huu
     }
 
     fn batch_size(&self) -> usize {

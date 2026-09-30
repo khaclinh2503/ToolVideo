@@ -29,6 +29,69 @@ pub(crate) fn http_client() -> Result<reqwest::blocking::Client, PipelineError> 
     http_client_voi(CHO_NHANH)
 }
 
+/// Host của `url` có phải loopback không (`127.x.x.x`, `localhost`, `::1`).
+///
+/// Tách chuỗi bằng tay thay vì kéo thêm crate `url`: chỉ cần phần authority, và
+/// mọi base_url đi qua đây đều do app tự dựng hoặc do người dùng gõ vào một ô
+/// duy nhất.
+pub fn la_loopback(url: &str) -> bool {
+    let sau_scheme = url.split_once("://").map(|(_, s)| s).unwrap_or(url);
+    // Cắt đường dẫn/query/fragment, rồi cắt userinfo nếu có.
+    let authority = sau_scheme
+        .split(['/', '?', '#'])
+        .next()
+        .unwrap_or("");
+    let authority = authority.rsplit_once('@').map(|(_, h)| h).unwrap_or(authority);
+    // IPv6 trong ngoặc vuông: `[::1]:8080`.
+    let host = if let Some(dong) = authority.strip_prefix('[') {
+        match dong.split_once(']') {
+            Some((h, _)) => h,
+            None => dong,
+        }
+    } else {
+        authority.split(':').next().unwrap_or("")
+    };
+    if host.eq_ignore_ascii_case("localhost") {
+        return true;
+    }
+    host.parse::<std::net::IpAddr>()
+        .map(|ip| ip.is_loopback())
+        .unwrap_or(false)
+}
+
+/// Client HTTP hướng tới đúng `url` này.
+///
+/// Vì sao không dùng thẳng `http_client_voi`: `reqwest` 0.12 đọc
+/// `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` từ môi trường theo mặc định và KHÔNG
+/// tự miễn trừ địa chỉ loopback. Trên một máy công ty có đặt các biến đó, mọi
+/// request tới `127.0.0.1` — cả lần thăm dò sẵn sàng lẫn từng lô dịch của
+/// `llm_tren_may` — đều bị đẩy ra proxy rồi hỏng hoặc treo, đúng trong môi
+/// trường mà "không cần mạng" là lý do tồn tại của nhà cung cấp này. Biểu hiện
+/// của nó là một lần hết giờ 180 giây không rõ nguyên nhân.
+///
+/// Xét theo HOST chứ không theo tên nhà cung cấp: `google_free` vẫn cần proxy
+/// trên chính cái máy đó (nó ra Internet thật), còn một `openai_compat` mà
+/// người dùng trỏ vào LM Studio ở máy mình thì cũng phải được miễn trừ y như
+/// `llm_tren_may`. Host mới là thứ quyết định, không phải nhãn provider.
+pub(crate) fn http_client_cho_url(
+    url: &str,
+    cho: std::time::Duration,
+) -> Result<reqwest::blocking::Client, PipelineError> {
+    if !la_loopback(url) {
+        return http_client_voi(cho);
+    }
+    reqwest::blocking::Client::builder()
+        .timeout(cho)
+        .user_agent("DichVideo-Local/0.1")
+        .no_proxy()
+        .build()
+        .map_err(|e| PipelineError::ProviderError {
+            provider: "http".into(),
+            status: None,
+            msg: e.to_string(),
+        })
+}
+
 pub(crate) fn map_http_err(provider: &str, e: reqwest::Error) -> PipelineError {
     let msg = if e.is_timeout() {
         "Hết thời gian chờ".to_string()
@@ -146,6 +209,7 @@ pub fn make_provider(
                 });
             }
             Ok(Box::new(openai_compat::OpenAiCompat {
+                chu_so_huu: "openai_compat",
                 base_url: o.base_url.clone(),
                 api_key: o.api_key.clone(),
                 model: o.model.clone(),

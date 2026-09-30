@@ -38,6 +38,7 @@ fn in_ra_request_app_gui() {
     });
 
     let p = OpenAiCompat {
+        chu_so_huu: "openai_compat",
         base_url: server.url("/v1"),
         api_key: "khoa-gia-chi-de-in-request".into(),
         model: "z-ai/glm-5.3".into(),

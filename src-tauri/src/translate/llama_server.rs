@@ -21,11 +21,23 @@ fn perr(msg: impl Into<String>) -> PipelineError {
     }
 }
 
-/// Số dòng stderr gần nhất giữ lại để chẩn đoán. `llama-server` ghi log theo
+/// Số mẩu stderr gần nhất giữ lại để chẩn đoán. `llama-server` ghi log theo
 /// từng request/slot suốt cả phiên chạy, không có gì tự giới hạn — giữ hết
 /// thì rò rỉ bộ nhớ dần trên một phiên dịch dài, nên chặn trên và chỉ giữ
-/// những dòng mới nhất (đó là thứ một chẩn đoán cần).
+/// những mẩu mới nhất (đó là thứ một chẩn đoán cần).
 const STDERR_CAP: usize = 20;
+
+/// Chặn trên theo BYTE cho mỗi mẩu.
+///
+/// Chặn theo dòng thôi thì chưa đủ để nói "không rò rỉ bộ nhớ": một "dòng" ở
+/// đây là những gì `read_until(b'\n')` trả về, nên một luồng chỉ ngắt bằng `\r`
+/// (thanh tiến trình) hoặc một dòng log khổng lồ sẽ phình một mẩu duy nhất
+/// không giới hạn. Với cả hai chặn trên, bộ đệm không bao giờ vượt
+/// `STDERR_CAP * STDERR_MAX_BYTE` ≈ 80 KB, bất kể tiến trình con ghi ra cái gì.
+///
+/// 4096 byte bằng đúng cỡ ống ẩn danh của Windows và rộng gấp nhiều lần dòng
+/// log dài nhất của `llama-server`, nên đường chạy bình thường không bị cắt.
+const STDERR_MAX_BYTE: usize = 4096;
 
 /// Bộ đệm stderr có giới hạn, dùng chung giữa luồng hút (ghi) và luồng gọi
 /// (đọc). Đọc luôn tức khắc từ bộ nhớ, không đụng tới ống — khác với đọc
@@ -78,12 +90,23 @@ impl DemStderr {
 /// vĩnh viễn tại đó — một dòng log không phải UTF-8 (đường dẫn theo codepage
 /// hệ thống, tên người dùng có dấu) là đủ để ống ngừng được rút và treo lại
 /// đúng kiểu lỗi này được viết ra để tránh.
+///
+/// Mỗi lần đọc bị chặn ở `STDERR_MAX_BYTE` (xem hằng đó): dòng nào dài hơn thì
+/// bị CHIA thành nhiều mẩu liên tiếp chứ không bị vứt, nên một luồng chỉ ngắt
+/// bằng `\r` vẫn giữ được phần mới nhất — thứ mà chẩn đoán cần — mà bộ đệm vẫn
+/// có chặn trên thật theo byte.
 pub fn hut_stderr_lien_tuc(nguon: impl Read, dem: DemStderr) {
     let mut reader = BufReader::new(nguon);
     let mut buf: Vec<u8> = Vec::new();
     loop {
         buf.clear();
-        match reader.read_until(b'\n', &mut buf) {
+        // `read_until` trên bản gốc không có giới hạn nào; `take` đặt trần cho
+        // đúng lần đọc này, để không một dòng nào phình được bộ đệm.
+        let doc = {
+            let mut han = (&mut reader).take(STDERR_MAX_BYTE as u64);
+            han.read_until(b'\n', &mut buf)
+        };
+        match doc {
             Ok(0) | Err(_) => break,
             Ok(_) => {}
         }
@@ -108,15 +131,38 @@ pub fn hut_stderr_lien_tuc(nguon: impl Read, dem: DemStderr) {
 /// `llama-server` thật. `doi_san_sang_va_kiem_song` bên dưới bọc thêm việc
 /// kiểm tiến trình còn sống, ở nơi có `Child` để kiểm.
 pub fn cho_san_sang(base_url: &str, han: Duration) -> Result<(), PipelineError> {
+    let khach = khach_tham_do(base_url)?;
+    cho_san_sang_voi(&khach, base_url, han)
+}
+
+/// Client dùng cho mọi lần thăm dò sẵn sàng.
+///
+/// Dựng qua `http_client_cho_url` chứ không tự `Client::builder()`: hàm đó TẮT
+/// proxy môi trường cho địa chỉ loopback. `reqwest` 0.12 đọc
+/// `HTTP_PROXY`/`ALL_PROXY` và không miễn trừ `127.0.0.1`, nên trên máy có đặt
+/// các biến đó, mọi lần thăm dò đều đi vòng ra proxy và hỏng — biểu hiện đúng
+/// bằng một lần hết giờ nạp model dù `llama-server` chạy ngon lành. Nó cũng gắn
+/// user-agent chung của app như mọi lời gọi HTTP khác.
+fn khach_tham_do(base_url: &str) -> Result<reqwest::blocking::Client, PipelineError> {
+    crate::translate::http_client_cho_url(base_url, Duration::from_secs(10))
+}
+
+/// Lõi thăm dò, nhận sẵn client.
+///
+/// Tách ra để `doi_san_sang_va_kiem_song` dựng client ĐÚNG MỘT LẦN rồi gọi lại
+/// mỗi ~500ms: bản cũ dựng client mới trong mỗi lần gọi, tức khoảng 300 lần
+/// dựng client (và 300 runtime + luồng nền của nó) trong một lần nạp model 180
+/// giây, hoàn toàn vô ích.
+fn cho_san_sang_voi(
+    khach: &reqwest::blocking::Client,
+    base_url: &str,
+    han: Duration,
+) -> Result<(), PipelineError> {
     let url = format!("{}/chat/completions", base_url.trim_end_matches('/'));
     let than = serde_json::json!({
         "messages": [{"role": "user", "content": "x"}],
         "max_tokens": 1
     });
-    let khach = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(10))
-        .build()
-        .map_err(|e| perr(e.to_string()))?;
 
     let het = Instant::now() + han;
     let mut cuoi = String::from("chưa gọi được lần nào");
@@ -150,6 +196,8 @@ pub fn doi_san_sang_va_kiem_song(
     han: Duration,
     ly_do_chet: impl Fn() -> String,
 ) -> Result<(), PipelineError> {
+    // Dựng một lần cho cả vòng lặp — xem `cho_san_sang_voi`.
+    let khach = khach_tham_do(base_url)?;
     let het = Instant::now() + han;
     loop {
         if let Ok(Some(status)) = child.try_wait() {
@@ -161,15 +209,23 @@ pub fn doi_san_sang_va_kiem_song(
         }
         let con_lai = het.saturating_duration_since(Instant::now());
         if con_lai.is_zero() {
+            // Nhánh này là hàng "VRAM đang bị việc khác chiếm" của spec §6:
+            // tiến trình VẪN SỐNG, chỉ là nạp không kịp. Nguyên nhân thật gần
+            // như luôn nằm ở stderr (đang offload sang RAM vì hết VRAM, đang
+            // đọc GGUF từ đĩa chậm, hoặc đang thử lại một lời gọi bị proxy
+            // chặn), nên đuôi stderr phải đi kèm Ở ĐÂY nữa — không chỉ ở nhánh
+            // tiến trình chết. Thiếu nó, người dùng chỉ đọc được một con số
+            // giây và không biết nhìn vào đâu.
             return Err(perr(format!(
-                "model chưa nạp xong sau {} giây, chưa sẵn sàng dịch",
-                han.as_secs()
+                "model chưa nạp xong sau {} giây, chưa sẵn sàng dịch — thường do VRAM đang bị việc khác chiếm (game, trình duyệt, một llama-server còn sót) nên model tràn sang RAM, hoặc đĩa còn đang đọc file model 9,8 GB. stderr gần nhất: {}",
+                han.as_secs(),
+                ly_do_chet()
             )));
         }
         // Kiểm tiến trình còn sống mỗi tối đa 500ms, để bắt chết sớm ngay cả
         // khi `han` còn dài — không phải đợi hết hạn mới biết là đã chết.
         let buoc = con_lai.min(Duration::from_millis(500));
-        if cho_san_sang(base_url, buoc).is_ok() {
+        if cho_san_sang_voi(&khach, base_url, buoc).is_ok() {
             return Ok(());
         }
     }

@@ -32,14 +32,17 @@ impl LlmTrenMay {
         let exe = models.join("llm").join("bin").join("llama-server.exe");
         let gguf = models.join("llm").join("gguf").join("Qwen3-14B-Q5_K_M.gguf");
         let mut server = LlamaServer::khoi_dong(&exe, &gguf)?;
-        // `doi_san_sang` đã tự kiểm tiến trình còn sống giữa các lần thăm dò
-        // và gắn đuôi stderr vào lỗi khi thất bại — không bọc thêm
-        // `ly_do_chet()` ở đây nữa, kẻo đuôi stderr lặp lại hai lần trong
-        // cùng một thông báo.
+        // `doi_san_sang` tự kiểm tiến trình còn sống giữa các lần thăm dò, và
+        // gắn đuôi stderr vào CẢ HAI đường lỗi của nó — tiến trình chết sớm và
+        // hết giờ nạp. Vì vậy không bọc thêm `ly_do_chet()` ở đây, kẻo đuôi
+        // stderr lặp lại hai lần trong cùng một thông báo.
         server.doi_san_sang(CHO_NAP)?;
         let base = server.base_url();
         Ok(LlmTrenMay {
             inner: OpenAiCompat {
+                // Lỗi dịch phải tự xưng là nhà cung cấp người dùng đã chọn:
+                // hỏng ở đây là hỏng trên máy này, không phải một dịch vụ cloud.
+                chu_so_huu: ID,
                 base_url: base,
                 // llama-server không kiểm token; gửi rỗng cho khỏi giả vờ có key.
                 api_key: String::new(),

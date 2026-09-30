@@ -9,6 +9,7 @@ fn ok_body(items: &str) -> String {
 }
 fn p(server: &MockServer) -> OpenAiCompat {
     OpenAiCompat {
+        chu_so_huu: "openai_compat",
         base_url: server.url("/v1"),
         api_key: "sk-test".into(),
         model: "gpt-4o-mini".into(),
@@ -155,6 +156,7 @@ fn retry_succeeds_when_second_attempt_is_valid() {
     });
 
     let provider = OpenAiCompat {
+        chu_so_huu: "openai_compat",
         base_url: format!("http://{addr}"),
         api_key: "sk-test".into(),
         model: "gpt-4o-mini".into(),

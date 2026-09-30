@@ -28,7 +28,7 @@ fn dich_that_qua_nvidia() {
         .unwrap_or_else(|_| "https://integrate.api.nvidia.com/v1".into());
     let context = std::env::var("DVL_NV_CONTEXT").unwrap_or_else(|_| "phim".into());
 
-    let p = OpenAiCompat { base_url, api_key: key, model: model.clone(), context };
+    let p = OpenAiCompat { chu_so_huu: "openai_compat", base_url, api_key: key, model: model.clone(), context };
 
     // DVL_NV_SRT trỏ vào một .srt thật thì đo trên lô 40 cue đúng như lúc chạy
     // phim — sáu câu mẫu quá ngắn để thấy model nào đốt hết hạn mức token.
