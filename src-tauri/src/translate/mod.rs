@@ -2,6 +2,7 @@ use crate::{config::TranslateConfig, error::PipelineError, srt::Segment};
 
 pub mod google_free;
 pub mod llama_server;
+pub mod llm_tren_may;
 pub mod openai_compat;
 
 /// Hạn chờ cho endpoint LLM. Đo thật trên NVIDIA: một lô 40 cue mất 11–17 giây
@@ -127,9 +128,14 @@ pub fn translate_segments(
 pub fn make_provider(
     id: &str,
     cfg: &TranslateConfig,
+    models: &std::path::Path,
 ) -> Result<Box<dyn TranslateProvider>, PipelineError> {
     match id {
         "google_free" => Ok(Box::new(google_free::GoogleFree::new())),
+        llm_tren_may::ID => Ok(Box::new(llm_tren_may::LlmTrenMay::khoi_dong(
+            models,
+            cfg.openai.context.clone(),
+        )?)),
         "openai_compat" => {
             let o = &cfg.openai;
             if o.api_key.trim().is_empty() || o.base_url.trim().is_empty() || o.model.trim().is_empty() {

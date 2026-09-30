@@ -33,7 +33,7 @@ fn e2e_video_to_voiced_segments() {
     assert!(stt.cue_count > 0);
 
     let cfg = load_config();
-    let tp = app_lib::translate::make_provider("google_free", &cfg.translate).unwrap();
+    let tp = app_lib::translate::make_provider("google_free", &cfg.translate, &m).unwrap();
     let tr = run_translate_stage(&project, tp.as_ref(), "auto", "vi")
         .unwrap_or_else(|e| panic!("Dịch lỗi: {e}"));
     println!("Dịch: {} cue → {}", tr.cue_count, tr.srt_path.display());

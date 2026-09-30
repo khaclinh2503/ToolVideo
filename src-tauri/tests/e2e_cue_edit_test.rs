@@ -42,7 +42,7 @@ fn sua_mot_cue_roi_nghe_thu_chi_doi_wav_cua_cue_do() {
 
     run_stt_pipeline(&ctx, Path::new(&clip), &project, &lang).unwrap();
     let cfg = load_config();
-    let tp = app_lib::translate::make_provider("google_free", &cfg.translate).unwrap();
+    let tp = app_lib::translate::make_provider("google_free", &cfg.translate, &m).unwrap();
     run_translate_stage(&project, tp.as_ref(), "auto", "vi").unwrap();
     let p = app_lib::tts::make_provider(&cfg.tts.default_provider, &cfg.tts, &m).unwrap();
     run_tts_stage(&project, p.as_ref(), &cfg.tts.voice, &ScalePlan::uniform(cfg.tts.length_scale), "vi").unwrap();

@@ -65,7 +65,7 @@ fn chay(burn: bool, soft: bool, ten: &str) {
     assert!(stt.cue_count > 0);
 
     let cfg = load_config();
-    let tp = app_lib::translate::make_provider("google_free", &cfg.translate).unwrap();
+    let tp = app_lib::translate::make_provider("google_free", &cfg.translate, &m).unwrap();
     run_translate_stage(&project, tp.as_ref(), "auto", "vi")
         .unwrap_or_else(|e| panic!("Dịch lỗi: {e}"));
 

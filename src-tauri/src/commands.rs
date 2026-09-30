@@ -94,7 +94,8 @@ pub async fn run_translate(
 ) -> Result<TranslateResultDto, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<TranslateResultDto, String> {
         let cfg = crate::config::load_config();
-        let p = crate::translate::make_provider(&provider, &cfg.translate).map_err(|e| e.to_string())?;
+        let p = crate::translate::make_provider(&provider, &cfg.translate, &models_dir())
+            .map_err(|e| e.to_string())?;
         let r = crate::pipeline::run_translate_stage(Path::new(&project_dir), p.as_ref(), &src, &tgt)
             .map_err(|e| e.to_string())?;
         // Trim khớp với run_translate_stage: nó đã trim `tgt` trước khi dựng

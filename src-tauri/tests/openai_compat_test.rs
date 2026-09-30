@@ -168,13 +168,14 @@ fn retry_succeeds_when_second_attempt_is_valid() {
 #[test]
 fn make_provider_requires_config() {
     let mut cfg = TranslateConfig::default(); // api_key rỗng
-    match make_provider("openai_compat", &cfg) {
+    let models = std::path::Path::new(".");
+    match make_provider("openai_compat", &cfg, models) {
         Err(PipelineError::ProviderError { .. }) => {}
         _ => panic!("expected ProviderError for missing config"),
     }
     cfg.openai.api_key = "k".into();
-    assert_eq!(make_provider("openai_compat", &cfg).unwrap().id(), "openai_compat");
-    assert_eq!(make_provider("google_free", &cfg).unwrap().id(), "google_free");
+    assert_eq!(make_provider("openai_compat", &cfg, models).unwrap().id(), "openai_compat");
+    assert_eq!(make_provider("google_free", &cfg, models).unwrap().id(), "google_free");
 }
 
 #[test]
