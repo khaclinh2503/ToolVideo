@@ -525,3 +525,83 @@ fn ui_noi_ro_lan_dau_phai_nap_model() {
     let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
     assert!(tsx.contains("nạp model"), "thiếu ghi chú lần đầu phải nạp model");
 }
+
+/// Con số dung lượng trên banner là lời hứa với người dùng: họ đọc nó rồi quyết
+/// định bấm "Tải bộ công cụ" bây giờ hay để lúc khác. M9 thêm ~10,4 GB
+/// (llama.cpp + Qwen3-14B) nên "570 MB" cũ biến một lần tải hàng giờ thành một
+/// bất ngờ khó chịu. Chốt con số vào `components.json` để nó không trôi lần nữa.
+#[test]
+fn ui_noi_dung_luong_bo_cong_cu_khop_components_json() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let nut = tsx
+        .find("Tải bộ công cụ")
+        .expect("phải có nút tải bộ công cụ");
+    let sau_nut = &tsx[nut..];
+    let i = sau_nut
+        .find("khoảng ")
+        .expect("banner phải nói rõ khoảng bao nhiêu dung lượng");
+    let sau = &sau_nut[i + "khoảng ".len()..];
+    let so: String = sau
+        .chars()
+        .take_while(|c| c.is_ascii_digit() || *c == ',' || *c == '.')
+        .collect();
+    assert!(
+        sau[so.len()..].trim_start().starts_with("GB"),
+        "dung lượng bộ công cụ giờ phải tính bằng GB, đang là: {}",
+        &sau[..40.min(sau.len())]
+    );
+    let ui: f64 = so.replace(',', ".").parse().expect("đọc được con số trên banner");
+
+    let tong: u64 = app_lib::components::specs()
+        .expect("đọc được components.json")
+        .iter()
+        .map(|c| c.size)
+        .sum();
+    // GiB, vì đó là đơn vị thanh tiến trình của app và của Windows.
+    let that = tong as f64 / 1024.0 / 1024.0 / 1024.0;
+    assert!(
+        (ui - that).abs() < 1.0,
+        "banner nói {ui} GB nhưng components.json cộng lại là {that:.1} GB"
+    );
+}
+
+/// Người dùng phải biết vì sao lần dịch đầu chờ lâu VÀ rằng server tự tắt sau
+/// đó — nếu không họ tưởng app treo, hoặc tưởng 13,5 GB VRAM bị giữ mãi.
+///
+/// Bắt một mẩu chỉ có trong ghi chú của `llm_tren_may`: "nạp model" một mình
+/// còn khớp cả ghi chú của bước lồng tiếng, nên xoá hẳn ghi chú này mà bộ kiểm
+/// vẫn xanh.
+#[test]
+fn ui_ghi_chu_llm_tren_may_noi_ro_tu_tat_tra_vram() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    assert!(
+        tsx.contains("trả lại VRAM"),
+        "thiếu ghi chú rằng dịch xong là tự tắt để trả lại VRAM"
+    );
+}
+
+/// Ngữ cảnh đi thẳng vào prompt hệ thống và `make_provider` truyền nó cho CẢ
+/// `llm_tren_may`; khoá ô chọn lại cho riêng `openai_compat` nghĩa là người dùng
+/// trên máy luôn chạy với ngữ cảnh rỗng, khác hẳn cấu hình đã đo (ngữ cảnh
+/// "phim"). Google miễn phí không nhận hướng dẫn nên vẫn phải đứng ngoài.
+#[test]
+fn ui_cho_chon_ngu_canh_ca_khi_dich_tren_may() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let o = tsx
+        .find("htmlFor=\"ngu-canh\"")
+        .expect("phải có ô chọn ngữ cảnh");
+    let truoc = &tsx[..o];
+    let dieu_kien = truoc
+        .rfind("{(provider ===")
+        .or_else(|| truoc.rfind("{provider ==="))
+        .expect("ô ngữ cảnh phải nằm trong một điều kiện theo provider");
+    let dieu_kien = &truoc[dieu_kien..];
+    assert!(
+        dieu_kien.contains("llm_tren_may"),
+        "ô ngữ cảnh phải hiện cả khi dịch trên máy: {dieu_kien}"
+    );
+    assert!(
+        !dieu_kien.contains("google_free"),
+        "google_free không nhận hướng dẫn ngữ cảnh, không được hiện ô này: {dieu_kien}"
+    );
+}

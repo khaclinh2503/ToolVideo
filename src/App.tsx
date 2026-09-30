@@ -718,8 +718,11 @@ function App() {
         <div className="row">
           <button type="button" onClick={onEnsure} disabled={running}>Tải bộ công cụ</button>
           <span className="muted">
-            ffmpeg, nhận dạng giọng nói và giọng đọc — khoảng 570 MB, chỉ cần tải
-            một lần. Mọi bước bên dưới đều cần bộ này.
+            ffmpeg, nhận dạng giọng nói, giọng đọc và model dịch chạy trên máy —
+            khoảng 11,5 GB, chỉ cần tải một lần. Riêng model dịch đã chiếm gần 10 GB
+            nên lần tải đầu mất hàng giờ nếu mạng chậm; cứ để chạy nền. Bản này mới
+            thêm phần dịch trên máy, nên máy đã cài đủ từ trước vẫn thấy dòng này
+            hiện lại. Mọi bước bên dưới đều cần bộ này.
           </span>
         </div>
         {dl && <p className="muted">{dl}</p>}
@@ -893,7 +896,11 @@ function App() {
             15 giây để nạp model; xong là tự tắt để trả lại VRAM.
           </p>
         )}
-        {provider === "openai_compat" && oa && (
+        {/* Ngữ cảnh đi thẳng vào prompt hệ thống, nên nhà cung cấp nào dùng LLM
+            cũng cần chọn được — `make_provider` vẫn truyền `openai.context` cho
+            cả `llm_tren_may`, và mọi số đo chất lượng của nó đều đo với ngữ cảnh
+            "phim". Google miễn phí không nhận hướng dẫn nào nên vẫn đứng ngoài. */}
+        {(provider === "openai_compat" || provider === "llm_tren_may") && oa && (
           <div className="row">
             <label className="muted" htmlFor="ngu-canh">Ngữ cảnh</label>
             <select
