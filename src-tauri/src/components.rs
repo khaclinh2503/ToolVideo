@@ -138,8 +138,22 @@ pub fn download_verified(
 }
 
 /// Ghép `models` + đường dẫn tương đối, từ chối mọi đường đi ra ngoài `models`.
+///
+/// `rel` ở nhánh `from = "**"` là `to` (do người viết spec kiểm soát) nối
+/// thêm tên entry (do kẻ dựng archive kiểm soát). Vì `to` luôn đứng trước,
+/// một entry tên `/etc/evil.dll` không làm `rel` bắt đầu bằng '/' — nó chỉ
+/// tạo ra dấu '/' LẶP ở giữa chuỗi (`"llm/bin" + "/" + "/etc/evil.dll"`),
+/// nên phép kiểm `starts_with('/')` bên dưới không bắt được nó. Một đường
+/// dẫn hợp lệ không bao giờ có đoạn rỗng giữa hai dấu '/', nên chặn "//" ở
+/// đây bắt luôn trường hợp đó mà không cần đoán trước hệ điều hành có gộp
+/// dấu '/' lặp lại thành một hay không.
 fn safe_join(models: &Path, rel: &str) -> Result<PathBuf, PipelineError> {
-    if rel.is_empty() || rel.contains("..") || rel.starts_with('/') || rel.contains(':') {
+    if rel.is_empty()
+        || rel.contains("..")
+        || rel.starts_with('/')
+        || rel.contains(':')
+        || rel.contains("//")
+    {
         return Err(PipelineError::Io(format!("đường dẫn trong gói không hợp lệ: '{rel}'")));
     }
     Ok(models.join(rel.replace('/', std::path::MAIN_SEPARATOR_STR)))
@@ -154,10 +168,17 @@ fn write_member(models: &Path, rel_to: &str, data: &[u8]) -> Result<(), Pipeline
 }
 
 /// Đích tương ứng cho một entry trong archive, hoặc `None` nếu entry không được khai báo.
+/// `from = "**"`  ⇒ trọn gói: đích = `to` + nguyên tên entry.
 /// `from` kết bằng '/' ⇒ cây con: đích = `to` + phần đuôi sau tiền tố.
 fn target_for(files: &[FileMap], entry: &str) -> Option<String> {
     for f in files {
         let Some(from) = f.from.as_deref() else { continue };
+        if from == "**" {
+            // Tên entry vào thẳng đường dẫn đích mà không qua chuỗi `from` do
+            // người viết spec kiểm soát — `safe_join` trong `write_member` là
+            // thứ DUY NHẤT chặn `../` và đường dẫn tuyệt đối ở đây.
+            return Some(format!("{}/{}", f.to.trim_end_matches('/'), entry));
+        }
         if let Some(prefix) = from.strip_suffix('/') {
             let prefix = format!("{prefix}/");
             if let Some(rest) = entry.strip_prefix(&prefix) {
@@ -254,11 +275,13 @@ pub fn place_files(
         }
     }
 
-    // Mọi `from` là file lẻ đều phải tìm thấy; cây con phải chép được ít nhất 1 file.
+    // Mọi `from` là file lẻ đều phải tìm thấy; cây con và trọn gói phải chép
+    // được ít nhất 1 file.
     for f in &spec.files {
         let Some(from) = f.from.as_deref() else { continue };
-        let found = if from.ends_with('/') {
-            written.iter().any(|w| w.starts_with(&format!("{}/", f.to.trim_end_matches('/'))))
+        let duoi_to = format!("{}/", f.to.trim_end_matches('/'));
+        let found = if from == "**" || from.ends_with('/') {
+            written.iter().any(|w| w.starts_with(&duoi_to))
         } else {
             written.iter().any(|w| w == &f.to)
         };

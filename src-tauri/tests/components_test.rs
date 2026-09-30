@@ -504,3 +504,82 @@ fn all_installed_false_khi_state_hong() {
     }
     assert!(!app_lib::components::all_installed(d.path()).unwrap());
 }
+
+/// `from: "**"` lấy trọn gói. Cần cho llama.cpp: 55 file nằm ngay gốc zip,
+/// không có thư mục bọc nên không tiền tố nào khớp được.
+#[test]
+fn sao_ca_goi_lay_du_moi_file() {
+    let d = tempfile::tempdir().unwrap();
+    let zip = d.path().join("g.zip");
+    make_zip(&zip, &[
+        ("llama-server.exe", b"A"),
+        ("ggml.dll", b"B"),
+        ("cudart64_13.dll", b"C"),
+    ]);
+    let s = spec("llama-bin", Archive::Zip, vec![(Some("**"), "llm/bin")]);
+    let models = d.path().join("models");
+    let ra = app_lib::components::place_files(&zip, &s, &models).unwrap();
+    assert_eq!(ra.len(), 3, "{ra:?}");
+    for f in ["llama-server.exe", "ggml.dll", "cudart64_13.dll"] {
+        assert!(models.join("llm/bin").join(f).is_file(), "thiếu {f}");
+    }
+}
+
+/// Tên entry đi THẲNG từ archive vào đường dẫn đích, không qua một `from` do
+/// người viết spec kiểm soát — nên đây là chỗ duy nhất trong hệ component mà
+/// kẻ dựng archive tự chọn được đường dẫn ghi ra.
+#[test]
+fn sao_ca_goi_chan_duong_dan_doc() {
+    let d = tempfile::tempdir().unwrap();
+    let models = d.path().join("models");
+
+    for (ten, entry) in [
+        ("leo", "../../evil.dll"),
+        ("tuyet_doi", "/etc/evil.dll"),
+        ("o_dia", "C:/Windows/evil.dll"),
+    ] {
+        let zip = d.path().join(format!("{ten}.zip"));
+        make_zip(&zip, &[(entry, b"X")]);
+        let s = spec("doc", Archive::Zip, vec![(Some("**"), "llm/bin")]);
+        let r = app_lib::components::place_files(&zip, &s, &models);
+        assert!(r.is_err(), "entry '{entry}' phải bị chặn");
+    }
+    assert!(!d.path().join("evil.dll").exists());
+}
+
+/// Archive không có entry nào ⇒ lỗi to tiếng. Nếu im lặng báo thành công thì
+/// `.state` ghi "đã cài" và app chết lúc chạy, xa chỗ gây lỗi.
+#[test]
+fn sao_ca_goi_rong_thi_bao_loi() {
+    let d = tempfile::tempdir().unwrap();
+    let zip = d.path().join("rong.zip");
+    make_zip(&zip, &[]);
+    let s = spec("rong", Archive::Zip, vec![(Some("**"), "llm/bin")]);
+    let r = app_lib::components::place_files(&zip, &s, &d.path().join("models"));
+    assert!(r.is_err(), "gói rỗng phải báo lỗi");
+}
+
+/// `target_for` dùng chung cho MỌI component. Sửa hỏng là ffmpeg và VieNeu
+/// chết theo, mà lỗi lại hiện ở chỗ khác hẳn.
+#[test]
+fn cac_dang_from_cu_khong_doi() {
+    let d = tempfile::tempdir().unwrap();
+    let models = d.path().join("models");
+
+    // Dạng file lẻ, đúng kiểu ffmpeg đang khai.
+    let z1 = d.path().join("le.zip");
+    make_zip(&z1, &[("build/bin/ffmpeg.exe", b"F"), ("build/bin/bo_qua.txt", b"X")]);
+    let s1 = spec("le", Archive::Zip, vec![(Some("build/bin/ffmpeg.exe"), "ffmpeg/ffmpeg.exe")]);
+    let r1 = app_lib::components::place_files(&z1, &s1, &models).unwrap();
+    assert_eq!(r1, vec!["ffmpeg/ffmpeg.exe".to_string()]);
+    assert!(!models.join("ffmpeg/bo_qua.txt").exists(), "file không khai không được chép");
+
+    // Dạng cây con.
+    let z2 = d.path().join("cay.zip");
+    make_zip(&z2, &[("pkg/a.txt", b"A"), ("pkg/sub/b.txt", b"B"), ("ngoai.txt", b"N")]);
+    let s2 = spec("cay", Archive::Zip, vec![(Some("pkg/"), "dich")]);
+    let mut r2 = app_lib::components::place_files(&z2, &s2, &models).unwrap();
+    r2.sort();
+    assert_eq!(r2, vec!["dich/a.txt".to_string(), "dich/sub/b.txt".to_string()]);
+    assert!(!models.join("dich/ngoai.txt").exists());
+}
