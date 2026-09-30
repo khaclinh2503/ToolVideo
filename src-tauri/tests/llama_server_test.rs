@@ -1,4 +1,8 @@
-use app_lib::translate::llama_server::{cho_san_sang, cong_trong, LlamaServer};
+use app_lib::translate::llama_server::{
+    cho_san_sang, cong_trong, doi_san_sang_va_kiem_song, hut_stderr_lien_tuc, DemStderr,
+    LlamaServer,
+};
+use std::process::{Command, Stdio};
 use std::time::Duration;
 
 /// `/health` trả 200 NGAY khi tiến trình lên, nhưng lúc đó model còn đang nạp
@@ -77,4 +81,91 @@ fn thieu_engine_hoac_model_thi_chi_di_tai_bo_cong_cu() {
     let r2 = LlamaServer::khoi_dong(&exe, &d.path().join("khong-co.gguf"));
     let msg2 = format!("{}", r2.err().expect("thiếu model phải lỗi"));
     assert!(msg2.contains("bộ công cụ"), "phải chỉ đi tải, đang là: {msg2}");
+}
+
+/// Bộ đệm stderr phải bị chặn trên: `llama-server` ghi log suốt cả phiên,
+/// không ai giới hạn tự nhiên — giữ hết là rò rỉ bộ nhớ dần. Feed nhiều hơn
+/// giới hạn rồi kiểm nó không phình vô hạn và vẫn giữ đúng dòng mới nhất
+/// (thứ một chẩn đoán cần), không phải dòng cũ nhất.
+#[test]
+fn dem_stderr_bi_chan_tren_va_giu_dong_moi_nhat() {
+    let dem = DemStderr::moi();
+    let mut data = String::new();
+    for i in 0..200 {
+        data.push_str(&format!("line-{i}\n"));
+    }
+    hut_stderr_lien_tuc(std::io::Cursor::new(data.into_bytes()), dem.clone());
+
+    let ra = dem.doc_ra();
+    let so_dong = ra.split(" | ").count();
+    assert!(so_dong <= 20, "phải bị chặn trên (còn 200 dòng feed vào), đang có {so_dong}");
+    assert!(ra.contains("line-199"), "phải giữ dòng MỚI nhất: {ra}");
+    assert!(!ra.contains("line-0 ") && !ra.ends_with("line-0"), "phải rớt dòng CŨ nhất khi vượt giới hạn: {ra}");
+}
+
+/// Đọc bộ đệm stderr không được đụng tới ống của tiến trình — đụng vào ống
+/// (như bản cũ của `ly_do_chet`, dùng `read_to_string` trực tiếp) chỉ trả về
+/// khi ống đóng, tức tiến trình đã chết. Gọi lúc tiến trình CÒN SỐNG (đây là
+/// tình huống thật: `doi_san_sang` hết giờ vì model còn nạp dở, không phải vì
+/// tiến trình chết) trước kia sẽ treo vô hạn.
+#[test]
+fn doc_bo_dem_stderr_khong_treo_khi_tien_trinh_con_song() {
+    let mut child = Command::new("cmd")
+        .args(["/C", "ping -n 6 127.0.0.1 >NUL"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("cmd.exe phải chạy được trên Windows");
+
+    let dem = DemStderr::moi();
+    let nguon = child.stderr.take().unwrap();
+    let dem2 = dem.clone();
+    std::thread::spawn(move || hut_stderr_lien_tuc(nguon, dem2));
+
+    // Tiến trình chắc chắn còn sống ở đây (ping -n 6 chạy vài giây).
+    let t0 = std::time::Instant::now();
+    let _ = dem.doc_ra();
+    assert!(
+        t0.elapsed() < Duration::from_millis(500),
+        "đọc bộ đệm trong bộ nhớ không được chờ ống đóng: mất {:?}",
+        t0.elapsed()
+    );
+
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+/// Tiến trình chết sớm (ví dụ thua tranh chấp cổng ngay sau `cong_trong()`)
+/// phải được báo là ĐÃ CHẾT ngay, không phải chờ hết `han` rồi báo nhầm
+/// thành "model chưa nạp xong" — hai lỗi khác nhau, và chờ hết giờ cho một
+/// tiến trình đã chết là chờ hụt vô nghĩa.
+#[test]
+fn tien_trinh_chet_thi_bao_chet_ngay_khong_doi_het_gio() {
+    let mut child = Command::new("cmd")
+        .args(["/C", "exit 1"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("cmd.exe phải chạy được trên Windows");
+
+    let t0 = std::time::Instant::now();
+    // Cổng 1 chắc chắn không có ai lắng nghe ⇒ mọi lời gọi HTTP đều lỗi
+    // connect ngay, y hệt biểu hiện của một `llama-server` đã chết.
+    let r = doi_san_sang_va_kiem_song(
+        &mut child,
+        "http://127.0.0.1:1/v1",
+        Duration::from_secs(5),
+        || "gia-lap-stderr".to_string(),
+    );
+    assert!(r.is_err(), "tiến trình đã chết thì không thể coi là sẵn sàng");
+    assert!(
+        t0.elapsed() < Duration::from_secs(3),
+        "phải báo chết sớm, không đợi hết 5 giây: {:?}",
+        t0.elapsed()
+    );
+    let msg = format!("{}", r.unwrap_err());
+    assert!(
+        msg.contains("tắt") || msg.contains("chết"),
+        "thông báo phải nói rõ tiến trình đã tắt, không phải 'chưa nạp xong': {msg}"
+    );
 }
