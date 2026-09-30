@@ -505,3 +505,23 @@ fn ui_kiem_font_thoat_backslash_truoc_khi_thoat_dau_nhay() {
         "phải thoát backslash TRƯỚC dấu nháy đôi — ngược lại sẽ thoát luôn backslash mới sinh ra từ bước thoát dấu nháy"
     );
 }
+
+/// Mã nhà cung cấp trên giao diện phải khớp Rust; lệch là người dùng chọn xong
+/// và nhận "provider chưa hỗ trợ".
+#[test]
+fn ui_khai_dung_ma_llm_tren_may() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let ma = app_lib::translate::llm_tren_may::ID;
+    assert!(
+        tsx.contains(&format!("value=\"{ma}\"")),
+        "App.tsx phải có <option value=\"{ma}\">"
+    );
+}
+
+/// Người dùng phải biết lần dịch đầu chờ lâu hơn vì nạp model, nếu không họ
+/// tưởng app treo và bấm lại.
+#[test]
+fn ui_noi_ro_lan_dau_phai_nap_model() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    assert!(tsx.contains("nạp model"), "thiếu ghi chú lần đầu phải nạp model");
+}

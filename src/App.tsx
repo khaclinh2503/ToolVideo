@@ -881,10 +881,18 @@ function App() {
           <select value={provider} onChange={(e) => setProvider(e.target.value)}>
             <option value="google_free">Google (miễn phí)</option>
             <option value="openai_compat">LLM (OpenAI-compatible, key riêng)</option>
+            <option value="llm_tren_may">LLM trên máy (không cần mạng)</option>
           </select>
           <input value={tgt} onChange={(e) => setTgt(e.target.value)} placeholder="Ngôn ngữ đích (vi)" className="input-lang" />
           <button type="button" className="primary" onClick={onTranslate} disabled={running || !projectDir}>Dịch</button>
         </div>
+        {provider === "llm_tren_may" && (
+          <p className="muted">
+            Dịch chạy hẳn trên GPU của máy, không gửi gì ra mạng. Đo thật trên máy này:
+            khoảng 34 giây mỗi 40 câu, chiếm 13,5 GB VRAM. Lần dịch đầu chờ thêm khoảng
+            15 giây để nạp model; xong là tự tắt để trả lại VRAM.
+          </p>
+        )}
         {provider === "openai_compat" && oa && (
           <div className="row">
             <label className="muted" htmlFor="ngu-canh">Ngữ cảnh</label>
