@@ -192,6 +192,46 @@ fn prompt_luon_giu_quy_dinh_dang_json() {
     }
 }
 
+/// Hai lỗi đo được trên bản dịch thật mà prompt cũ không chặn: `球球` (tên con
+/// chó) ra "Bóng bóng", và `干。` (tiếng chửi) ra "Chán." Cả hai là lỗi của
+/// prompt chứ không của model — cùng một model dịch đúng khi prompt nói rõ.
+/// Ràng ở MỌI ngữ cảnh vì hai lỗi này không riêng phim: bản tin cũng có tên
+/// riêng, podcast cũng có tiếng chửi.
+#[test]
+fn moi_ngu_canh_deu_chan_dich_nghia_ten_rieng_va_lam_nhe_tho_tuc() {
+    use app_lib::translate::openai_compat::{build_system_prompt, CONTEXTS};
+    for ma in std::iter::once("").chain(CONTEXTS.iter().map(|(m, _, _)| *m)) {
+        let p = build_system_prompt(ma);
+        assert!(p.contains("Hán-Việt"), "ngữ cảnh {ma:?} thiếu quy tắc phiên âm tên riêng: {p}");
+        assert!(p.contains("球球"), "ngữ cảnh {ma:?} mất ví dụ tên riêng — câu suông đã đo là không ăn thua: {p}");
+        assert!(p.contains("thô tục"), "ngữ cảnh {ma:?} thiếu quy tắc giữ mức độ thô tục: {p}");
+        assert!(
+            p.contains("không được hoán ngôi"),
+            "ngữ cảnh {ma:?} thiếu quy tắc giữ ngôi 我/你/他: {p}"
+        );
+    }
+}
+
+/// Quy tắc thô tục phải ràng HAI CHIỀU. Chỉ nói "đừng làm nhẹ" thì bản tin và
+/// bài giảng có nguy cơ bị kéo giọng theo.
+#[test]
+fn quy_tac_tho_tuc_cam_ca_chieu_them_vao() {
+    use app_lib::translate::openai_compat::build_system_prompt;
+    let p = build_system_prompt("tin_tuc");
+    assert!(p.contains("không làm nhẹ đi"), "{p}");
+    assert!(p.contains("không thêm vào chỗ bản gốc không có"), "{p}");
+}
+
+/// Ngữ cảnh phim là nơi xưng hô trôi nhiều nhất: đo được model đổi anh/em sang
+/// mày/tao giữa lô, và dịch 姐夫 thành "chồng chị" rồi lại "anh trai".
+#[test]
+fn ngu_canh_phim_chot_xung_ho_va_goi_dung_ho_hang() {
+    use app_lib::translate::openai_compat::build_system_prompt;
+    let p = build_system_prompt("phim");
+    assert!(p.contains("CHỐT"), "phim mất quy tắc chốt cặp xưng hô: {p}");
+    assert!(p.contains("姐夫 là anh rể"), "phim mất bảng quan hệ họ hàng: {p}");
+}
+
 #[test]
 fn moi_ngu_canh_cho_ra_huong_dan_khac_nhau() {
     use app_lib::translate::openai_compat::{build_system_prompt, CONTEXTS};

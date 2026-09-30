@@ -57,7 +57,23 @@ chỉ tốn ~0,6 giây:
 | Gemma `你去找` | "Mày đi tìm" | "Anh đi tìm" |
 
 Việc sửa prompt có lợi cho **mọi** nhà cung cấp kể cả cloud, nên nó là một mục
-riêng, không gộp vào đây. Ghi lại để khỏi mất.
+riêng, không gộp vào đây.
+
+**Đã làm, ngày 2026-09-30.** Xem `QUY_TAC_DICH` trong `openai_compat.rs` — chú
+thích ở đó ghi số đo 4 lần chạy mỗi prompt kèm cả phần KHÔNG sửa được.
+Hai điều rút ra đáng nhớ hơn bảng trên:
+
+* Quy tắc suông không ăn thua, **phải có ví dụ cụ thể**. "Giữ nguyên phiên âm"
+  không sửa được `球球`; nói rõ "phiên âm Hán-Việt, `球球` là Cầu Cầu chứ không
+  phải Bóng bóng" thì 0/4 ⇒ 4/4.
+* Một lần đo là vô nghĩa. Ở `temperature 0.2` cùng một prompt cho kết quả khác
+  nhau giữa các lần; có tiêu chí lên 4/4 rồi lần sau xuống 1/4. Mọi kết luận
+  trong mục này đều từ nhiều lần chạy.
+
+Và một cái bẫy đã sập một lần: hằng prompt có dấu nháy **chưa escape** thì file
+không biên dịch được, nhưng bộ đo bằng Python vẫn chạy và âm thầm cắt cụt chuỗi
+— mấy vòng đo sau đó dùng prompt thiếu hẳn đoạn cuối mà không ai biết. Chạy
+`cargo test` TRƯỚC mỗi vòng đo, không phải sau.
 
 Hai lỗi **cả hai model đều chưa qua** kể cả với prompt chặt, và mục này KHÔNG
 giải quyết: tên riêng bị dịch nghĩa (`球球` tên con chó → "Bóng bóng"), và `干`

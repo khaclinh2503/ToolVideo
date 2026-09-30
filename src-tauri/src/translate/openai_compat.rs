@@ -4,6 +4,39 @@ use serde::{Deserialize, Serialize};
 
 pub const SYSTEM_PROMPT: &str = "Bạn là dịch giả phụ đề. Dịch từng item sang ngôn ngữ đích, giữ nguyên số lượng và thứ tự, không thêm giải thích. Trả về JSON đúng dạng {\"items\":[{\"i\":<số>,\"text\":\"<bản dịch>\"}]}.";
 
+/// Quy tắc dịch áp cho MỌI ngữ cảnh, nối vào sau `SYSTEM_PROMPT`.
+///
+/// Mỗi câu ở đây vá một lỗi ĐO ĐƯỢC trên bản dịch thật. Bộ đo: 40 cue phim
+/// Trung thật, Qwen3-14B-Q5_K_M, chạy 4 lần mỗi prompt — ở temperature 0.2 một
+/// lần chạy không nói lên gì, cùng prompt cho ra khác nhau giữa các lần. Số là
+/// "số lần đạt / 4 lần chạy", prompt cũ ⇒ prompt này:
+///
+/// * `干。` ra "Chán." 0/4 ⇒ ra tiếng chửi 4/4.
+/// * `姐夫` ra "chú rể"/"anh trai" 0/4 ⇒ ra "anh rể" 4/4.
+/// * Câu ghép dài bị cụt mất vế sau 0/4 ⇒ dịch đủ 3/4.
+/// * `球球` (tên con chó) ra "Bóng bóng" 0/4 ⇒ ra "Cầu Cầu" 4/4; `林燕` 2/4 ⇒
+///   4/4 ra "Lâm Yến".
+///
+/// Phải biết rõ giới hạn của mấy con số trên, đừng đọc quá lên:
+///
+/// * `球球` và `林燕` chính là ví dụ nằm trong prompt, nên 4/4 của chúng KHÔNG
+///   chứng minh luật tên riêng tổng quát được. Đo riêng trên 6 tên chưa hề xuất
+///   hiện trong prompt (3 lần): có khá hơn — `阿福` ra "A Phúc" 1/3 ⇒ 3/3, `团团`
+///   thôi ra pinyin "Tuantuan" — nhưng `小花` vẫn bị dịch nghĩa thành "Hoa nhỏ"
+///   3/3 ở CẢ HAI prompt, và `铁柱` vẫn sai. Luật này giảm lỗi chứ chưa dứt lỗi.
+/// * Câu "giữ nguyên phiên âm" suông đã thử và KHÔNG ăn thua; phải nói rõ
+///   Hán-Việt kèm ví dụ cụ thể thì model mới theo. Ví dụ là thứ làm nên tác
+///   dụng, bỏ ví dụ đi là mất.
+/// * Ràng buộc thô tục để HAI CHIỀU — không làm nhẹ đi mà cũng không thêm vào
+///   chỗ bản gốc không có — để bản tin và bài giảng không bị kéo giọng theo.
+/// * Thương hiệu phải tách khỏi luật tên riêng: bắt `爱回收严选` phiên âm Hán-Việt
+///   thì model dịch nghĩa thành "yêu thu hồi chọn lọc" hoặc "Love Recycling".
+/// * Trả giá: 1/4 lần chạy có một cue còn sót chữ Hán, prompt cũ 0/4. Câu
+///   "không được còn sót chữ Hán" đã có sẵn trong đây mà vẫn không chặn hết.
+///   Từ đệm chửi `他妈` thì bị bỏ nguyên chữ Hán lặp lại y hệt qua nhiều lần
+///   chạy, kể cả khi prompt gọi đích danh nó — giới hạn của model.
+const QUY_TAC_DICH: &str = "Dịch đủ mọi vế trong câu, không lược bỏ. Giữ đúng ngôi: 我 là người đang nói, 你 là người nghe, 他/她 là người thứ ba — không được hoán ngôi; 我 luôn dịch thành đại từ người nói tự xưng, không bao giờ thành đại từ dùng để gọi người nghe. Tên riêng của người, vật nuôi, biệt danh và địa danh thì phiên âm Hán-Việt, KHÔNG dịch nghĩa dù chữ trong tên có nghĩa thường ngày: 球球 là \"Cầu Cầu\" chứ không phải \"Bóng bóng\", 林燕 là \"Lâm Yến\" chứ không phải \"Rừng Én\"; một cái tên đã gọi thế nào thì giữ nguyên thế ở mọi item. Tên thương hiệu, tên sản phẩm và tên công ty thì để nguyên tên gốc hoặc phiên âm pinyin, tuyệt đối không dịch nghĩa sang tiếng Việt hay tiếng Anh: 爱回收严选 là \"Aihuishou Yanxuan\" chứ không phải \"Love Recycling\" hay \"yêu thu hồi chọn lọc\". Mỗi item phải dịch TRỌN sang ngôn ngữ đích: bản dịch không được còn sót chữ Hán. Giữ đúng mức độ thô tục của lời thoại: tiếng chửi phải dịch thành tiếng chửi tương đương của người Việt, không làm nhẹ đi, cũng không thêm vào chỗ bản gốc không có: 干 / 操 / 妈的 là \"Mẹ kiếp.\" hay \"Chết tiệt.\" chứ không phải \"Chán.\" hay \"Đáng ghét.\"";
+
 /// Ngữ cảnh dịch: (mã, nhãn hiện trên giao diện, câu hướng dẫn nhét vào prompt).
 ///
 /// Để ở Rust thay vì ở giao diện để chỉ có một danh sách: giao diện đọc qua lệnh
@@ -22,7 +55,7 @@ pub const CONTEXTS: &[(&str, &str, &str)] = &[
     (
         "phim",
         "Phim, truyện",
-        "Đây là lời thoại phim. Dịch thoáng cho tự nhiên như người Việt nói chuyện, giữ đúng sắc thái và xưng hô giữa các nhân vật.",
+        "Đây là lời thoại phim. Dịch thoáng cho tự nhiên như người Việt nói chuyện, giữ đúng sắc thái giữa các nhân vật. Trước khi dịch, suy ra quan hệ giữa các nhân vật từ toàn bộ các item rồi CHỐT một cặp xưng hô cho mỗi cặp nhân vật và giữ nguyên từ đầu đến cuối, không đổi giữa chừng. Dịch đúng quan hệ họ hàng theo tiếng Việt: 姐 là chị gái, 妹 là em gái, 姐夫 là anh rể, 嫂子 là chị dâu.",
     ),
     (
         "tin_tuc",
@@ -60,7 +93,7 @@ pub fn build_system_prompt(context: &str) -> String {
         .find(|(ma, _, _)| *ma == context.trim())
         .map(|(_, _, h)| *h)
         .unwrap_or(HUONG_DAN_TU_DONG);
-    format!("{SYSTEM_PROMPT} {huong_dan}")
+    format!("{SYSTEM_PROMPT} {QUY_TAC_DICH} {huong_dan}")
 }
 
 /// Lọc lấy đúng khối JSON trong nội dung model trả về.
