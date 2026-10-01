@@ -110,6 +110,30 @@ pub trait TranslateProvider {
     fn batch_size(&self) -> usize;
     fn translate_batch(&self, texts: &[&str], src: &str, tgt: &str)
         -> Result<Vec<String>, PipelineError>;
+
+    /// Dịch lại MỘT cue mà bản dịch trước còn sót chữ gốc chưa dịch.
+    ///
+    /// `con_sot` là đúng những chữ còn sót, để nhà cung cấp chỉ mặt được cho
+    /// model chỗ hỏng.
+    ///
+    /// Mặc định là gửi lại y nguyên qua `translate_batch`. Đo trên dữ liệu thật
+    /// cho thấy cách đó gần như vô ích — ở `temperature 0.2` model trả lại đúng
+    /// cái cũ, 1/3 cue khỏi. Nhà cung cấp nào dựng được một yêu cầu SỬA LỖI thì
+    /// nên ghi đè; `OpenAiCompat` có ghi đè.
+    fn dich_lai_cho_tron(
+        &self,
+        text: &str,
+        _con_sot: &str,
+        src: &str,
+        tgt: &str,
+    ) -> Result<String, PipelineError> {
+        let v = self.translate_batch(&[text], src, tgt)?;
+        v.into_iter().next().ok_or_else(|| PipelineError::ProviderError {
+            provider: self.id().into(),
+            status: None,
+            msg: "dịch lại không trả về dòng nào".into(),
+        })
+    }
 }
 
 /// Trim, then collapse runs of 2+ newlines (including "\r\n\r\n"-style runs)
@@ -177,6 +201,13 @@ pub fn translate_segments(
             }
         }
 
+        // Lô lớn thỉnh thoảng để sót vài chữ Hán giữa câu tiếng Việt. Đo trên
+        // 193 cue thật: 2 cue dính, và đó là rác hiện thẳng lên màn hình chứ
+        // không phải bản dịch vụng. Siết prompt đã thử và không chặn được.
+        if ngon_ngu_khong_dung_chu_dong_a(tgt) {
+            dich_lai_cue_con_chu_dong_a(p, chunk, &idx, &mut translated_by_idx, src, tgt);
+        }
+
         for (s, t) in chunk.iter().zip(translated_by_idx) {
             out.push(Segment {
                 start_ms: s.start_ms,
@@ -186,6 +217,97 @@ pub fn translate_segments(
         }
     }
     Ok(out)
+}
+
+/// Số cue tối đa chịu dịch lại trong một lô.
+///
+/// Dịch lại là mỗi cue một request, nên phải có trần. Lác đác một hai cue thì
+/// đây là lỗi ngẫu nhiên, gửi riêng từng cue gần như chắc chắn khỏi. Cả lô
+/// cùng sót thì là hỏng hệ thống — sai ngôn ngữ đích, model lẫn lộn — và 40
+/// request nữa cũng không chữa được, chỉ tổ chậm và tốn tiền với nhà cung cấp
+/// cloud.
+const TOI_DA_DICH_LAI: usize = 8;
+
+/// Ngôn ngữ đích có tự viết bằng chữ Hán hay kana không.
+///
+/// Với tiếng Trung, tiếng Nhật thì "còn chữ Hán" là bản dịch ĐÚNG, không phải
+/// dịch sót — không được đem đi kiểm.
+fn ngon_ngu_khong_dung_chu_dong_a(tgt: &str) -> bool {
+    let ma = tgt.trim().to_ascii_lowercase();
+    let goc = ma.split(['-', '_']).next().unwrap_or("");
+    !matches!(goc, "zh" | "ja" | "yue" | "wuu" | "cmn" | "lzh")
+}
+
+/// Chuỗi còn sót chữ Hán hoặc kana không.
+///
+/// Gộp cả kana vì nguồn có thể là tiếng Nhật (bộ 193 cue thật có một câu
+/// `助けてして`); bỏ sót kana thì kiểm nửa vời.
+pub fn con_chu_dong_a(s: &str) -> bool {
+    s.chars().any(la_chu_dong_a)
+}
+
+/// Đếm chữ Đông Á còn sót, để so bản sửa với bản cũ.
+pub fn dem_chu_dong_a(s: &str) -> usize {
+    s.chars().filter(|c| la_chu_dong_a(*c)).count()
+}
+
+fn la_chu_dong_a(c: char) -> bool {
+    matches!(c as u32,
+        0x3040..=0x30FF   // hiragana, katakana
+        | 0x3400..=0x4DBF // CJK mở rộng A
+        | 0x4E00..=0x9FFF // CJK thông dụng
+        | 0xF900..=0xFAFF // CJK tương thích
+    )
+}
+
+/// Những chữ Đông Á còn sót trong một chuỗi, mỗi chữ kể một lần, giữ thứ tự.
+///
+/// Đưa vào prompt sửa lỗi để chỉ mặt chỗ hỏng cho model.
+pub fn chu_dong_a_trong(s: &str) -> String {
+    let mut ra = String::new();
+    for c in s.chars() {
+        if la_chu_dong_a(c) && !ra.contains(c) {
+            ra.push(c);
+        }
+    }
+    ra
+}
+
+/// Gửi lại riêng từng cue còn sót chữ Hán, mỗi cue một request.
+///
+/// Cue đứng một mình thì model không còn 39 cue khác tranh ngữ cảnh, nên gần
+/// như luôn dịch trọn. CHỈ nhận kết quả mới khi nó thực sự khá hơn — có chữ và
+/// bớt được chữ sót — để một lần dịch lại hỏng không xoá mất bản dịch đang có.
+///
+/// Nuốt lỗi là cố ý: cả lô đã dịch xong rồi, không được để một request vá lỗi
+/// hỏng kéo sập toàn bộ bản dịch.
+fn dich_lai_cue_con_chu_dong_a(
+    p: &dyn TranslateProvider,
+    chunk: &[Segment],
+    idx: &[usize],
+    translated_by_idx: &mut [String],
+    src: &str,
+    tgt: &str,
+) {
+    let can: Vec<usize> = idx
+        .iter()
+        .copied()
+        .filter(|i| con_chu_dong_a(&translated_by_idx[*i]))
+        .collect();
+    for i in can.into_iter().take(TOI_DA_DICH_LAI) {
+        let con_sot = chu_dong_a_trong(&translated_by_idx[i]);
+        let Ok(lai) = p.dich_lai_cho_tron(chunk[i].text.as_str(), &con_sot, src, tgt) else {
+            continue;
+        };
+        let t = normalize_translated(&lai);
+        // Nhận khi BỚT được chữ sót, không đòi sạch hẳn. Đo trên 4 câu khó
+        // nhất: chỉ 2 câu sửa sạch, nhưng câu không sạch vẫn bớt được một chữ
+        // (`小子` khỏi, `半天` còn). Đòi sạch thì vứt luôn phần đã khá hơn.
+        // So bằng SỐ LƯỢNG nên luật này đơn điệu: không bao giờ làm xấu đi.
+        if !t.trim().is_empty() && dem_chu_dong_a(&t) < dem_chu_dong_a(&translated_by_idx[i]) {
+            translated_by_idx[i] = t;
+        }
+    }
 }
 
 pub fn make_provider(

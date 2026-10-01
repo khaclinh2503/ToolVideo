@@ -15,7 +15,7 @@
 
 use app_lib::config::{models_dir, TranslateConfig};
 use app_lib::srt::{parse_srt, write_srt};
-use app_lib::translate::{make_provider, translate_segments};
+use app_lib::translate::{con_chu_dong_a, make_provider, translate_segments};
 
 #[test]
 #[ignore]
@@ -61,4 +61,50 @@ fn dich_file_srt_that_bang_duong_chay_cua_app() {
         eprintln!("đã ghi {noi}");
     }
     eprintln!("xong sau {:.0}s", bat_dau.elapsed().as_secs_f32());
+}
+
+/// Đo riêng đường sửa cue còn sót chữ Hán.
+///
+/// Đếm trên cả file thì không quy được công: mỗi lần chạy lô lớn sót ở cue
+/// khác nhau, nên 2 cue xuống 1 cue có thể chỉ là nhiễu. Bài này đưa thẳng
+/// những câu ĐÃ TỪNG sót vào `dich_lai_cho_tron` rồi đếm xem sửa được mấy.
+///
+///   $env:DVL_E2E_DICH="1"
+///   cargo test --test e2e_dich_that_test sua_cue -- --ignored --nocapture
+#[test]
+#[ignore]
+fn sua_cue_sot_chu_han_an_bao_nhieu_lan() {
+    if std::env::var("DVL_E2E_DICH").as_deref() != Ok("1") {
+        eprintln!("bỏ qua: đặt DVL_E2E_DICH=1 để gọi model thật");
+        return;
+    }
+    // (câu gốc, chữ model từng bỏ lại) — lấy từ bản dịch thật của dự án 5104ff60.
+    let ca_kho = [
+        ("任务结束，我得请半天假，你小子拼了大象。", "半天小子"),
+        ("你凭什么从小到大好的全是你的，都松手。", "凭什么"),
+        ("只要还是炭机见了7.62都得急性酮中毒，担心是迁。", "酮"),
+        ("妈的，你他妈给我滚。", "他妈"),
+    ];
+
+    let mut cfg = TranslateConfig::default();
+    cfg.openai.context = "phim".into();
+    let p = make_provider("llm_tren_may", &cfg, &models_dir()).expect("không dựng được");
+
+    let mut sach = 0;
+    for (goc, con_sot) in ca_kho {
+        let ra = p.dich_lai_cho_tron(goc, con_sot, "auto", "vi").expect("sửa lỗi");
+        let con = con_chu_dong_a(&ra);
+        if !con {
+            sach += 1;
+        }
+        eprintln!("{} {goc}{}{ra}", if con { "VẪN SÓT" } else { "SẠCH   " }, nl_ra());
+        assert!(!ra.trim().is_empty(), "sửa xong mà trả về rỗng: {goc}");
+        assert_ne!(ra.trim(), goc, "trả lại nguyên câu gốc, không dịch gì");
+    }
+    eprintln!("=> {sach}/{} câu sửa sạch", ca_kho.len());
+}
+
+fn nl_ra() -> &'static str {
+    "
+        -> "
 }

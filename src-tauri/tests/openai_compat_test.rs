@@ -445,3 +445,48 @@ fn co_gui_max_tokens_du_rong_cho_mot_lo_40_cue() {
     p(&server).translate_batch(&["Hello"], "en", "vi").unwrap();
     m.assert_hits(1);
 }
+
+/// Lần dịch lại phải là một yêu cầu KHÁC, không phải lần gieo lại: nó nói rõ
+/// bản trước hỏng và chỉ đích danh chữ còn sót. Gửi lại y nguyên thì model trả
+/// lại đúng cái cũ.
+#[test]
+fn dich_lai_mot_cue_gui_prompt_sua_loi_kem_chu_con_sot() {
+    let server = MockServer::start();
+    let m = server.mock(|when, then| {
+        when.method(POST)
+            .path("/v1/chat/completions")
+            .body_contains("HỎNG")
+            .body_contains("半天")
+            // Vẫn phải giữ nguyên phần quy định JSON, nếu không thì parse hỏng.
+            .body_contains("Bạn là dịch giả phụ đề");
+        then.status(200).body(ok_body(r#"{"i":0,"text":"nghỉ nửa ngày"}"#));
+    });
+    let ra = p(&server)
+        .dich_lai_cho_tron("我得请半天假", "半天", "zh", "vi")
+        .unwrap();
+    assert_eq!(ra, "nghỉ nửa ngày");
+    assert_eq!(m.hits(), 1, "sửa một cue chỉ tốn một request");
+}
+
+/// Prompt sửa lỗi chỉ được THÊM vào, không được nuốt mất phần ngữ cảnh — mất
+/// ngữ cảnh thì câu sửa xong lại lạc giọng so với phần còn lại.
+#[test]
+fn prompt_sua_loi_van_giu_huong_dan_ngu_canh() {
+    let server = MockServer::start();
+    let m = server.mock(|when, then| {
+        when.method(POST).body_contains("Đây là lời thoại phim");
+        then.status(200).body(ok_body(r#"{"i":0,"text":"xong"}"#));
+    });
+    let mut nha = p(&server);
+    nha.context = "phim".into();
+    nha.dich_lai_cho_tron("干", "干", "zh", "vi").unwrap();
+    assert_eq!(m.hits(), 1);
+}
+
+#[test]
+fn lay_dung_nhung_chu_con_sot_moi_chu_mot_lan() {
+    use app_lib::translate::chu_dong_a_trong;
+    assert_eq!(chu_dong_a_trong("tôi phải nghỉ半天, mày小子 đi"), "半天小子");
+    assert_eq!(chu_dong_a_trong("半天 rồi lại 半天"), "半天", "mỗi chữ kể một lần");
+    assert_eq!(chu_dong_a_trong("không có gì"), "");
+}

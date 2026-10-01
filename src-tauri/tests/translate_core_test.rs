@@ -173,3 +173,162 @@ fn translated_text_is_normalized_for_clean_srt_reparse() {
     assert_eq!(out[0].text, "x\ny");
     assert_eq!(out[1].text, "z");
 }
+
+/// Lô lớn để sót chữ Hán ở một cue; gửi riêng cue đó thì dịch trọn.
+struct SotHan {
+    goi: RefCell<Vec<usize>>,
+    so_cue_sot: usize,
+    lai_van_sot: bool,
+    lai_tra: String,
+    lai_loi: bool,
+}
+
+impl SotHan {
+    fn moi(so_cue_sot: usize) -> Self {
+        Self {
+            goi: RefCell::new(vec![]),
+            so_cue_sot,
+            lai_van_sot: false,
+            lai_tra: "vẫn nghỉ 半天".into(),
+            lai_loi: false,
+        }
+    }
+    /// Số lần gọi với đúng một cue — tức số lần dịch lại.
+    fn so_lan_dich_lai(&self) -> usize {
+        self.goi.borrow().iter().filter(|n| **n == 1).count()
+    }
+}
+
+impl TranslateProvider for SotHan {
+    fn id(&self) -> &'static str {
+        "sot_han"
+    }
+
+    fn batch_size(&self) -> usize {
+        40
+    }
+
+    fn translate_batch(
+        &self,
+        texts: &[&str],
+        _s: &str,
+        _t: &str,
+    ) -> Result<Vec<String>, PipelineError> {
+        self.goi.borrow_mut().push(texts.len());
+        if texts.len() == 1 {
+            if self.lai_loi {
+                return Err(PipelineError::ProviderError {
+                    provider: "sot_han".into(),
+                    status: None,
+                    msg: "rớt mạng".into(),
+                });
+            }
+            if self.lai_van_sot {
+                return Ok(vec![self.lai_tra.clone()]);
+            }
+            return Ok(vec!["đã dịch trọn".into()]);
+        }
+        Ok(texts
+            .iter()
+            .enumerate()
+            .map(|(i, t)| {
+                if i < self.so_cue_sot {
+                    format!("nghỉ 半天 {t}")
+                } else {
+                    format!("VI:{t}")
+                }
+            })
+            .collect())
+    }
+}
+
+#[test]
+fn cue_con_sot_chu_han_thi_duoc_gui_lai_rieng() {
+    let p = SotHan::moi(2);
+    let out = translate_segments(&p, &segs(5), "zh", "vi").unwrap();
+    assert_eq!(out[0].text, "đã dịch trọn");
+    assert_eq!(out[1].text, "đã dịch trọn");
+    assert_eq!(out[2].text, "VI:t2", "cue sạch không được đụng vào");
+    assert_eq!(p.so_lan_dich_lai(), 2, "chỉ dịch lại đúng cue dính");
+}
+
+#[test]
+fn khong_cue_nao_sot_thi_khong_goi_them_request_nao() {
+    let p = SotHan::moi(0);
+    translate_segments(&p, &segs(5), "zh", "vi").unwrap();
+    assert_eq!(p.so_lan_dich_lai(), 0);
+}
+
+/// Dịch SANG tiếng Trung thì chữ Hán là bản dịch đúng. Đem đi kiểm thì cue nào
+/// cũng "sai", và mỗi cue tốn thêm một request vô nghĩa.
+#[test]
+fn dich_sang_tieng_trung_thi_khong_kiem_chu_han() {
+    for tgt in ["zh", "zh-CN", "ZH_Hans", "ja", "yue"] {
+        let p = SotHan::moi(2);
+        translate_segments(&p, &segs(5), "vi", tgt).unwrap();
+        assert_eq!(p.so_lan_dich_lai(), 0, "ngôn ngữ đích {tgt} không được kiểm");
+    }
+}
+
+/// Bản vá hỏng không được xoá mất bản dịch đang có — thà vụng còn hơn mất.
+#[test]
+fn dich_lai_van_sot_thi_giu_nguyen_ban_cu() {
+    let mut p = SotHan::moi(1);
+    p.lai_van_sot = true;
+    let out = translate_segments(&p, &segs(3), "zh", "vi").unwrap();
+    assert_eq!(out[0].text, "nghỉ 半天 t0");
+    assert_eq!(p.so_lan_dich_lai(), 1, "chỉ thử lại một lần, không lặp");
+}
+
+/// Cả lô đã dịch xong; một request vá lỗi hỏng không được kéo sập toàn bộ.
+#[test]
+fn dich_lai_loi_thi_van_tra_ve_ban_dich_cua_ca_lo() {
+    let mut p = SotHan::moi(1);
+    p.lai_loi = true;
+    let out = translate_segments(&p, &segs(3), "zh", "vi").unwrap();
+    assert_eq!(out[0].text, "nghỉ 半天 t0");
+    assert_eq!(out[1].text, "VI:t1");
+}
+
+/// Cả lô cùng sót là hỏng hệ thống, không phải lỗi ngẫu nhiên. 40 request nữa
+/// cũng không chữa được, chỉ tổ chậm và tốn tiền với nhà cung cấp cloud.
+#[test]
+fn ca_lo_cung_sot_thi_chan_lai_o_tran() {
+    let p = SotHan::moi(30);
+    translate_segments(&p, &segs(30), "zh", "vi").unwrap();
+    assert_eq!(p.so_lan_dich_lai(), 8);
+}
+
+#[test]
+fn nhan_dien_duoc_chu_han_va_kana_nhung_khong_bat_nham_tieng_viet() {
+    use app_lib::translate::con_chu_dong_a;
+    assert!(con_chu_dong_a("bị trúng độc酮 cấp tính"));
+    assert!(con_chu_dong_a("助けてして"), "kana cũng là dịch sót");
+    assert!(con_chu_dong_a("カタカナ"));
+    assert!(!con_chu_dong_a("Chị Minh Nguyệt đang đợi anh ở trên lầu."));
+    assert!(!con_chu_dong_a("iPhone 16 Pro, 5.439 đồng — rẻ hơn 400!"));
+    assert!(!con_chu_dong_a(""));
+}
+
+/// Bản sửa bớt được chữ sót thì phải nhận, dù chưa sạch hẳn. Đo thật: có câu
+/// chỉ rụng được `小子` còn `半天` vẫn ở lại — đòi sạch thì vứt luôn phần khá
+/// hơn đó.
+#[test]
+fn dich_lai_bot_duoc_chu_sot_thi_nhan_du_chua_sach_han() {
+    let mut p = SotHan::moi(1);
+    p.lai_van_sot = true;
+    p.lai_tra = "nghỉ 半 thôi".into(); // 2 chữ sót xuống còn 1
+    let out = translate_segments(&p, &segs(3), "zh", "vi").unwrap();
+    assert_eq!(out[0].text, "nghỉ 半 thôi");
+}
+
+/// Bản sửa sót BẰNG hoặc NHIỀU HƠN thì giữ nguyên bản cũ — luật phải đơn điệu,
+/// không bao giờ được làm xấu đi.
+#[test]
+fn dich_lai_sot_nhieu_hon_thi_khong_duoc_nhan() {
+    let mut p = SotHan::moi(1);
+    p.lai_van_sot = true;
+    p.lai_tra = "còn 半天假 nữa".into(); // 3 chữ sót, nhiều hơn bản cũ
+    let out = translate_segments(&p, &segs(3), "zh", "vi").unwrap();
+    assert_eq!(out[0].text, "nghỉ 半天 t0");
+}

@@ -188,6 +188,30 @@ impl OpenAiCompat {
         che_do_json: bool,
         tat_suy_luan: bool,
     ) -> Result<Vec<String>, PipelineError> {
+        self.once_voi_he_thong(
+            texts,
+            src,
+            tgt,
+            che_do_json,
+            tat_suy_luan,
+            &build_system_prompt(&self.context),
+        )
+    }
+
+    /// Thân thật của `once`, nhận prompt hệ thống từ ngoài.
+    ///
+    /// Tách ra để lần dịch lại một cue sót chữ dùng được prompt sửa lỗi riêng
+    /// mà vẫn đi chung đường parse, kiểm số item và lùi tham số khi bị 400.
+    #[allow(clippy::too_many_arguments)]
+    fn once_voi_he_thong(
+        &self,
+        texts: &[&str],
+        src: &str,
+        tgt: &str,
+        che_do_json: bool,
+        tat_suy_luan: bool,
+        he_thong: &str,
+    ) -> Result<Vec<String>, PipelineError> {
         let items: Vec<Item> = texts
             .iter()
             .enumerate()
@@ -203,7 +227,7 @@ impl OpenAiCompat {
             // cụt thì parse hỏng, app thử lại đúng một lần rồi cũng cụt y hệt.
             "max_tokens": 4096,
             "messages": [
-                {"role": "system", "content": build_system_prompt(&self.context)},
+                {"role": "system", "content": he_thong},
                 {"role": "user", "content": user.to_string()},
             ]
         });
@@ -266,6 +290,34 @@ impl TranslateProvider for OpenAiCompat {
 
     fn batch_size(&self) -> usize {
         40
+    }
+
+    /// Gửi lại y nguyên thì model trả lại đúng cái cũ — đo được chỉ 1/3 cue
+    /// khỏi. Lần này nói thẳng là bản trước HỎNG và hỏng ở chữ nào, nên nó là
+    /// một yêu cầu khác hẳn chứ không phải lần gieo lại.
+    ///
+    /// Vẫn đi qua `once_voi_he_thong` để dùng chung đường parse và kiểm số item;
+    /// chỉ có prompt hệ thống là khác.
+    fn dich_lai_cho_tron(
+        &self,
+        text: &str,
+        con_sot: &str,
+        src: &str,
+        tgt: &str,
+    ) -> Result<String, PipelineError> {
+        let he_thong = format!(
+            "{} Bản dịch trước của câu này HỎNG: nó bỏ nguyên các chữ {} không dịch. \
+             Dịch lại cho trọn, mọi chữ đều phải sang ngôn ngữ đích, bản dịch trả về \
+             tuyệt đối không được chứa chữ Hán hay chữ kana nào. Nếu một chữ là tiếng \
+             lóng hay từ đệm không có từ tương đương thì bỏ hẳn nó đi, không được giữ \
+             nguyên chữ gốc.",
+            build_system_prompt(&self.context),
+            con_sot
+        );
+        let v = self.once_voi_he_thong(&[text], src, tgt, true, true, &he_thong)?;
+        v.into_iter()
+            .next()
+            .ok_or_else(|| self.perr(Some(200), "dịch lại không trả về dòng nào"))
     }
 
     fn translate_batch(
