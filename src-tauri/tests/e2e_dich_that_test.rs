@@ -47,14 +47,20 @@ fn dich_file_srt_that_bang_duong_chay_cua_app() {
     let ra = translate_segments(p.as_ref(), &segs, "auto", &cfg.target_lang).expect("dịch lỗi");
     assert_eq!(ra.len(), segs.len(), "số cue ra khác số cue vào");
 
-    // Đúng thứ pipeline thật quan tâm: cue có chữ vào thì phải có chữ ra.
+    // Đúng thứ pipeline thật quan tâm: LỜI NÓI không được rụng.
+    //
+    // Chỉ xét cue có ít nhất một chữ cái hoặc chữ số. ASR hay sinh ra cue rác
+    // chỉ có dấu câu ("." cho đoạn im lặng); trả rỗng cho mấy cue đó là ĐÚNG,
+    // vì `pipeline.rs` bỏ qua cue rỗng khi sinh tiếng — còn trả lại "." thì TTS
+    // sẽ đi đọc một dấu chấm. Qwen trả ".", Gemma trả rỗng.
+    let co_chu = |t: &str| t.chars().any(|c| c.is_alphanumeric());
     let mut rong = Vec::new();
     for (i, (g, v)) in segs.iter().zip(&ra).enumerate() {
-        if !g.text.trim().is_empty() && v.text.trim().is_empty() {
+        if co_chu(&g.text) && v.text.trim().is_empty() {
             rong.push(i + 1);
         }
     }
-    assert!(rong.is_empty(), "cue có chữ nhưng bản dịch rỗng: {rong:?}");
+    assert!(rong.is_empty(), "cue có lời nhưng bản dịch rỗng: {rong:?}");
 
     if let Ok(noi) = std::env::var("DVL_E2E_RA") {
         std::fs::write(&noi, write_srt(&ra)).expect("không ghi được kết quả");
