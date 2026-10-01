@@ -17,16 +17,18 @@ pub const ID: &str = "llm_tren_may";
 /// Tên file model trong `models/llm/gguf`, phải khớp `files[].to` của mục
 /// `qwen3-14b` trong components.json.
 ///
-/// ĐÃ THỬ ĐỔI SANG gemma-3-12b-it-Q5_K_M VÀ ĐÃ LOẠI. Gemma thắng rõ ở xưng hô
-/// — nó không bị bệnh bám cặp xưng hô của item đầu lô như Qwen (7/8 ca đúng so
-/// với 5/8), lại nhẹ hơn 2 GB và cùng tốc độ. Nhưng chạy đủ 193 cue thật thì
-/// nó LỆCH HÀNG: lấy 19 cue có số làm mốc neo, Gemma chỉ giữ đúng vị trí 8/19,
-/// Qwen 19/19. Bản dịch của cue 185 lại là nội dung của cue 190 — phụ đề sẽ
-/// chạy sai với tiếng nói suốt phim. Lệch hàng tệ hơn sai xưng hô rất nhiều.
+/// ĐÃ THỬ gemma-3-12b-it-Q5_K_M, CHƯA ĐỔI, và lý do chưa đổi KHÔNG phải vì
+/// Gemma kém. Đo lại cho đúng thì Gemma hoà Qwen ở độ khớp hàng (18/19 mốc neo
+/// số, y hệt nhau), thắng ở xưng hô (7/8 ca so với 5/8 — nó không bị bệnh bám
+/// cặp xưng hô của item đầu lô), thắng ở chữ Hán còn sót (0 cue so với 1), nhẹ
+/// hơn 2 GB, cùng tốc độ. Đổi sang Gemma là một đề xuất còn mở, chờ quyết định
+/// vì còn phải sửa components.json và ghim lại sha256.
 ///
-/// Đáng sợ hơn: KHÔNG có lớp kiểm nào hiện có bắt được chuyện đó. Số item vẫn
-/// khớp, chỉ số i vẫn liên tục từ 0, không cue nào rỗng — mọi kiểm tra đều
-/// xanh trong khi nội dung đã dịch chuyển đi năm dòng.
+/// Một kết luận cũ ở đây từng nói Gemma "lệch hàng 8/19" — SAI, và sai vì công
+/// cụ đo chứ không vì model: Gemma trả chuỗi rỗng cho mấy cue rác chỉ có dấu
+/// chấm, script đo lại bỏ qua cue rỗng khi đọc file nên mọi cue phía sau tụt
+/// chỉ số đúng bằng số cue rỗng. Bài học: đếm số cue đọc ra trước khi tin bất
+/// kỳ con số nào tính trên chỉ số cue.
 pub const TEN_GGUF: &str = "Qwen3-14B-Q5_K_M.gguf";
 
 /// Nạp 9,8 GB lên VRAM mất khoảng 15 giây trên máy đích. 180 giây là rộng rãi

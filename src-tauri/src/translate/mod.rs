@@ -201,6 +201,49 @@ pub fn translate_segments(
             }
         }
 
+        // Lệch hàng: nhà cung cấp trả đủ số item, chỉ số vẫn liên tục, nhưng
+        // nội dung dịch chuyển đi vài dòng — phụ đề chạy sai với tiếng nói suốt
+        // phim mà không lớp kiểm nào cũ bắt được. Đo thật trên Gemma-3-12B: giữ
+        // đúng vị trí 8/19 mốc neo số, Qwen3-14B 19/19.
+        //
+        // Thử lại cả lô trước khi bỏ cuộc, nhưng CHỈ nhận khi lệch ít đi — hệt
+        // luật dùng cho cue sót chữ Hán.
+        let mut lech = cue_lech(chunk, &idx, &translated_by_idx);
+        if lech.len() >= TOI_THIEU_LECH {
+            if let Ok(lai) = p.translate_batch(&texts, src, tgt) {
+                if lai.len() == texts.len() {
+                    let mut thu: Vec<String> = vec![String::new(); chunk.len()];
+                    for (pos, t) in idx.iter().zip(lai) {
+                        thu[*pos] = normalize_translated(&t);
+                    }
+                    let lech_moi = cue_lech(chunk, &idx, &thu);
+                    if lech_moi.len() < lech.len() {
+                        translated_by_idx = thu;
+                        lech = lech_moi;
+                    }
+                }
+            }
+        }
+        // Vẫn lệch thì DỪNG HẲN. Một file phụ đề lệch hàng tệ hơn một lỗi rõ
+        // ràng: người dùng không nhìn ra nó sai, chỉ thấy phim xem rất khó hiểu.
+        if lech.len() >= TOI_THIEU_LECH {
+            let vi_du: Vec<String> = lech
+                .iter()
+                .take(3)
+                .map(|i| chunk[*i].text.chars().take(24).collect::<String>())
+                .collect();
+            return Err(PipelineError::ProviderError {
+                provider: p.id().into(),
+                status: None,
+                msg: format!(
+                    "bản dịch bị lệch hàng: {} cue có con số của câu khác trong cùng lô \
+                     (ví dụ: {}). Thử lại, hoặc đổi sang nhà cung cấp dịch khác.",
+                    lech.len(),
+                    vi_du.join(" | ")
+                ),
+            });
+        }
+
         // Lô lớn thỉnh thoảng để sót vài chữ Hán giữa câu tiếng Việt. Đo trên
         // 193 cue thật: 2 cue dính, và đó là rác hiện thẳng lên màn hình chứ
         // không phải bản dịch vụng. Siết prompt đã thử và không chặn được.
@@ -258,6 +301,68 @@ fn la_chu_dong_a(c: char) -> bool {
         | 0x4E00..=0x9FFF // CJK thông dụng
         | 0xF900..=0xFAFF // CJK tương thích
     )
+}
+
+/// Số cue lệch tối thiểu trong một lô mới kết luận là lô bị dịch chuyển.
+///
+/// Một cue lệch có thể là trùng số ngẫu nhiên — hai câu cùng nhắc "200". Hai
+/// cue trở lên cùng tìm thấy số của mình ở chỗ khác thì không còn là trùng hợp.
+const TOI_THIEU_LECH: usize = 2;
+
+/// Các cụm từ 2 chữ số trở lên, đã bỏ dấu phân cách hàng nghìn.
+///
+/// Bỏ dấu phân cách vì tiếng Việt viết `12.000` còn bản gốc viết `12000`; không
+/// chuẩn hoá thì mọi con số lớn đều thành "lệch". Bỏ số một chữ số vì chúng
+/// trùng nhau quá dễ và hay được viết thành chữ (`3` thành "ba").
+pub fn cum_so(s: &str) -> Vec<String> {
+    let ky_tu: Vec<char> = s.chars().collect();
+    let mut phang = String::with_capacity(ky_tu.len());
+    for (i, c) in ky_tu.iter().enumerate() {
+        // Dấu chấm/phẩy KẸP GIỮA hai chữ số là phân cách, bỏ đi. Dấu cuối câu
+        // thì giữ, nếu không `72.` và `72` lại hoá khác nhau theo hướng ngược.
+        let la_phan_cach = matches!(c, '.' | ',')
+            && i > 0
+            && ky_tu[i - 1].is_ascii_digit()
+            && ky_tu.get(i + 1).is_some_and(char::is_ascii_digit);
+        if !la_phan_cach {
+            phang.push(*c);
+        }
+    }
+    let mut ra = Vec::new();
+    let mut cum = String::new();
+    for c in phang.chars().chain(std::iter::once(' ')) {
+        if c.is_ascii_digit() {
+            cum.push(c);
+        } else if cum.len() >= 2 {
+            ra.push(std::mem::take(&mut cum));
+        } else {
+            cum.clear();
+        }
+    }
+    ra
+}
+
+/// Những cue mà con số của câu gốc lại nằm ở bản dịch của cue KHÁC trong lô.
+///
+/// Đây là dấu hiệu riêng của lệch hàng, và nó phân biệt được với thứ dễ nhầm
+/// nhất: model viết số thành chữ (`29处` ra "hai mươi chín nơi"). Số viết thành
+/// chữ thì biến mất khỏi cả lô nên KHÔNG tính là lệch; số của câu này mọc ở câu
+/// kia mới là lệch. Phân biệt được chuyện đó là lý do phép kiểm này dám báo lỗi
+/// thay vì chỉ cảnh báo.
+fn cue_lech(chunk: &[Segment], idx: &[usize], dich: &[String]) -> Vec<usize> {
+    let phang: Vec<Vec<String>> = dich.iter().map(|t| cum_so(t)).collect();
+    let co_du = |o: usize, so: &[String]| so.iter().all(|n| phang[o].contains(n));
+    let mut ra = Vec::new();
+    for &p in idx {
+        let so = cum_so(&chunk[p].text);
+        if so.is_empty() || co_du(p, &so) {
+            continue;
+        }
+        if idx.iter().any(|&q| q != p && co_du(q, &so)) {
+            ra.push(p);
+        }
+    }
+    ra
 }
 
 /// Những chữ Đông Á còn sót trong một chuỗi, mỗi chữ kể một lần, giữ thứ tự.
