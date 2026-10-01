@@ -52,6 +52,35 @@ pub const CONTEXTS: &[(&str, &str, &str)] = &[
         "Bài giảng, hướng dẫn",
         "Đây là bài giảng hoặc hướng dẫn. Ưu tiên chính xác và rõ ràng, giữ nguyên thuật ngữ chuyên ngành, xưng hô mạch lạc từ đầu đến cuối.",
     ),
+    // Xưng hô ở đây có một lỗi ĐÃ ĐO, ĐÃ THỬ SỬA, CHƯA SỬA ĐƯỢC. Đừng đọc câu
+    // hướng dẫn bên dưới như một việc đã xong.
+    //
+    // Bệnh: model bám cặp xưng hô của item ĐẦU LÔ rồi áp cho mọi item sau. Bộ
+    // thử 8 câu, mỗi câu một vai rõ ràng, trộn chung một lô: chỉ dùng 2/4 kiểu
+    // xưng hô cần thiết — lính báo cáo chỉ huy cũng xưng "con", bác sĩ nói với
+    // bệnh nhân cũng xưng "con", vì item đầu lô là con nói với mẹ.
+    //
+    // KHÔNG phải model không làm nổi: ba câu đó dịch đúng hết khi đứng một
+    // mình, và đúng hết khi lô không mở đầu bằng câu con-mẹ. Là nhiễm từ item
+    // đầu lô, không phải thiếu hướng dẫn — nên viết thêm hướng dẫn không chữa
+    // được.
+    //
+    // Đã thử bốn cách viết prompt: nói rõ "mỗi cặp một kiểu"; kèm ví dụ vai-đại
+    // từ; nêu thẳng ví dụ SAI; bắt từ hô trong chính item quyết định. CẢ BỐN đều
+    // ra đúng 2/4, không nhúc nhích. Tệ hơn: một trong bốn cách làm cue ghép dài
+    // bị cắt mất vế sau (3/4 ⇒ 0/3), nên câu dưới đây là bản ĐÃ TRẢ VỀ nguyên
+    // văn cũ. Sửa chữ ở đây thì phải đo lại cả hai thứ, đừng chỉ đo xưng hô.
+    //
+    // Hai hướng sửa bằng MÃ cũng đã thử và loại, đừng làm lại:
+    //
+    // * Cắt lô theo mốc thời gian: chỗ đổi cảnh thật trong phim mẫu chỉ hở 2,2
+    //   giây, dưới mọi ngưỡng hợp lý, mà ngưỡng 5 giây lại biến 5 lô thành 33
+    //   lô — đắt gấp bảy mà không chữa được đúng ca cần chữa.
+    // * Báo thẳng ranh giới cảnh cho model: thêm trường "canh" vào từng item và
+    //   dặn rõ hai số canh khác nhau là hai cảnh, hai người nói khác nhau. Đây là
+    //   bản mạnh nhất có thể của hướng nhận diện cảnh — mọi item đều được đánh
+    //   dấu đúng, không phải đoán. VẪN ra 2/4. Nên không cần đi dò ranh giới cảnh
+    //   làm gì: có thông tin cảnh hoàn hảo thì model cũng không dùng.
     (
         "phim",
         "Phim, truyện",

@@ -222,13 +222,22 @@ fn quy_tac_tho_tuc_cam_ca_chieu_them_vao() {
     assert!(p.contains("không thêm vào chỗ bản gốc không có"), "{p}");
 }
 
-/// Ngữ cảnh phim là nơi xưng hô trôi nhiều nhất: đo được model đổi anh/em sang
-/// mày/tao giữa lô, và dịch 姐夫 thành "chồng chị" rồi lại "anh trai".
+/// Ngữ cảnh phim phải giữ phần xưng hô và bảng quan hệ họ hàng — bảng này đo
+/// được 0/4 ⇒ 4/4 cho 姐夫, là một trong những luật ăn rõ nhất.
+///
+/// CẢNH BÁO cho người đọc bài test này: xanh ở đây KHÔNG có nghĩa là xưng hô đã
+/// đúng. Model vẫn bám cặp xưng hô của item đầu lô rồi áp cho cả lô — đo được
+/// 2/4 kiểu xưng hô cần thiết, và bốn cách viết prompt khác nhau đều ra đúng
+/// 2/4. Một trong bốn cách còn làm cue dài bị cắt mất vế sau (3/4 ⇒ 0/3) nên đã
+/// trả về nguyên văn này. Xem chú thích ở mục "phim" trong CONTEXTS.
 #[test]
-fn ngu_canh_phim_chot_xung_ho_va_goi_dung_ho_hang() {
+fn ngu_canh_phim_giu_phan_xung_ho_va_bang_ho_hang() {
     use app_lib::translate::openai_compat::build_system_prompt;
     let p = build_system_prompt("phim");
-    assert!(p.contains("CHỐT"), "phim mất quy tắc chốt cặp xưng hô: {p}");
+    assert!(
+        p.contains("cặp xưng hô cho mỗi cặp nhân vật"),
+        "phim mất phần xưng hô theo cặp nhân vật: {p}"
+    );
     assert!(p.contains("姐夫 là anh rể"), "phim mất bảng quan hệ họ hàng: {p}");
 }
 
