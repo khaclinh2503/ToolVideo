@@ -3,7 +3,7 @@ use crate::{
     ffmpeg, srt::{self, Segment},
     stt::{self, SttModels},
     error::PipelineError,
-    translate::{TranslateProvider, translate_segments_voi_so_tay},
+    translate::{TranslateProvider, translate_segments_co_tien_do},
     retime::{self, FitOpts},
 };
 
@@ -87,6 +87,17 @@ pub fn run_translate_stage(
     src: &str,
     tgt: &str,
 ) -> Result<TranslateResult, PipelineError> {
+    run_translate_stage_co_tien_do(project_dir, p, src, tgt, &mut |_, _| {})
+}
+
+/// Như trên nhưng báo tiến độ `(số câu đã dịch, tổng số câu)`.
+pub fn run_translate_stage_co_tien_do(
+    project_dir: &Path,
+    p: &dyn TranslateProvider,
+    src: &str,
+    tgt: &str,
+    on_tien_do: &mut dyn FnMut(usize, usize),
+) -> Result<TranslateResult, PipelineError> {
     let tgt = tgt.trim();
     if !is_valid_lang_tag(tgt) {
         return Err(PipelineError::ProviderError {
@@ -113,7 +124,7 @@ pub fn run_translate_stage(
     // Sổ tay tên riêng của chính dự án này: đọc tại đây chứ không bắt lớp gọi
     // truyền vào, để mọi đường tới bước dịch đều được áp sổ như nhau.
     let so_tay = crate::so_tay::doc(project_dir);
-    let translated = translate_segments_voi_so_tay(p, &segs, src, tgt, &so_tay)?;
+    let translated = translate_segments_co_tien_do(p, &segs, src, tgt, &so_tay, on_tien_do)?;
 
     // Cắt cue dài thành phụ đề một dòng, theo ranh giới câu.
     //
@@ -150,6 +161,23 @@ pub fn run_tts_stage(
     voice: &str,
     scales: &ScalePlan,
     tgt: &str,
+) -> Result<TtsResult, PipelineError> {
+    run_tts_stage_co_tien_do(project_dir, p, voice, scales, tgt, &mut |_, _| {})
+}
+
+/// Như trên nhưng báo tiến độ `(số câu đã đọc, số câu PHẢI đọc)`.
+///
+/// Mẫu số là số câu phải sinh mới, KHÔNG phải tổng số cue: cue đã có trong
+/// cache xong tức thì, đếm chúng vào sẽ cho một thanh tiến độ nhảy vọt lên
+/// 90% rồi đứng im hàng phút — tệ hơn là không có thanh nào.
+#[allow(clippy::too_many_arguments)]
+pub fn run_tts_stage_co_tien_do(
+    project_dir: &Path,
+    p: &dyn TtsProvider,
+    voice: &str,
+    scales: &ScalePlan,
+    tgt: &str,
+    on_tien_do: &mut dyn FnMut(usize, usize),
 ) -> Result<TtsResult, PipelineError> {
     let tgt = tgt.trim();
     let srt_path = project_dir.join("subtitles").join(format!("translated.{tgt}.srt"));
@@ -284,7 +312,12 @@ pub fn run_tts_stage(
             },
         )?;
 
-        p.synthesize(&jobs, &mut |_| {})?;
+        let tong = jobs.len();
+        let mut xong = 0usize;
+        p.synthesize(&jobs, &mut |_| {
+            xong += 1;
+            on_tien_do(xong, tong);
+        })?;
     }
 
     // Độ dài thật của mọi cue có audio (kể cả cache hit chưa có số liệu).

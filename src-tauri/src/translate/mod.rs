@@ -219,6 +219,26 @@ pub fn translate_segments_voi_so_tay(
     tgt: &str,
     so_tay: &crate::so_tay::SoTay,
 ) -> Result<Vec<Segment>, PipelineError> {
+    translate_segments_co_tien_do(p, segs, src, tgt, so_tay, &mut |_, _| {})
+}
+
+/// Như trên nhưng báo tiến độ sau MỖI LÔ: `(số câu đã dịch, tổng số câu)`.
+///
+/// Báo theo lô chứ không theo câu vì một request trả về cả lô 40 câu cùng
+/// lúc — không có gì để báo ở giữa. Lô 40 câu mất khoảng 26 giây, nên thanh
+/// tiến độ nhích mỗi nửa phút; đủ để người dùng biết app còn sống, mà đó
+/// chính là việc nó phải làm.
+///
+/// Nuốt lỗi của callback là cố ý: vẽ màn hình hỏng không được làm hỏng bản
+/// dịch đã tốn vài phút.
+pub fn translate_segments_co_tien_do(
+    p: &dyn TranslateProvider,
+    segs: &[Segment],
+    src: &str,
+    tgt: &str,
+    so_tay: &crate::so_tay::SoTay,
+    on_tien_do: &mut dyn FnMut(usize, usize),
+) -> Result<Vec<Segment>, PipelineError> {
     let mut out = Vec::with_capacity(segs.len());
     let bs = p.batch_size().max(1);
     for chunk in segs.chunks(bs) {
@@ -311,6 +331,7 @@ pub fn translate_segments_voi_so_tay(
                 text: t,
             });
         }
+        on_tien_do(out.len(), segs.len());
     }
     Ok(out)
 }

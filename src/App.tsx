@@ -237,9 +237,30 @@ type TenTim = {
   dang_ngo: boolean;
 };
 
+/// Tiến độ một bước đang chạy. `tong === 0` nghĩa là KHÔNG ĐẾM ĐƯỢC —
+/// hiện đồng hồ chứ đừng bịa phần trăm.
+type TienDo = { buoc: string; xong: number; tong: number };
+
+const TEN_BUOC: Record<string, string> = {
+  dich: "Đang dịch",
+  long_tieng: "Đang lồng tiếng",
+};
+
+/// mm:ss cho đồng hồ chạy.
+function dongHo(giay: number): string {
+  const m = Math.floor(giay / 60);
+  const g = giay % 60;
+  return `${m}:${String(g).padStart(2, "0")}`;
+}
+
 function App() {
   const [status, setStatus] = useState("");
   const [running, setRunning] = useState(false);
+  const [tienDo, setTienDo] = useState<TienDo | null>(null);
+  // Giây đã trôi của lần chạy hiện tại. Có bước không đếm được (nhận dạng lời
+  // thoại chạy một lượt trong sherpa), mà câu hỏi thật của người dùng là "app
+  // còn sống không" — một con số nhúc nhích mỗi giây trả lời được câu đó.
+  const [giayChay, setGiayChay] = useState(0);
   // Bước đang mở. Chỉ đổi được khi `running` tắt — xem thanh tab ở phần render.
   const [tab, setTab] = useState(1);
   const [projectDir, setProjectDir] = useState("");
@@ -314,6 +335,20 @@ function App() {
     });
     return () => { un.then((f) => f()); };
   }, []);
+
+  useEffect(() => {
+    const un = listen<TienDo>("tien_do", (e) => setTienDo(e.payload));
+    return () => { un.then((f) => f()); };
+  }, []);
+
+  // Đồng hồ chỉ chạy khi có việc. Dọn tiến độ cũ lúc bắt đầu, nếu không lần
+  // chạy mới sẽ hiện con số của lần trước trong mấy giây đầu.
+  useEffect(() => {
+    if (!running) { setTienDo(null); setGiayChay(0); return; }
+    setGiayChay(0);
+    const id = setInterval(() => setGiayChay((g) => g + 1), 1000);
+    return () => clearInterval(id);
+  }, [running]);
 
   useEffect(() => {
     const un = listen<{ percent: number }>("download_progress", (e) => {
@@ -859,7 +894,13 @@ function App() {
         })}
       </nav>
       {running && (
-        <p className="muted tabs-khoa">Đang chạy — không chuyển bước được.</p>
+        <p className="muted tabs-khoa">
+          {tienDo && tienDo.tong > 0
+            ? `${TEN_BUOC[tienDo.buoc] ?? tienDo.buoc} ${tienDo.xong}/${tienDo.tong} câu` +
+              ` (${Math.floor((tienDo.xong / tienDo.tong) * 100)}%)`
+            : "Đang chạy"}
+          {" · "}{dongHo(giayChay)} — không chuyển bước được.
+        </p>
       )}
 
       {tab === 1 && (

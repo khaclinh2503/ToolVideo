@@ -653,3 +653,33 @@ fn ui_noi_ro_bang_han_viet_chi_la_y_kien_thu_hai() {
         "phải nói rõ lệch bảng không có nghĩa là model sai"
     );
 }
+
+/// Người dùng cần biết app còn sống hay đã treo. Hai mức, và CẢ HAI phải có:
+/// đếm được thì hiện `đã/tổng`, không đếm được thì hiện đồng hồ.
+#[test]
+fn ui_hien_tien_do_dem_duoc_va_dong_ho_khi_khong_dem_duoc() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let i = tsx
+        .find("tabs-khoa")
+        .expect("phải có banner báo đang chạy");
+    let sau = &tsx[i..i + 700.min(tsx.len() - i)];
+    assert!(
+        sau.contains("tienDo.xong") && sau.contains("tienDo.tong"),
+        "banner phải hiện số câu đã xong trên tổng số: {sau}"
+    );
+    assert!(sau.contains("dongHo("), "banner phải có đồng hồ chạy: {sau}");
+}
+
+/// `tong === 0` nghĩa là KHÔNG ĐẾM ĐƯỢC (nhận dạng lời thoại chạy một lượt
+/// trong sherpa). Vờ như đếm được là nói dối người dùng, nên phần trăm chỉ
+/// được tính khi mẫu số thật sự lớn hơn 0 — và chia cho 0 thì ra NaN%.
+#[test]
+fn ui_khong_bia_phan_tram_khi_khong_dem_duoc() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let i = tsx.find("tabs-khoa").expect("phải có banner");
+    let sau = &tsx[i..i + 700.min(tsx.len() - i)];
+    assert!(
+        sau.contains("tienDo.tong > 0"),
+        "phải kiểm mẫu số trước khi tính phần trăm: {sau}"
+    );
+}

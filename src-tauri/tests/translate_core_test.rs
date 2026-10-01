@@ -332,3 +332,44 @@ fn dich_lai_sot_nhieu_hon_thi_khong_duoc_nhan() {
     let out = translate_segments(&p, &segs(3), "zh", "vi").unwrap();
     assert_eq!(out[0].text, "nghỉ 半天 t0");
 }
+
+/// Tiến độ phải báo sau MỖI LÔ, với mẫu số là tổng số cue của cả file.
+///
+/// Mẫu số sai là thanh tiến độ nói dối: lấy nhầm số cue của một lô thì nó chạy
+/// 0→100% rồi nhảy về 0, lặp đi lặp lại.
+#[test]
+fn bao_tien_do_sau_moi_lo_voi_mau_so_la_tong_so_cue() {
+    use app_lib::translate::translate_segments_co_tien_do;
+    let p = Fake { calls: RefCell::new(vec![]), bad_len: false };
+    let mut moc: Vec<(usize, usize)> = Vec::new();
+    // Fake có batch_size 3, nên 7 cue chia thành 3 + 3 + 1.
+    translate_segments_co_tien_do(
+        &p,
+        &segs(7),
+        "zh",
+        "vi",
+        &app_lib::so_tay::SoTay::default(),
+        &mut |xong, tong| moc.push((xong, tong)),
+    )
+    .unwrap();
+    assert_eq!(moc, vec![(3, 7), (6, 7), (7, 7)]);
+}
+
+/// Lô cuối phải chốt đúng ở 100%, kể cả khi tổng số cue chia hết cho cỡ lô —
+/// nếu không thanh tiến độ đứng ở 99% mãi và người dùng tưởng còn đang chạy.
+#[test]
+fn lo_cuoi_chot_dung_o_tong_so_cue() {
+    use app_lib::translate::translate_segments_co_tien_do;
+    let p = Fake { calls: RefCell::new(vec![]), bad_len: false };
+    let mut moc: Vec<(usize, usize)> = Vec::new();
+    translate_segments_co_tien_do(
+        &p,
+        &segs(6),
+        "zh",
+        "vi",
+        &app_lib::so_tay::SoTay::default(),
+        &mut |xong, tong| moc.push((xong, tong)),
+    )
+    .unwrap();
+    assert_eq!(moc.last(), Some(&(6, 6)));
+}

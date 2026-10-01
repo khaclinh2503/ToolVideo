@@ -49,6 +49,25 @@ fn resolve_engine_ctx() -> Result<EngineCtx, String> {
     })
 }
 
+/// Tiến độ của một bước đang chạy.
+///
+/// `tong = 0` nghĩa là KHÔNG ĐẾM ĐƯỢC — giao diện phải hiện đồng hồ chứ đừng
+/// bịa ra phần trăm. Nhận dạng lời thoại chạy một lượt trong sherpa nên nó
+/// không có gì để đếm, và vờ như có là nói dối người dùng.
+#[derive(Clone, serde::Serialize)]
+pub struct TienDoEvent {
+    pub buoc: &'static str,
+    pub xong: usize,
+    pub tong: usize,
+}
+
+/// Gửi tiến độ lên giao diện; nuốt lỗi vì vẽ màn hình hỏng không được làm
+/// hỏng công việc đang chạy.
+fn bao_tien_do(app: &tauri::AppHandle, buoc: &'static str, xong: usize, tong: usize) {
+    use tauri::Emitter;
+    let _ = app.emit("tien_do", TienDoEvent { buoc, xong, tong });
+}
+
 #[tauri::command]
 pub async fn run_stt(video_path: String, lang: String) -> Result<SttResultDto, String> {
     let dto = tauri::async_runtime::spawn_blocking(move || -> Result<SttResultDto, String> {
@@ -87,6 +106,7 @@ pub async fn run_stt(video_path: String, lang: String) -> Result<SttResultDto, S
 
 #[tauri::command]
 pub async fn run_translate(
+    app: tauri::AppHandle,
     project_dir: String,
     provider: String,
     src: String,
@@ -96,8 +116,14 @@ pub async fn run_translate(
         let cfg = crate::config::load_config();
         let p = crate::translate::make_provider(&provider, &cfg.translate, &models_dir())
             .map_err(|e| e.to_string())?;
-        let r = crate::pipeline::run_translate_stage(Path::new(&project_dir), p.as_ref(), &src, &tgt)
-            .map_err(|e| e.to_string())?;
+        let r = crate::pipeline::run_translate_stage_co_tien_do(
+            Path::new(&project_dir),
+            p.as_ref(),
+            &src,
+            &tgt,
+            &mut |xong, tong| bao_tien_do(&app, "dich", xong, tong),
+        )
+        .map_err(|e| e.to_string())?;
         // Trim khớp với run_translate_stage: nó đã trim `tgt` trước khi dựng
         // tên file translated.<tgt>.srt, nên metadata phải trim y hệt — nếu
         // không, status() tra theo tên file còn khoảng trắng và has_translation
@@ -660,18 +686,23 @@ pub async fn run_export(
 }
 
 #[tauri::command]
-pub async fn run_tts(project_dir: String, tgt: String) -> Result<TtsResultDto, String> {
+pub async fn run_tts(
+    app: tauri::AppHandle,
+    project_dir: String,
+    tgt: String,
+) -> Result<TtsResultDto, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<TtsResultDto, String> {
         let cfg = crate::config::load_config();
         let models = models_dir();
         let p = crate::tts::make_provider(&cfg.tts.default_provider, &cfg.tts, &models)
             .map_err(|e| e.to_string())?;
-        let r = crate::pipeline::run_tts_stage(
+        let r = crate::pipeline::run_tts_stage_co_tien_do(
             Path::new(&project_dir),
             p.as_ref(),
             &cfg.tts.voice,
             &crate::tts::ScalePlan::uniform(cfg.tts.length_scale),
             &tgt,
+            &mut |xong, tong| bao_tien_do(&app, "long_tieng", xong, tong),
         )
         .map_err(|e| e.to_string())?;
         touch_project(&project_dir, |_| {});
