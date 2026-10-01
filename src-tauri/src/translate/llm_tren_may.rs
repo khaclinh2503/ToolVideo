@@ -1,4 +1,4 @@
-//! Nhà cung cấp dịch chạy trên máy: `llama-server` + Qwen3-14B.
+//! Nhà cung cấp dịch chạy trên máy: `llama-server` + Gemma-3-12B.
 //!
 //! Provider SỞ HỮU server làm một trường. Nhờ vậy `Box<dyn TranslateProvider>`
 //! bị thả lúc dịch xong là `Drop` của `LlamaServer` giết tiến trình và trả lại
@@ -15,21 +15,26 @@ use std::time::Duration;
 pub const ID: &str = "llm_tren_may";
 
 /// Tên file model trong `models/llm/gguf`, phải khớp `files[].to` của mục
-/// `qwen3-14b` trong components.json.
+/// `gemma-3-12b` trong components.json.
 ///
-/// ĐÃ THỬ gemma-3-12b-it-Q5_K_M, CHƯA ĐỔI, và lý do chưa đổi KHÔNG phải vì
-/// Gemma kém. Đo lại cho đúng thì Gemma hoà Qwen ở độ khớp hàng (18/19 mốc neo
-/// số, y hệt nhau), thắng ở xưng hô (7/8 ca so với 5/8 — nó không bị bệnh bám
-/// cặp xưng hô của item đầu lô), thắng ở chữ Hán còn sót (0 cue so với 1), nhẹ
-/// hơn 2 GB, cùng tốc độ. Đổi sang Gemma là một đề xuất còn mở, chờ quyết định
-/// vì còn phải sửa components.json và ghim lại sha256.
+/// ĐÃ ĐỔI TỪ Qwen3-14B-Q5_K_M sang đây. Lý do, đo trên 193 cue phim Trung thật:
 ///
-/// Một kết luận cũ ở đây từng nói Gemma "lệch hàng 8/19" — SAI, và sai vì công
-/// cụ đo chứ không vì model: Gemma trả chuỗi rỗng cho mấy cue rác chỉ có dấu
-/// chấm, script đo lại bỏ qua cue rỗng khi đọc file nên mọi cue phía sau tụt
-/// chỉ số đúng bằng số cue rỗng. Bài học: đếm số cue đọc ra trước khi tin bất
-/// kỳ con số nào tính trên chỉ số cue.
-pub const TEN_GGUF: &str = "Qwen3-14B-Q5_K_M.gguf";
+/// * Xưng hô: Gemma 7/8 ca đúng, Qwen 5/8. Qwen bám cặp xưng hô của item đầu lô
+///   rồi áp cho cả lô — lính báo cáo chỉ huy cũng xưng "con". Năm cách sửa
+///   prompt đều thất bại; đổi model là cách duy nhất chữa được.
+/// * Chữ Hán còn sót: Gemma 0 cue, Qwen 1 cue.
+/// * Khớp hàng: hoà, 18/19 mốc neo số cho cả hai.
+/// * Nhẹ hơn 2 GB, cùng tốc độ.
+///
+/// Gemma trả chuỗi RỖNG cho cue rác chỉ có dấu chấm, Qwen trả lại ".". Rỗng là
+/// đúng hơn: `pipeline.rs` bỏ qua cue rỗng khi sinh tiếng, còn "." thì TTS đi
+/// đọc một dấu chấm.
+///
+/// Một kết luận cũ từng nói Gemma "lệch hàng 8/19" — SAI, và sai vì công cụ đo
+/// chứ không vì model: script đo lại bỏ qua cue rỗng khi đọc file nên mọi cue
+/// phía sau tụt chỉ số đúng bằng số cue rỗng. Đếm số cue đọc ra trước khi tin
+/// bất kỳ con số nào tính trên chỉ số cue.
+pub const TEN_GGUF: &str = "gemma-3-12b-it-Q5_K_M.gguf";
 
 /// Nạp 9,8 GB lên VRAM mất khoảng 15 giây trên máy đích. 180 giây là rộng rãi
 /// cho cả trường hợp đĩa chậm hoặc VRAM đang bị việc khác chiếm, mà vẫn không

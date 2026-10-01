@@ -3,8 +3,8 @@
 //! Lệch hàng là lỗi nguy hiểm nhất của đường dịch: nhà cung cấp trả đủ số item,
 //! chỉ số liên tục từ 0, không cue nào rỗng — mọi lớp kiểm cũ đều xanh — nhưng
 //! nội dung đã dịch chuyển đi vài dòng, nên phụ đề chạy sai với tiếng nói suốt
-//! phim. Đo thật trên Gemma-3-12B: giữ đúng vị trí 8/19 mốc neo số, Qwen3-14B
-//! 19/19.
+//! phim. Chưa gặp model nào thật sự lệch, nhưng hậu quả quá nặng để chờ gặp
+//! rồi mới chặn — và người dùng không tự nhận ra được, vì từng câu đọc vẫn xuôi.
 
 use app_lib::error::PipelineError;
 use app_lib::srt::Segment;

@@ -13,7 +13,7 @@
 //! Tuỳ chọn: `DVL_E2E_NHA_CUNG_CAP` (mặc định `llm_tren_may`),
 //! `DVL_E2E_NGU_CANH` (mặc định `phim`), `DVL_E2E_RA` (nơi ghi bản dịch).
 
-use app_lib::config::{models_dir, TranslateConfig};
+use app_lib::config::{models_dir, OpenAiConfig, TranslateConfig};
 use app_lib::srt::{parse_srt, write_srt};
 use app_lib::translate::{con_chu_dong_a, make_provider, translate_segments};
 
@@ -29,9 +29,14 @@ fn dich_file_srt_that_bang_duong_chay_cua_app() {
     let segs = parse_srt(&goc).expect("SRT hỏng");
     assert!(!segs.is_empty(), "file SRT không có cue nào");
 
-    let mut cfg = TranslateConfig::default();
-    cfg.target_lang = std::env::var("DVL_E2E_TGT").unwrap_or_else(|_| "vi".into());
-    cfg.openai.context = std::env::var("DVL_E2E_NGU_CANH").unwrap_or_else(|_| "phim".into());
+    let cfg = TranslateConfig {
+        target_lang: std::env::var("DVL_E2E_TGT").unwrap_or_else(|_| "vi".into()),
+        openai: OpenAiConfig {
+            context: std::env::var("DVL_E2E_NGU_CANH").unwrap_or_else(|_| "phim".into()),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
     let ma = std::env::var("DVL_E2E_NHA_CUNG_CAP").unwrap_or_else(|_| "llm_tren_may".into());
 
     let bat_dau = std::time::Instant::now();
@@ -92,8 +97,10 @@ fn sua_cue_sot_chu_han_an_bao_nhieu_lan() {
         ("妈的，你他妈给我滚。", "他妈"),
     ];
 
-    let mut cfg = TranslateConfig::default();
-    cfg.openai.context = "phim".into();
+    let cfg = TranslateConfig {
+        openai: OpenAiConfig { context: "phim".into(), ..Default::default() },
+        ..Default::default()
+    };
     let p = make_provider("llm_tren_may", &cfg, &models_dir()).expect("không dựng được");
 
     let mut sach = 0;

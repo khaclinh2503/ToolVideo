@@ -527,8 +527,8 @@ fn ui_noi_ro_lan_dau_phai_nap_model() {
 }
 
 /// Con số dung lượng trên banner là lời hứa với người dùng: họ đọc nó rồi quyết
-/// định bấm "Tải bộ công cụ" bây giờ hay để lúc khác. M9 thêm ~10,4 GB
-/// (llama.cpp + Qwen3-14B) nên "570 MB" cũ biến một lần tải hàng giờ thành một
+/// định bấm "Tải bộ công cụ" bây giờ hay để lúc khác. M9 thêm ~8,3 GB
+/// (llama.cpp + Gemma-3-12B) nên "570 MB" cũ biến một lần tải hàng giờ thành một
 /// bất ngờ khó chịu. Chốt con số vào `components.json` để nó không trôi lần nữa.
 #[test]
 fn ui_noi_dung_luong_bo_cong_cu_khop_components_json() {
@@ -566,7 +566,7 @@ fn ui_noi_dung_luong_bo_cong_cu_khop_components_json() {
 }
 
 /// Người dùng phải biết vì sao lần dịch đầu chờ lâu VÀ rằng server tự tắt sau
-/// đó — nếu không họ tưởng app treo, hoặc tưởng 13,5 GB VRAM bị giữ mãi.
+/// đó — nếu không họ tưởng app treo, hoặc tưởng 11 GB VRAM bị giữ mãi.
 ///
 /// Bắt một mẩu chỉ có trong ghi chú của `llm_tren_may`: "nạp model" một mình
 /// còn khớp cả ghi chú của bước lồng tiếng, nên xoá hẳn ghi chú này mà bộ kiểm

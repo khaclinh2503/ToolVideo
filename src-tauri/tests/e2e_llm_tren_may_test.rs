@@ -10,7 +10,7 @@
 //! thể rơi vào đúng cửa sổ chụp ảnh đó và làm assert đếm PID trật đi. Chạy nối
 //! tiếp cũng khiến VRAM chỉ cần tính cho một instance một lúc.
 //!
-//! Cần bộ công cụ đã cài (llama-server.exe + Qwen3-14B-Q5_K_M.gguf) và một GPU
+//! Cần bộ công cụ đã cài (llama-server.exe + gemma-3-12b-it-Q5_K_M.gguf) và một GPU
 //! đủ ~14 GB VRAM trống cho MỘT instance (đo thật: 13,5/16,3 GB). Đây là số
 //! đúng cho lệnh --test-threads=1 ở trên. Nếu ai đó bỏ cờ đó và để hai test
 //! chạy song song, cần gấp đôi: ~27 GB cho hai instance cùng lúc — thiếu VRAM

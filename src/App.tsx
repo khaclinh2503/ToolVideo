@@ -719,7 +719,7 @@ function App() {
           <button type="button" onClick={onEnsure} disabled={running}>Tải bộ công cụ</button>
           <span className="muted">
             ffmpeg, nhận dạng giọng nói, giọng đọc và model dịch chạy trên máy —
-            khoảng 11,5 GB, chỉ cần tải một lần. Riêng model dịch đã chiếm gần 10 GB
+            khoảng 9,5 GB, chỉ cần tải một lần. Riêng model dịch đã chiếm hơn 8 GB
             nên lần tải đầu mất hàng giờ nếu mạng chậm; cứ để chạy nền. Bản này mới
             thêm phần dịch trên máy, nên máy đã cài đủ từ trước vẫn thấy dòng này
             hiện lại. Mọi bước bên dưới đều cần bộ này.
@@ -892,8 +892,8 @@ function App() {
         {provider === "llm_tren_may" && (
           <p className="muted">
             Dịch chạy hẳn trên GPU của máy, không gửi gì ra mạng. Đo thật trên máy này:
-            khoảng 34 giây mỗi 40 câu, chiếm 13,5 GB VRAM. Lần dịch đầu chờ thêm khoảng
-            15 giây để nạp model; xong là tự tắt để trả lại VRAM.
+            khoảng 26 giây mỗi 40 câu, chiếm khoảng 11 GB VRAM. Lần dịch đầu chờ thêm
+            khoảng 6 giây để nạp model; xong là tự tắt để trả lại VRAM.
           </p>
         )}
         {/* Ngữ cảnh đi thẳng vào prompt hệ thống, nên nhà cung cấp nào dùng LLM

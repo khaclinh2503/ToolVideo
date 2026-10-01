@@ -203,8 +203,9 @@ pub fn translate_segments(
 
         // Lệch hàng: nhà cung cấp trả đủ số item, chỉ số vẫn liên tục, nhưng
         // nội dung dịch chuyển đi vài dòng — phụ đề chạy sai với tiếng nói suốt
-        // phim mà không lớp kiểm nào cũ bắt được. Đo thật trên Gemma-3-12B: giữ
-        // đúng vị trí 8/19 mốc neo số, Qwen3-14B 19/19.
+        // phim mà không lớp kiểm nào cũ bắt được. Chưa bắt gặp model nào thật sự
+        // lệch — cả Gemma lẫn Qwen đều 18/19 mốc neo trên phim mẫu — nhưng hậu
+        // quả quá nặng để chờ gặp rồi mới chặn.
         //
         // Thử lại cả lô trước khi bỏ cuộc, nhưng CHỈ nhận khi lệch ít đi — hệt
         // luật dùng cho cue sót chữ Hán.

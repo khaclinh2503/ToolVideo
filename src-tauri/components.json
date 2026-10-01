@@ -221,11 +221,11 @@
     "files": [{ "from": "**", "to": "llm/bin" }]
   },
   {
-    "id": "qwen3-14b",
-    "url": "https://huggingface.co/Qwen/Qwen3-14B-GGUF/resolve/main/Qwen3-14B-Q5_K_M.gguf",
-    "sha256": "e7c9aba1129ca2936be9eca01419d9f86af40e08caa01230d5574b34d08e3e31",
-    "size": 10514569568,
+    "id": "gemma-3-12b",
+    "url": "https://huggingface.co/unsloth/gemma-3-12b-it-GGUF/resolve/d15e4c7dc21dc55d56bf8549db57a71ad8a2a35d/gemma-3-12b-it-Q5_K_M.gguf",
+    "sha256": "ea6d227c4983534b4661a0ada08328c21afa07c1e3c316fb55c172776cc808b3",
+    "size": 8445036896,
     "archive": "raw",
-    "files": [{ "from": null, "to": "llm/gguf/Qwen3-14B-Q5_K_M.gguf" }]
+    "files": [{ "from": null, "to": "llm/gguf/gemma-3-12b-it-Q5_K_M.gguf" }]
   }
 ]

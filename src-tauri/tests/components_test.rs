@@ -21,7 +21,7 @@ fn manifest_liet_ke_du_moi_artifact_va_dung_hinh_dang() {
     // hay bớt một artifact thì phải sửa cả danh sách id bên dưới, để không ai
     // lặng lẽ thêm một thứ được tải về rồi đem chạy mà không ai soát.
     // 10 (M1-M6) + 15 file model VieNeu-TTS đã pin ở Task 4 (M7)
-    // + 3 (llama-bin, llama-cudart, qwen3-14b) ở Task 2 (M9) = 28.
+    // + 3 (llama-bin, llama-cudart, gemma-3-12b) ở Task 2 (M9) = 28.
     assert_eq!(s.len(), 28, "components.json phải có đủ 28 artifact");
 
     let ids: Vec<&str> = s.iter().map(|c| c.id.as_str()).collect();
@@ -46,7 +46,7 @@ fn manifest_liet_ke_du_moi_artifact_va_dung_hinh_dang() {
         "vieneu-moss_audio_tokenizer_encode-onnx",
         "llama-bin",
         "llama-cudart",
-        "qwen3-14b",
+        "gemma-3-12b",
     ] {
         assert!(ids.contains(&want), "thiếu component '{want}' trong {ids:?}");
     }
@@ -596,7 +596,7 @@ fn manifest_co_du_bo_llm_tren_may() {
     let lay = |id: &str| ss.iter().find(|s| s.id == id)
         .unwrap_or_else(|| panic!("thiếu component '{id}'"));
 
-    for id in ["llama-bin", "llama-cudart", "qwen3-14b"] {
+    for id in ["llama-bin", "llama-cudart", "gemma-3-12b"] {
         let s = lay(id);
         assert!(!s.sha256.trim().is_empty(), "'{id}' chưa ghim sha256");
         assert!(s.size > 0, "'{id}' chưa ghi size");
@@ -611,8 +611,8 @@ fn manifest_co_du_bo_llm_tren_may() {
         assert_eq!(s.files[0].to, "llm/bin", "'{id}' phải đổ vào llm/bin");
     }
 
-    let g = lay("qwen3-14b");
-    assert_eq!(g.files[0].to, "llm/gguf/Qwen3-14B-Q5_K_M.gguf");
+    let g = lay("gemma-3-12b");
+    assert_eq!(g.files[0].to, "llm/gguf/gemma-3-12b-it-Q5_K_M.gguf");
 }
 
 /// Bản CUDA phải là 13.4. RTX 50-series là Blackwell (sm_120); bản 12.4 không
