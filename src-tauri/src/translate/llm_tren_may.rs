@@ -77,6 +77,14 @@ impl LlmTrenMay {
     }
 }
 
+/// PHẢI chuyển tiếp MỌI phương thức của `TranslateProvider` xuống `inner`.
+///
+/// Quên một cái là nó lặng lẽ rơi về bản mặc định của trait, và bản mặc định
+/// thường là một đường tệ hơn chứ không phải một lỗi — nên không ai thấy. Đã
+/// dính đúng một lần: `dich_lai_sua_loi` không được chuyển tiếp, nên mọi lần
+/// sửa cue qua `llm_tren_may` đều rơi về nhánh GỬI LẠI Y NGUYÊN thay vì gửi
+/// yêu cầu sửa lỗi, trong khi bộ kiểm bằng mock vẫn xanh vì nó gọi thẳng
+/// `OpenAiCompat`. Bài `uy_quyen_test` đọc mã nguồn để chặn chuyện đó tái diễn.
 impl TranslateProvider for LlmTrenMay {
     fn id(&self) -> &'static str {
         ID
@@ -91,5 +99,29 @@ impl TranslateProvider for LlmTrenMay {
         tgt: &str,
     ) -> Result<Vec<String>, PipelineError> {
         self.inner.translate_batch(texts, src, tgt)
+    }
+    fn translate_batch_voi_so_tay(
+        &self,
+        texts: &[&str],
+        src: &str,
+        tgt: &str,
+        so_tay: &[&crate::so_tay::Muc],
+    ) -> Result<Vec<String>, PipelineError> {
+        self.inner.translate_batch_voi_so_tay(texts, src, tgt, so_tay)
+    }
+    fn dich_lai_sua_loi(
+        &self,
+        text: &str,
+        mo_ta_loi: &str,
+        src: &str,
+        tgt: &str,
+    ) -> Result<String, PipelineError> {
+        self.inner.dich_lai_sua_loi(text, mo_ta_loi, src, tgt)
+    }
+    fn liet_ke_ten_rieng(
+        &self,
+        van_ban: &str,
+    ) -> Result<Vec<super::TenRieng>, PipelineError> {
+        self.inner.liet_ke_ten_rieng(van_ban)
     }
 }

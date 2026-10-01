@@ -575,3 +575,27 @@ input[type="color"] {
   pointer-events: none;
   white-space: pre-wrap;
 }
+
+/* Sổ tay tên riêng ở Bước 3. */
+.so-tay {
+  border: 1px solid var(--vien, #3a3a3a);
+  border-radius: 6px;
+  padding: 10px;
+  margin-top: 10px;
+}
+.so-tay input {
+  flex: 1;
+  min-width: 0;
+}
+.ten-tim {
+  border-top: 1px dashed var(--vien, #3a3a3a);
+  margin-top: 8px;
+  padding-top: 8px;
+}
+/* Chỗ bảng Hán-Việt đọc khác model — đáng ngó, KHÔNG phải là lỗi. Dùng màu
+   nhắc nhở chứ không dùng màu báo lỗi, vì bảng thiếu 21% số chữ và trộn âm Nôm
+   với âm Hán-Việt nên nó sai nhiều hơn model. */
+.canh-bao {
+  color: #d8a657;
+  white-space: nowrap;
+}

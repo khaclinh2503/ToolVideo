@@ -15,7 +15,7 @@
 
 use app_lib::config::{models_dir, OpenAiConfig, TranslateConfig};
 use app_lib::srt::{parse_srt, write_srt};
-use app_lib::translate::{con_chu_dong_a, make_provider, translate_segments};
+use app_lib::translate::{con_chu_dong_a, make_provider, translate_segments_voi_so_tay};
 
 #[test]
 #[ignore]
@@ -49,7 +49,17 @@ fn dich_file_srt_that_bang_duong_chay_cua_app() {
         bat_dau.elapsed().as_secs_f32()
     );
 
-    let ra = translate_segments(p.as_ref(), &segs, "auto", &cfg.target_lang).expect("dịch lỗi");
+    // Đọc sổ tay từ chính thư mục dự án, như `run_translate_stage` làm. Gọi
+    // `translate_segments` trần ở đây thì bài e2e đi một đường khác với app, và
+    // mọi kết luận về sổ tay đều vô nghĩa — đã dính đúng một lần.
+    let du_an = std::path::Path::new(&duong_dan)
+        .parent()
+        .and_then(|p| p.parent())
+        .expect("suy ra được thư mục dự án từ đường dẫn SRT");
+    let so = app_lib::so_tay::doc(du_an);
+    eprintln!("sổ tay: {} mục", so.muc.len());
+    let ra = translate_segments_voi_so_tay(p.as_ref(), &segs, "auto", &cfg.target_lang, &so)
+        .expect("dịch lỗi");
     assert_eq!(ra.len(), segs.len(), "số cue ra khác số cue vào");
 
     // Đúng thứ pipeline thật quan tâm: LỜI NÓI không được rụng.

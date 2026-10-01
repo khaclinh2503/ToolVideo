@@ -1,4 +1,4 @@
-use super::{map_http_err, TranslateProvider};
+use super::{map_http_err, TenRieng, TranslateProvider};
 use crate::error::PipelineError;
 use serde::{Deserialize, Serialize};
 
@@ -348,6 +348,62 @@ impl TranslateProvider for OpenAiCompat {
 
     fn batch_size(&self) -> usize {
         40
+    }
+
+    /// Hỏi một lần cho cả phim: một request, đọc hết phụ đề, trả danh sách.
+    ///
+    /// Hỏi một lần chứ không hỏi theo lô chính là điểm của lớp này — dịch theo
+    /// lô là lý do cùng một cái tên ra hai kiểu ở hai chỗ.
+    fn liet_ke_ten_rieng(&self, van_ban: &str) -> Result<Vec<TenRieng>, PipelineError> {
+        let he_thong = "Bạn là trợ lý biên tập phụ đề. Đọc toàn bộ lời thoại rồi \
+             liệt kê MỌI tên riêng: tên người, tên vật nuôi, biệt danh, địa danh, \
+             tên thương hiệu. Với mỗi tên, cho cách gọi tiếng Việt: tên người, vật \
+             nuôi, biệt danh và địa danh thì phiên âm Hán-Việt; tên thương hiệu thì \
+             để nguyên dạng gốc hoặc pinyin, không dịch nghĩa. Bỏ qua danh từ chung. \
+             Trả về JSON đúng dạng \
+             {\"items\":[{\"goc\":\"<nguyên văn>\",\"dich\":\"<tiếng Việt>\",\"loai\":\"<người|vật nuôi|địa danh|thương hiệu>\"}]}, \
+             không thêm giải thích. Ô \"dich\" PHẢI là tiếng Việt, tuyệt đối không \
+             chép lại chữ Hán. Mỗi tên kể MỘT lần. Ví dụ: \
+             {\"items\":[{\"goc\":\"球球\",\"dich\":\"Cầu Cầu\",\"loai\":\"vật nuôi\"},\
+             {\"goc\":\"林燕\",\"dich\":\"Lâm Yến\",\"loai\":\"người\"}]}";
+        let body = serde_json::json!({
+            "model": self.model,
+            "temperature": 0.2,
+            "max_tokens": 2048,
+            "messages": [
+                {"role": "system", "content": he_thong},
+                {"role": "user", "content": van_ban},
+            ],
+            "response_format": {"type": "json_object"},
+            "reasoning_effort": "low",
+            "chat_template_kwargs": {"thinking": false},
+        });
+        let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
+        let resp = crate::translate::http_client_cho_url(&url, crate::translate::CHO_LLM)?
+            .post(&url)
+            .bearer_auth(&self.api_key)
+            .json(&body)
+            .send()
+            .map_err(|e| map_http_err(self.chu_so_huu, e))?;
+        let status = resp.status().as_u16();
+        let text = resp.text().map_err(|e| map_http_err(self.chu_so_huu, e))?;
+        if !(200..300).contains(&status) {
+            return Err(self.perr(Some(status), text.chars().take(200).collect::<String>()));
+        }
+        let chat: ChatResp = serde_json::from_str(&text)
+            .map_err(|_| self.perr(Some(200), text.chars().take(200).collect::<String>()))?;
+        let noi_dung = chat
+            .choices
+            .first()
+            .map(|c| c.message.content.as_str())
+            .ok_or_else(|| self.perr(Some(200), "không có choices"))?;
+        #[derive(serde::Deserialize)]
+        struct Ra {
+            items: Vec<TenRieng>,
+        }
+        let ra: Ra = serde_json::from_str(loc_khoi_json(noi_dung))
+            .map_err(|_| self.perr(Some(200), noi_dung.chars().take(200).collect::<String>()))?;
+        Ok(crate::translate::don_ten_rieng(ra.items))
     }
 
     fn translate_batch_voi_so_tay(

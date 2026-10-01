@@ -226,6 +226,17 @@ function voiceLabel(v: VoiceDto): string {
   return `${sao}${v.ten} — ${v.gioi} · ${v.mien} · ${v.phongCach}`;
 }
 
+type MucSoTay = { goc: string; dich: string; ghi_chu: string };
+
+/// Một tên model tìm được, kèm ý kiến của bảng Hán-Việt.
+type TenTim = {
+  goc: string;
+  dich: string;
+  loai: string;
+  bang_doc: string;
+  dang_ngo: boolean;
+};
+
 function App() {
   const [status, setStatus] = useState("");
   const [running, setRunning] = useState(false);
@@ -478,6 +489,55 @@ function App() {
     if (!cfg) return;
     try { await invoke("save_config", { cfg }); setStatus("Đã lưu cấu hình."); } catch (e) { setStatus(`Lỗi lưu: ${String(e)}`); }
   }
+
+  const [soTay, setSoTay] = useState<MucSoTay[]>([]);
+  const [tenTim, setTenTim] = useState<TenTim[]>([]);
+  const [dangTimTen, setDangTimTen] = useState(false);
+
+  // Sổ tay tên riêng của dự án. Giữ nguyên cả sổ trong state rồi ghi cả file:
+  // sổ nhỏ, mà ghi cả file thì không có đường nào để giao diện và đĩa lệch nhau.
+  async function napSoTay(dir: string) {
+    try {
+      const s: any = await invoke("so_tay_doc", { projectDir: dir });
+      setSoTay(s?.muc ?? []);
+    } catch {
+      setSoTay([]);
+    }
+  }
+
+  async function luuSoTay(muc: MucSoTay[]) {
+    setSoTay(muc);
+    if (!projectDir) return;
+    try {
+      await invoke("so_tay_ghi", { projectDir, soTay: { version: 1, muc } });
+    } catch (e) {
+      setStatus(`Không ghi được sổ tay: ${e}`);
+    }
+  }
+
+  async function onTuTimTen() {
+    if (!projectDir) { setStatus("Chọn dự án trước."); return; }
+    setDangTimTen(true);
+    setStatus("Đang đọc phụ đề để tìm tên riêng…");
+    try {
+      const ds: TenTim[] = await invoke("so_tay_tu_tim", { projectDir, provider });
+      setTenTim(ds);
+      setStatus(ds.length ? `Tìm được ${ds.length} tên riêng. Xem lại rồi bấm Thêm vào sổ.`
+                          : "Không tìm thấy tên riêng nào.");
+    } catch (e) {
+      setStatus(`Không tìm được tên riêng: ${e}`);
+    } finally {
+      setDangTimTen(false);
+    }
+  }
+
+  // Đổi dự án là đổi sổ tay: tên riêng thuộc về từng phim. Xoá sạch gợi ý đang
+  // hiện dở, nếu không danh sách của phim cũ sẽ được bấm thêm vào sổ phim mới.
+  useEffect(() => {
+    setTenTim([]);
+    if (!projectDir) { setSoTay([]); return; }
+    napSoTay(projectDir);
+  }, [projectDir]);
 
   async function onTranslate() {
     if (!projectDir) { setStatus("Lấy lời thoại ở Bước 2 trước."); return; }
@@ -917,6 +977,80 @@ function App() {
             <span className="muted">Nhớ bấm “Lưu cấu hình”.</span>
           </div>
         )}
+        <div className="row col so-tay">
+          <div className="row">
+            <strong>Sổ tay tên riêng</strong>
+            <button type="button" onClick={onTuTimTen} disabled={running || dangTimTen || !projectDir}>
+              {dangTimTen ? "Đang tìm…" : "Tự tìm tên riêng"}
+            </button>
+            <button type="button" onClick={() => luuSoTay([...soTay, { goc: "", dich: "", ghi_chu: "" }])} disabled={running}>
+              Thêm dòng
+            </button>
+          </div>
+          <p className="muted">
+            Tên trong sổ được ép đúng: sau khi dịch, câu nào gọi sai sẽ tự được dịch lại.
+            Sổ riêng cho từng dự án, lưu ngay khi sửa.
+          </p>
+          {soTay.map((m, i) => (
+            <div className="row" key={i}>
+              <input
+                value={m.goc}
+                placeholder="tiếng gốc"
+                onChange={(e) => luuSoTay(soTay.map((x, k) => (k === i ? { ...x, goc: e.target.value } : x)))}
+              />
+              <input
+                value={m.dich}
+                placeholder="tiếng Việt"
+                onChange={(e) => luuSoTay(soTay.map((x, k) => (k === i ? { ...x, dich: e.target.value } : x)))}
+              />
+              <input
+                value={m.ghi_chu}
+                placeholder="ghi chú (tên con chó…)"
+                onChange={(e) => luuSoTay(soTay.map((x, k) => (k === i ? { ...x, ghi_chu: e.target.value } : x)))}
+              />
+              <button type="button" onClick={() => luuSoTay(soTay.filter((_, k) => k !== i))} disabled={running}>Xoá</button>
+            </div>
+          ))}
+          {tenTim.length > 0 && (
+            <div className="row col ten-tim">
+              <p className="muted">
+                Máy tự tìm, chưa vào sổ. Dòng đánh dấu là chỗ bảng Hán-Việt đọc khác —
+                đáng ngó chứ không chắc là sai, vì bảng thiếu khoảng 21% số chữ và trộn
+                âm Nôm với âm Hán-Việt.
+              </p>
+              {tenTim.map((t, i) => (
+                <div className="row" key={t.goc}>
+                  <span className="muted">{t.goc}</span>
+                  <input
+                    value={t.dich}
+                    onChange={(e) => setTenTim(tenTim.map((x, k) => (k === i ? { ...x, dich: e.target.value } : x)))}
+                  />
+                  <span className="muted">{t.loai}</span>
+                  {t.dang_ngo && <span className="canh-bao">bảng đọc “{t.bang_doc}”</span>}
+                </div>
+              ))}
+              <div className="row">
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={running}
+                  onClick={() => {
+                    // Tên đã có trong sổ thì giữ bản người dùng đã sửa, không đè.
+                    const co = new Set(soTay.map((m) => m.goc));
+                    const them = tenTim
+                      .filter((t) => !co.has(t.goc))
+                      .map((t) => ({ goc: t.goc, dich: t.dich, ghi_chu: t.loai }));
+                    luuSoTay([...soTay, ...them]);
+                    setTenTim([]);
+                  }}
+                >
+                  Thêm vào sổ
+                </button>
+                <button type="button" onClick={() => setTenTim([])} disabled={running}>Bỏ qua</button>
+              </div>
+            </div>
+          )}
+        </div>
         {provider === "openai_compat" && oa && (
           <div className="row col">
             <div className="row">

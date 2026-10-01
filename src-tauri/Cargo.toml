@@ -53,3 +53,7 @@ strip = true
 [[bin]]
 name = "pin_components"
 path = "src/bin/pin_components.rs"
+
+[[bin]]
+name = "sinh_han_viet"
+path = "src/bin/sinh_han_viet.rs"

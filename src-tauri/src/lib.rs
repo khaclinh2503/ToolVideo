@@ -7,6 +7,7 @@ pub mod cues;
 pub mod download;
 pub mod error;
 pub mod export;
+pub mod han_viet;
 pub mod ffmpeg;
 pub mod pipeline;
 pub mod project;
@@ -59,6 +60,9 @@ pub fn run() {
             commands::ensure_components,
             commands::components_ready,
             commands::download_video,
+            commands::so_tay_doc,
+            commands::so_tay_ghi,
+            commands::so_tay_tu_tim,
             commands::translate_contexts,
             commands::tts_voices,
             commands::preview_voice,

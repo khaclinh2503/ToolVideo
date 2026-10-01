@@ -119,6 +119,72 @@ pub struct ContextDto {
     pub label: String,
 }
 
+/// Sổ tay tên riêng của một dự án.
+#[tauri::command]
+pub fn so_tay_doc(project_dir: String) -> crate::so_tay::SoTay {
+    crate::so_tay::doc(std::path::Path::new(&project_dir))
+}
+
+/// Ghi sổ tay. Giao diện gửi cả sổ chứ không gửi từng mục: sổ nhỏ, mà ghi cả
+/// file thì không có đường nào để hai bên lệch nhau.
+#[tauri::command]
+pub fn so_tay_ghi(project_dir: String, so_tay: crate::so_tay::SoTay) -> Result<(), String> {
+    crate::so_tay::ghi(std::path::Path::new(&project_dir), &so_tay).map_err(|e| e.to_string())
+}
+
+/// Một mục tên riêng tìm được, kèm ý kiến của bảng Hán-Việt.
+#[derive(serde::Serialize)]
+pub struct TenRiengDto {
+    pub goc: String,
+    pub dich: String,
+    pub loai: String,
+    /// Bảng Hán-Việt đọc tên này thế nào. Rỗng = bảng không tra được.
+    pub bang_doc: String,
+    /// `true` khi bảng và model không khớp — chỗ đáng người dùng ngó. KHÔNG
+    /// có nghĩa là model sai: bảng thiếu 21% số chữ và trộn âm Nôm với
+    /// Hán-Việt, nên nó chỉ là ý kiến thứ hai.
+    pub dang_ngo: bool,
+}
+
+/// Tự tìm tên riêng trong phụ đề gốc của dự án.
+///
+/// Một request cho CẢ PHIM, không theo lô — dịch theo lô chính là lý do cùng
+/// một cái tên ra hai kiểu ở hai chỗ.
+#[tauri::command]
+pub async fn so_tay_tu_tim(
+    project_dir: String,
+    provider: String,
+) -> Result<Vec<TenRiengDto>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let dir = std::path::Path::new(&project_dir);
+        let srt = dir.join("subtitles").join("source.srt");
+        let text = std::fs::read_to_string(&srt)
+            .map_err(|e| format!("chưa có phụ đề gốc ({}): {e}", srt.display()))?;
+        let segs = crate::srt::parse_srt(&text).map_err(|e| e.to_string())?;
+        let cfg = crate::config::load_config();
+        let p = crate::translate::make_provider(&provider, &cfg.translate, &crate::config::models_dir())
+            .map_err(|e| e.to_string())?;
+        let ds = p
+            .liet_ke_ten_rieng(&crate::translate::gom_de_hoi_ten(&segs))
+            .map_err(|e| e.to_string())?;
+        Ok(ds
+            .into_iter()
+            .map(|t| {
+                let bang_doc = crate::han_viet::doc_ten(&t.goc).unwrap_or_default();
+                TenRiengDto {
+                    dang_ngo: crate::han_viet::dong_y(&t.goc, &t.dich) == Some(false),
+                    bang_doc,
+                    goc: t.goc,
+                    dich: t.dich,
+                    loai: t.loai,
+                }
+            })
+            .collect())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Danh sách ngữ cảnh dịch cho giao diện. Lấy thẳng từ `CONTEXTS` để màn hình
 /// không thể liệt kê một lựa chọn mà prompt không biết tới.
 #[tauri::command]

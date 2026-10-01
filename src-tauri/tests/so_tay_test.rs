@@ -176,3 +176,55 @@ fn so_tay_rong_thi_khong_goi_them_request_nao() {
     translate_segments_voi_so_tay(&p, &segs(), "zh", "vi", &SoTay::default()).unwrap();
     assert_eq!(p.goi.borrow().len(), 1);
 }
+
+/// Dọn danh sách tên riêng model trả về.
+///
+/// Ba thứ dưới đây đều ĐO ĐƯỢC trên phim thật, không phải phòng xa.
+#[test]
+fn don_ten_rieng_bo_trung_lap_va_muc_hong() {
+    use app_lib::translate::{don_ten_rieng, TenRieng};
+    let t = |goc: &str, dich: &str| TenRieng {
+        goc: goc.into(),
+        dich: dich.into(),
+        loai: "người".into(),
+    };
+    let ra = don_ten_rieng(vec![
+        t("球球", "Cầu Cầu"),
+        // Model trả cùng một tên hàng chục lần — đo được 天损 20 lần một lượt.
+        t("球球", "Cầu Cầu"),
+        // Model chép lại nguyên chữ Hán vào ô dịch. Bảng Hán-Việt đỡ được.
+        t("天损", "天损"),
+        // Bảng cũng chịu thì bỏ hẳn: thà thiếu một tên còn hơn đưa vào sổ một
+        // luật bắt giữ nguyên chữ Hán.
+        t("小雨", "小雨"),
+        // Từ họ hàng bị nhận nhầm thành tên người; vào sổ sẽ phá bảng quan hệ
+        // họ hàng trong prompt.
+        t("姐夫", "Chị Phu"),
+        t("", "Rỗng"),
+    ]);
+    let goc: Vec<&str> = ra.iter().map(|x| x.goc.as_str()).collect();
+    assert_eq!(goc, vec!["球球", "天损"]);
+    assert_eq!(ra[1].dich, "Thiên Tốn", "phải lấy bảng Hán-Việt đỡ");
+}
+
+/// `họ + chức danh` không phải tên riêng, và cụm mô tả dài cũng vậy. Cả hai đều
+/// ĐO ĐƯỢC: ép `林老师` cho ra "Lâm Giáo sư" trong khi không ép thì ra "Cô giáo
+/// Lâm"; `国家异常生态灾害应急处置部队` (13 chữ) bị trả về như một tên riêng.
+#[test]
+fn don_ten_rieng_bo_ho_kem_chuc_danh_va_cum_mo_ta_dai() {
+    use app_lib::translate::{don_ten_rieng, TenRieng};
+    let t = |goc: &str| TenRieng {
+        goc: goc.into(),
+        dich: "Gì Đó".into(),
+        loai: "người".into(),
+    };
+    let ra = don_ten_rieng(vec![
+        t("林燕"),
+        t("林老师"),
+        t("陈叔"),
+        t("张哥"),
+        t("国家异常生态灾害应急处置部队"),
+    ]);
+    let goc: Vec<&str> = ra.iter().map(|x| x.goc.as_str()).collect();
+    assert_eq!(goc, vec!["林燕"]);
+}

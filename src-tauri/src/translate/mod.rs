@@ -111,6 +111,18 @@ pub trait TranslateProvider {
     fn translate_batch(&self, texts: &[&str], src: &str, tgt: &str)
         -> Result<Vec<String>, PipelineError>;
 
+    /// Liệt kê tên riêng trong một khối văn bản, kèm phiên âm đề xuất.
+    ///
+    /// Trả `Err` mặc định: `google_free` không làm được việc này, và giả vờ
+    /// trả danh sách rỗng sẽ bị hiểu nhầm thành "phim không có tên riêng nào".
+    fn liet_ke_ten_rieng(&self, _van_ban: &str) -> Result<Vec<TenRieng>, PipelineError> {
+        Err(PipelineError::ProviderError {
+            provider: self.id().into(),
+            status: None,
+            msg: "nhà cung cấp này không tự tìm được tên riêng".into(),
+        })
+    }
+
     /// Dịch một lô CÓ KÈM sổ tay tên riêng của dự án.
     ///
     /// Mặc định bỏ qua sổ tay và gọi `translate_batch` — `google_free` không
@@ -342,6 +354,112 @@ fn la_chu_dong_a(c: char) -> bool {
         | 0x4E00..=0x9FFF // CJK thông dụng
         | 0xF900..=0xFAFF // CJK tương thích
     )
+}
+
+/// Một tên riêng model tìm thấy trong phụ đề.
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct TenRieng {
+    pub goc: String,
+    pub dich: String,
+    /// "người", "vật nuôi", "địa danh", "thương hiệu"… Đi thẳng vào ô ghi chú
+    /// của sổ tay, và cũng được gửi kèm khi sửa cue vì vai đổi cách dịch.
+    #[serde(default)]
+    pub loai: String,
+}
+
+/// Từ xưng hô họ hàng — KHÔNG BAO GIỜ được vào sổ tên riêng.
+///
+/// Model nhận nhầm chúng thành tên người: đo trên phim mẫu, nó trả `姐夫`
+/// (anh rể) dưới dạng tên người kèm phiên âm "Chị Phu". Một mục như vậy vào
+/// sổ sẽ ÉP mọi cue có `姐夫` phải ra "Chị Phu", phá đúng bảng quan hệ họ hàng
+/// trong prompt ngữ cảnh phim — thứ đã đo được 0/4 ⇒ 4/4. Sổ tay mạnh hơn
+/// prompt vì nó có đối chiếu bắt buộc, nên một mục sai ở đây hại hơn hẳn.
+const TU_HO_HANG: &[&str] = &[
+    "姐夫", "嫂子", "姐姐", "妹妹", "哥哥", "弟弟", "爸爸", "妈妈", "爷爷",
+    "奶奶", "叔叔", "阿姨", "舅舅", "姑姑", "儿子", "女儿", "老婆", "老公",
+    // Đo thêm ở vòng sau: 娘 (mẹ) và 娃娃 (em bé) cũng bị trả về như tên người,
+    // ép thành "Nương" và "Oa Oa".
+    "娘", "娃娃", "孩子", "宝贝",
+];
+
+/// Hậu tố chức danh / xưng hô — `họ + hậu tố` KHÔNG phải tên riêng.
+///
+/// Đo trên phim mẫu: model trả `林老师` và ép sổ dịch thành "Lâm Giáo sư",
+/// trong khi bản không có sổ ra "Cô giáo Lâm" — đúng tiếng Việt hơn hẳn.
+/// `陈叔` ra "Trần thúc" thay vì "chú Trần", `张哥` ra "Trương ca" thay vì
+/// "anh Trương". Tiếng Việt đặt chức danh TRƯỚC họ, nên ép cả cụm theo thứ tự
+/// Hán luôn luôn sai. Phần họ vẫn được dịch đúng nhờ luật phiên âm trong
+/// prompt, không cần sổ.
+const HAU_TO_CHUC_DANH: &[&str] = &[
+    "老师", "医生", "教授", "大夫", "先生", "小姐", "老板", "总",
+    "叔", "哥", "姐", "妈", "爸", "婶", "嫂", "爷", "奶",
+];
+
+/// Tên riêng dài hơn chừng này chữ gần như chắc chắn là một cụm mô tả.
+///
+/// Đo trên phim mẫu: model trả `国家异常生态灾害应急处置部队` (13 chữ, "lực lượng
+/// ứng phó thảm họa sinh thái bất thường quốc gia") như một tên riêng. Ép cả
+/// cụm đó theo phiên âm Hán-Việt cho ra một câu không ai hiểu. Tên người và
+/// tên thương hiệu thật hầu hết 2-5 chữ.
+const TOI_DA_CHU_TRONG_TEN: usize = 6;
+
+/// Dọn danh sách tên riêng model trả về.
+///
+/// Hai thứ ĐO ĐƯỢC trên phim thật, không phải phòng xa:
+///
+/// * Model trả CÙNG một tên hàng chục lần (`天损` 20 lần trong một lượt).
+/// * Model CHÉP LẠI nguyên chữ Hán vào ô dịch thay vì phiên âm. Một mục như
+///   vậy vào sổ sẽ thành luật "天损 phải dịch là 天损", tức là bắt buộc giữ
+///   nguyên chữ Hán — đúng thứ mà nhánh sửa cue sót chữ Hán đang chống.
+///
+/// Chỗ model trượt lại đúng chỗ bảng Hán-Việt làm được: `天损` ra "Thiên Tốn",
+/// `玄鸟` ra "Huyền Điểu". Nên lấy bảng đỡ, và vẫn là ĐỀ XUẤT để người dùng
+/// duyệt chứ không tự đổ vào sổ.
+pub fn don_ten_rieng(ds: Vec<TenRieng>) -> Vec<TenRieng> {
+    let mut da = std::collections::HashSet::new();
+    let mut ra = Vec::new();
+    for mut t in ds {
+        t.goc = t.goc.trim().to_string();
+        t.dich = t.dich.trim().to_string();
+        if t.goc.is_empty() || !da.insert(t.goc.clone()) {
+            continue;
+        }
+        if TU_HO_HANG.contains(&t.goc.as_str()) {
+            continue;
+        }
+        if t.goc.chars().count() > TOI_DA_CHU_TRONG_TEN {
+            continue;
+        }
+        if HAU_TO_CHUC_DANH.iter().any(|h| t.goc.ends_with(h)) {
+            continue;
+        }
+        if t.dich.is_empty() || con_chu_dong_a(&t.dich) {
+            match crate::han_viet::doc_ten(&t.goc) {
+                Some(a) => t.dich = a,
+                // Bảng cũng chịu thì bỏ hẳn mục: thà thiếu một tên còn hơn
+                // đưa vào sổ một luật bắt giữ nguyên chữ Hán.
+                None => continue,
+            }
+        }
+        ra.push(t);
+    }
+    ra
+}
+
+/// Gom phụ đề thành một khối để hỏi tên riêng.
+///
+/// Bỏ cue trùng nhau và cue không có chữ: phim mẫu 193 cue có tới 5 cue chỉ
+/// là dấu chấm, và nhiều cue "Yeah." lặp lại — gửi hết chỉ tốn context.
+pub fn gom_de_hoi_ten(segs: &[Segment]) -> String {
+    let mut da: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    let mut ra: Vec<&str> = Vec::new();
+    for s in segs {
+        let t = s.text.trim();
+        if t.chars().any(|c| c.is_alphanumeric()) && da.insert(t) {
+            ra.push(t);
+        }
+    }
+    ra.join("\n")
 }
 
 /// Số cue lệch tối thiểu trong một lô mới kết luận là lô bị dịch chuyển.

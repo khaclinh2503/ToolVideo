@@ -605,3 +605,51 @@ fn ui_cho_chon_ngu_canh_ca_khi_dich_tren_may() {
         "google_free không nhận hướng dẫn ngữ cảnh, không được hiện ô này: {dieu_kien}"
     );
 }
+
+/// Sổ tay phải nói rõ nó ÉP ĐÚNG chứ không phải chỉ gợi ý, nếu không người dùng
+/// tưởng nó là một ô ghi chú và không buồn điền.
+#[test]
+fn ui_so_tay_noi_ro_la_ep_dung_chu_khong_phai_goi_y() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let i = tsx.find("Sổ tay tên riêng").expect("Bước 3 phải có vùng sổ tay");
+    let sau = &tsx[i..];
+    assert!(
+        sau.contains("tự được dịch lại"),
+        "thiếu lời giải thích rằng câu gọi sai sẽ được dịch lại"
+    );
+}
+
+/// Danh sách máy tự tìm KHÔNG được tự đổ vào sổ. Đo trên phim mẫu: model nhận
+/// nhầm `姐夫` (anh rể) thành tên người và đề xuất "Chị Phu"; mục đó vào sổ sẽ ép
+/// mọi cue có `姐夫` ra "Chị Phu", phá bảng quan hệ họ hàng đã đo được 0/4 ⇒ 4/4.
+/// Bộ lọc từ họ hàng chặn đúng ca đó, nhưng còn `大虫子` và `莫比乌斯环` thì không —
+/// nên bước người duyệt là bắt buộc, không phải trang trí.
+#[test]
+fn ui_ten_may_tu_tim_phai_qua_nguoi_duyet_moi_vao_so() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let i = tsx.find("Tự tìm tên riêng").expect("phải có nút tự tìm tên riêng");
+    let sau = &tsx[i..];
+    assert!(
+        sau.contains("chưa vào sổ"),
+        "phải nói rõ danh sách tự tìm chưa vào sổ"
+    );
+    assert!(
+        sau.contains("Thêm vào sổ"),
+        "phải có nút để NGƯỜI bấm thêm vào sổ"
+    );
+}
+
+/// Dấu "đáng ngờ" của bảng Hán-Việt không được trình bày như một lỗi. Bảng thiếu
+/// 21% số chữ trong phụ đề thật và trộn âm Nôm với âm Hán-Việt (`燕` ra "én" chứ
+/// không phải "Yến"), nên nó sai nhiều hơn model — ai đọc màn hình phải hiểu đó
+/// là chỗ đáng ngó, không phải chỗ đã sai.
+#[test]
+fn ui_noi_ro_bang_han_viet_chi_la_y_kien_thu_hai() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let i = tsx.find("bảng Hán-Việt").expect("phải nhắc tới bảng Hán-Việt");
+    let sau = &tsx[i..];
+    assert!(
+        sau.contains("không chắc là sai"),
+        "phải nói rõ lệch bảng không có nghĩa là model sai"
+    );
+}
