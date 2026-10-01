@@ -12,6 +12,7 @@ pub mod pipeline;
 pub mod project;
 pub mod pyenv;
 pub mod retime;
+pub mod so_tay;
 pub mod srt;
 pub mod stt;
 pub mod translate;

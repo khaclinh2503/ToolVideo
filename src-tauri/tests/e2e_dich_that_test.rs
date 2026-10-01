@@ -105,7 +105,8 @@ fn sua_cue_sot_chu_han_an_bao_nhieu_lan() {
 
     let mut sach = 0;
     for (goc, con_sot) in ca_kho {
-        let ra = p.dich_lai_cho_tron(goc, con_sot, "auto", "vi").expect("sửa lỗi");
+        let ra = p.dich_lai_sua_loi(goc, &format!("nó bỏ nguyên các chữ {con_sot} không dịch"), "auto", "vi")
+            .expect("sửa lỗi");
         let con = con_chu_dong_a(&ra);
         if !con {
             sach += 1;

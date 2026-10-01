@@ -111,19 +111,38 @@ pub trait TranslateProvider {
     fn translate_batch(&self, texts: &[&str], src: &str, tgt: &str)
         -> Result<Vec<String>, PipelineError>;
 
-    /// Dịch lại MỘT cue mà bản dịch trước còn sót chữ gốc chưa dịch.
+    /// Dịch một lô CÓ KÈM sổ tay tên riêng của dự án.
     ///
-    /// `con_sot` là đúng những chữ còn sót, để nhà cung cấp chỉ mặt được cho
-    /// model chỗ hỏng.
+    /// Mặc định bỏ qua sổ tay và gọi `translate_batch` — `google_free` không
+    /// nhận hướng dẫn nào cả, ép nó cũng vô ích. Nhà cung cấp dùng LLM thì
+    /// ghi đè để gắn sổ vào prompt.
+    ///
+    /// Nhét vào prompt KHÔNG đủ để bảo đảm gì: model vẫn có thể lờ đi. Thứ
+    /// bảo đảm là phần đối chiếu sau khi dịch ở `translate_segments`.
+    fn translate_batch_voi_so_tay(
+        &self,
+        texts: &[&str],
+        src: &str,
+        tgt: &str,
+        _so_tay: &[&crate::so_tay::Muc],
+    ) -> Result<Vec<String>, PipelineError> {
+        self.translate_batch(texts, src, tgt)
+    }
+
+    /// Dịch lại MỘT cue mà bản dịch trước bị lỗi, kèm mô tả lỗi bằng lời.
+    ///
+    /// `mo_ta_loi` nói rõ chỗ hỏng — chữ nào còn sót, hay tên riêng nào gọi
+    /// sai — để nhà cung cấp chỉ mặt được cho model. Một đường duy nhất cho
+    /// mọi kiểu sửa: thêm cơ chế thứ hai song song là chắc chắn lệch nhau.
     ///
     /// Mặc định là gửi lại y nguyên qua `translate_batch`. Đo trên dữ liệu thật
     /// cho thấy cách đó gần như vô ích — ở `temperature 0.2` model trả lại đúng
     /// cái cũ, 1/3 cue khỏi. Nhà cung cấp nào dựng được một yêu cầu SỬA LỖI thì
     /// nên ghi đè; `OpenAiCompat` có ghi đè.
-    fn dich_lai_cho_tron(
+    fn dich_lai_sua_loi(
         &self,
         text: &str,
-        _con_sot: &str,
+        _mo_ta_loi: &str,
         src: &str,
         tgt: &str,
     ) -> Result<String, PipelineError> {
@@ -172,6 +191,22 @@ pub fn translate_segments(
     src: &str,
     tgt: &str,
 ) -> Result<Vec<Segment>, PipelineError> {
+    translate_segments_voi_so_tay(p, segs, src, tgt, &crate::so_tay::SoTay::default())
+}
+
+/// Như `translate_segments` nhưng áp sổ tay tên riêng của dự án.
+///
+/// Sổ tay được dùng HAI lần cho mỗi lô: nhét phần liên quan vào prompt
+/// trước khi dịch, và đối chiếu sau khi dịch. Chỉ nhét vào prompt là
+/// không bảo đảm được gì — phiên đo trước cho thấy model lờ quy tắc trong
+/// prompt rất thoải mái; phần đối chiếu mới là thứ bắt buộc được.
+pub fn translate_segments_voi_so_tay(
+    p: &dyn TranslateProvider,
+    segs: &[Segment],
+    src: &str,
+    tgt: &str,
+    so_tay: &crate::so_tay::SoTay,
+) -> Result<Vec<Segment>, PipelineError> {
     let mut out = Vec::with_capacity(segs.len());
     let bs = p.batch_size().max(1);
     for chunk in segs.chunks(bs) {
@@ -188,7 +223,8 @@ pub fn translate_segments(
 
         let mut translated_by_idx: Vec<String> = vec![String::new(); chunk.len()];
         if !texts.is_empty() {
-            let translated = p.translate_batch(&texts, src, tgt)?;
+            let lien_quan = crate::so_tay::muc_lien_quan(so_tay, &texts);
+            let translated = p.translate_batch_voi_so_tay(&texts, src, tgt, &lien_quan)?;
             if translated.len() != texts.len() {
                 return Err(PipelineError::ProviderError {
                     provider: p.id().into(),
@@ -244,6 +280,10 @@ pub fn translate_segments(
                 ),
             });
         }
+
+        // Sổ tay: cue nào gọi sai tên riêng thì gửi đi sửa. Đây là phần BẮT
+        // BUỘC được, khác với phần nhét sổ vào prompt ở trên.
+        sua_cue_sai_so_tay(p, chunk, &idx, &mut translated_by_idx, src, tgt, so_tay);
 
         // Lô lớn thỉnh thoảng để sót vài chữ Hán giữa câu tiếng Việt. Đo trên
         // 193 cue thật: 2 cue dính, và đó là rác hiện thẳng lên màn hình chứ
@@ -379,6 +419,50 @@ pub fn chu_dong_a_trong(s: &str) -> String {
     ra
 }
 
+/// Gửi lại những cue gọi sai tên riêng trong sổ tay, mỗi cue một request.
+///
+/// CHỈ nhận bản sửa khi số mục vi phạm GIẢM — luật đơn điệu y như nhánh sửa
+/// chữ Hán còn sót, nên một lần sửa hỏng không xoá mất bản dịch đang có.
+///
+/// Nuốt lỗi là cố ý: cả lô đã dịch xong, không được để một request vá lỗi
+/// hỏng kéo sập toàn bộ bản dịch.
+#[allow(clippy::too_many_arguments)]
+fn sua_cue_sai_so_tay(
+    p: &dyn TranslateProvider,
+    chunk: &[Segment],
+    idx: &[usize],
+    translated_by_idx: &mut [String],
+    src: &str,
+    tgt: &str,
+    so_tay: &crate::so_tay::SoTay,
+) {
+    if so_tay.muc.is_empty() {
+        return;
+    }
+    let tat_ca: Vec<&crate::so_tay::Muc> = so_tay.muc.iter().collect();
+    let mut can: Vec<usize> = Vec::new();
+    for &i in idx {
+        if !crate::so_tay::muc_vi_pham(&chunk[i].text, &translated_by_idx[i], &tat_ca).is_empty()
+        {
+            can.push(i);
+        }
+    }
+    for i in can.into_iter().take(TOI_DA_DICH_LAI) {
+        let hong = crate::so_tay::muc_vi_pham(&chunk[i].text, &translated_by_idx[i], &tat_ca);
+        let mo_ta = format!("nó gọi sai tên riêng: {}", crate::so_tay::mo_ta_vi_pham(&hong));
+        let Ok(lai) = p.dich_lai_sua_loi(chunk[i].text.as_str(), &mo_ta, src, tgt) else {
+            continue;
+        };
+        let t = normalize_translated(&lai);
+        if t.trim().is_empty() {
+            continue;
+        }
+        if crate::so_tay::muc_vi_pham(&chunk[i].text, &t, &tat_ca).len() < hong.len() {
+            translated_by_idx[i] = t;
+        }
+    }
+}
+
 /// Gửi lại riêng từng cue còn sót chữ Hán, mỗi cue một request.
 ///
 /// Cue đứng một mình thì model không còn 39 cue khác tranh ngữ cảnh, nên gần
@@ -401,8 +485,11 @@ fn dich_lai_cue_con_chu_dong_a(
         .filter(|i| con_chu_dong_a(&translated_by_idx[*i]))
         .collect();
     for i in can.into_iter().take(TOI_DA_DICH_LAI) {
-        let con_sot = chu_dong_a_trong(&translated_by_idx[i]);
-        let Ok(lai) = p.dich_lai_cho_tron(chunk[i].text.as_str(), &con_sot, src, tgt) else {
+        let mo_ta = format!(
+            "nó bỏ nguyên các chữ {} không dịch",
+            chu_dong_a_trong(&translated_by_idx[i])
+        );
+        let Ok(lai) = p.dich_lai_sua_loi(chunk[i].text.as_str(), &mo_ta, src, tgt) else {
             continue;
         };
         let t = normalize_translated(&lai);

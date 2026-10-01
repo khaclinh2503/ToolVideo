@@ -125,6 +125,35 @@ pub fn build_system_prompt(context: &str) -> String {
     format!("{SYSTEM_PROMPT} {QUY_TAC_DICH} {huong_dan}")
 }
 
+/// Số mục sổ tay tối đa nhét vào một prompt.
+///
+/// Phim dài có thể hàng trăm mục. Nhét hết vừa phí token vừa làm loãng phần
+/// quy tắc, mà một lô 40 cue cũng không đụng tới quá chừng này tên riêng.
+const TOI_DA_MUC_TRONG_PROMPT: usize = 40;
+
+/// Câu dặn về sổ tay, nối vào sau prompt hệ thống.
+///
+/// Chỉ nhận những mục ĐÃ LỌC là có mặt trong lô đang dịch — việc lọc nằm ở
+/// `so_tay::muc_lien_quan`, không lặp lại ở đây.
+pub fn cau_so_tay(muc: &[&crate::so_tay::Muc]) -> String {
+    let ds: Vec<String> = muc
+        .iter()
+        .take(TOI_DA_MUC_TRONG_PROMPT)
+        .map(|m| {
+            if m.ghi_chu.trim().is_empty() {
+                format!("{} = {}", m.goc, m.dich)
+            } else {
+                format!("{} = {} ({})", m.goc, m.dich, m.ghi_chu.trim())
+            }
+        })
+        .collect();
+    format!(
+        "Bảng tên riêng và thuật ngữ BẮT BUỘC của phim này, dùng đúng vế phải, \
+         không tự đặt cách gọi khác: {}.",
+        ds.join("; ")
+    )
+}
+
 /// Lọc lấy đúng khối JSON trong nội dung model trả về.
 ///
 /// Model suy luận (GLM, Nemotron, Kimi, DeepSeek-R1…) hay chèn phần suy nghĩ
@@ -321,27 +350,63 @@ impl TranslateProvider for OpenAiCompat {
         40
     }
 
+    fn translate_batch_voi_so_tay(
+        &self,
+        texts: &[&str],
+        src: &str,
+        tgt: &str,
+        so_tay: &[&crate::so_tay::Muc],
+    ) -> Result<Vec<String>, PipelineError> {
+        if so_tay.is_empty() {
+            return self.translate_batch(texts, src, tgt);
+        }
+        let he_thong = format!(
+            "{} {}",
+            build_system_prompt(&self.context),
+            cau_so_tay(so_tay)
+        );
+        // Đi qua đúng đường lùi tham số của `translate_batch`: endpoint từ chối
+        // response_format hay khoá tắt suy luận thì vẫn phải chạy được, có sổ
+        // tay hay không cũng vậy.
+        match self.once_voi_he_thong(texts, src, tgt, true, true, &he_thong) {
+            Ok(v) => Ok(v),
+            Err(PipelineError::ProviderError { status: Some(200), .. }) => {
+                self.once_voi_he_thong(texts, src, tgt, true, true, &he_thong)
+            }
+            Err(PipelineError::ProviderError { status: Some(400), .. }) => {
+                match self.once_voi_he_thong(texts, src, tgt, true, false, &he_thong) {
+                    Ok(v) => Ok(v),
+                    Err(PipelineError::ProviderError { status: Some(400), .. }) => {
+                        self.once_voi_he_thong(texts, src, tgt, false, false, &he_thong)
+                    }
+                    Err(e) => Err(e),
+                }
+            }
+            Err(e) => Err(e),
+        }
+    }
+
     /// Gửi lại y nguyên thì model trả lại đúng cái cũ — đo được chỉ 1/3 cue
     /// khỏi. Lần này nói thẳng là bản trước HỎNG và hỏng ở chữ nào, nên nó là
     /// một yêu cầu khác hẳn chứ không phải lần gieo lại.
     ///
     /// Vẫn đi qua `once_voi_he_thong` để dùng chung đường parse và kiểm số item;
     /// chỉ có prompt hệ thống là khác.
-    fn dich_lai_cho_tron(
+    fn dich_lai_sua_loi(
         &self,
         text: &str,
-        con_sot: &str,
+        mo_ta_loi: &str,
         src: &str,
         tgt: &str,
     ) -> Result<String, PipelineError> {
         let he_thong = format!(
-            "{} Bản dịch trước của câu này HỎNG: nó bỏ nguyên các chữ {} không dịch. \
+            "{} Bản dịch trước của câu này HỎNG: {}. \
              Dịch lại cho trọn, mọi chữ đều phải sang ngôn ngữ đích, bản dịch trả về \
              tuyệt đối không được chứa chữ Hán hay chữ kana nào. Nếu một chữ là tiếng \
              lóng hay từ đệm không có từ tương đương thì bỏ hẳn nó đi, không được giữ \
              nguyên chữ gốc.",
             build_system_prompt(&self.context),
-            con_sot
+            mo_ta_loi
         );
         let v = self.once_voi_he_thong(&[text], src, tgt, true, true, &he_thong)?;
         v.into_iter()

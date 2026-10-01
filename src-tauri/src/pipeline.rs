@@ -3,7 +3,7 @@ use crate::{
     ffmpeg, srt::{self, Segment},
     stt::{self, SttModels},
     error::PipelineError,
-    translate::{TranslateProvider, translate_segments},
+    translate::{TranslateProvider, translate_segments_voi_so_tay},
     retime::{self, FitOpts},
 };
 
@@ -110,7 +110,10 @@ pub fn run_translate_stage(
         Err(e) => return Err(PipelineError::Io(e.to_string())),
     }
 
-    let translated = translate_segments(p, &segs, src, tgt)?;
+    // Sổ tay tên riêng của chính dự án này: đọc tại đây chứ không bắt lớp gọi
+    // truyền vào, để mọi đường tới bước dịch đều được áp sổ như nhau.
+    let so_tay = crate::so_tay::doc(project_dir);
+    let translated = translate_segments_voi_so_tay(p, &segs, src, tgt, &so_tay)?;
 
     // Cắt cue dài thành phụ đề một dòng, theo ranh giới câu.
     //

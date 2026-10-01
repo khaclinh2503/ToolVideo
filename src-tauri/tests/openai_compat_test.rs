@@ -471,7 +471,7 @@ fn dich_lai_mot_cue_gui_prompt_sua_loi_kem_chu_con_sot() {
         then.status(200).body(ok_body(r#"{"i":0,"text":"nghỉ nửa ngày"}"#));
     });
     let ra = p(&server)
-        .dich_lai_cho_tron("我得请半天假", "半天", "zh", "vi")
+        .dich_lai_sua_loi("我得请半天假", "nó bỏ nguyên các chữ 半天 không dịch", "zh", "vi")
         .unwrap();
     assert_eq!(ra, "nghỉ nửa ngày");
     assert_eq!(m.hits(), 1, "sửa một cue chỉ tốn một request");
@@ -488,7 +488,7 @@ fn prompt_sua_loi_van_giu_huong_dan_ngu_canh() {
     });
     let mut nha = p(&server);
     nha.context = "phim".into();
-    nha.dich_lai_cho_tron("干", "干", "zh", "vi").unwrap();
+    nha.dich_lai_sua_loi("干", "nó dịch quá nhẹ", "zh", "vi").unwrap();
     assert_eq!(m.hits(), 1);
 }
 
@@ -498,4 +498,50 @@ fn lay_dung_nhung_chu_con_sot_moi_chu_mot_lan() {
     assert_eq!(chu_dong_a_trong("tôi phải nghỉ半天, mày小子 đi"), "半天小子");
     assert_eq!(chu_dong_a_trong("半天 rồi lại 半天"), "半天", "mỗi chữ kể một lần");
     assert_eq!(chu_dong_a_trong("không có gì"), "");
+}
+
+/// Sổ tay phải THẬT SỰ tới được prompt, và phải NỐI THÊM chứ không thay thế —
+/// mất phần quy định JSON thì mọi bản dịch đều hỏng parse.
+#[test]
+fn so_tay_duoc_gan_vao_prompt_va_khong_nuot_phan_quy_dinh_json() {
+    use app_lib::so_tay::Muc;
+    let server = MockServer::start();
+    let m = server.mock(|when, then| {
+        when.method(POST)
+            .body_contains("球球 = Cầu Cầu (tên con chó)")
+            .body_contains("BẮT BUỘC")
+            .body_contains("Bạn là dịch giả phụ đề");
+        then.status(200).body(ok_body(r#"{"i":0,"text":"Cầu Cầu đâu"}"#));
+    });
+    let muc = Muc {
+        goc: "球球".into(),
+        dich: "Cầu Cầu".into(),
+        ghi_chu: "tên con chó".into(),
+    };
+    let ra = p(&server)
+        .translate_batch_voi_so_tay(&["球球呢"], "zh", "vi", &[&muc])
+        .unwrap();
+    assert_eq!(ra, vec!["Cầu Cầu đâu"]);
+    assert_eq!(m.hits(), 1);
+}
+
+/// Sổ tay rỗng thì không được đổi gì so với đường cũ — không thêm câu thừa vào
+/// prompt, và vẫn đi đúng nhánh `translate_batch`.
+#[test]
+fn so_tay_rong_thi_prompt_khong_doi() {
+    let server = MockServer::start();
+    // Khai cái hẹp TRƯỚC: nếu prompt lỡ có câu sổ tay thì nó dính vào đây.
+    let co_so_tay = server.mock(|when, then| {
+        when.method(POST).body_contains("BẮT BUỘC");
+        then.status(500).body("không được có câu sổ tay");
+    });
+    let m = server.mock(|when, then| {
+        when.method(POST);
+        then.status(200).body(ok_body(r#"{"i":0,"text":"xong"}"#));
+    });
+    p(&server)
+        .translate_batch_voi_so_tay(&["一"], "zh", "vi", &[])
+        .unwrap();
+    assert_eq!(m.hits(), 1);
+    assert_eq!(co_so_tay.hits(), 0, "sổ rỗng mà vẫn nhét câu sổ tay vào prompt");
 }
