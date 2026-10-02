@@ -30,6 +30,7 @@ fn opts(burn: bool, soft: bool, has_audio: bool) -> ExportOpts {
         preset: "medium".into(),
         style: None,
         watermark: None,
+        vung_mo: Vec::new(),
     }
 }
 

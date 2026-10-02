@@ -738,3 +738,50 @@ fn css_mau_phu_de_quy_theo_luoi_ass_chu_khong_go_san_pixel() {
         "phải quy theo chiều cao khung (cqh), không theo px cố định"
     );
 }
+
+/// Bước 6 phải có panel làm mờ, và phải nói rõ hai hệ quả mà người dùng không
+/// tự đoán được: lúc khoanh vùng thì không bấm được nút phát, và bật làm mờ là
+/// video buộc phải mã hoá lại nên xuất lâu hơn hẳn.
+#[test]
+fn ui_panel_lam_mo_noi_ro_hai_he_qua() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let i = tsx.find("Làm mờ một vùng").expect("Bước 6 phải có panel làm mờ");
+    let sau = &tsx[i..];
+    assert!(
+        sau.contains("KHÔNG bấm được nút phát"),
+        "phải báo rằng lúc khoanh vùng thì không điều khiển được video"
+    );
+    assert!(
+        sau.contains("mã hoá lại"),
+        "phải báo rằng bật làm mờ là buộc mã hoá lại, xuất lâu hơn"
+    );
+}
+
+/// Lớp khoanh vùng phủ kín thẻ video. Để nó ăn chuột cả khi KHÔNG khoanh vùng
+/// thì không bấm được nút phát, tua hay âm lượng — mà chẳng có gì báo vì sao.
+#[test]
+fn css_lop_khoanh_vung_tat_chuot_khi_khong_ve() {
+    let css = std::fs::read_to_string("../src/App.css").expect("đọc được App.css");
+    let i = css.find(".vung-mo-lop {").expect("phải có lớp khoanh vùng");
+    let than = &css[i..css[i..].find('}').expect("thiếu dấu đóng") + i];
+    assert!(
+        than.contains("pointer-events: none"),
+        "lớp khoanh vùng phải tắt chuột khi không vẽ: {than}"
+    );
+}
+
+/// Ngưỡng vùng nhỏ nhất bên TSX phải khớp hằng bên Rust. Lệch nhau thì giao
+/// diện cho vẽ một ô mà `crop` bên ffmpeg từ chối, và lỗi chỉ lộ ra giữa chừng
+/// lần xuất đã chạy mấy phút.
+#[test]
+fn nguong_vung_nho_nhat_khop_giua_tsx_va_rust() {
+    let tsx = std::fs::read_to_string("../src/VungMoLop.tsx").expect("đọc được VungMoLop.tsx");
+    let mong_doi = format!(
+        "export const VUNG_MO_MIN_PCT = {};",
+        app_lib::export::VUNG_MO_MIN_PCT
+    );
+    assert!(
+        tsx.contains(&mong_doi),
+        "VungMoLop.tsx phải khai `{mong_doi}` cho khớp export::VUNG_MO_MIN_PCT"
+    );
+}

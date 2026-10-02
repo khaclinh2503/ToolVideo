@@ -90,6 +90,7 @@ fn chay(burn: bool, soft: bool, ten: &str) {
             outline: 3,
         }),
         &app_lib::config::WatermarkConfig::default(),
+        &[], // không làm mờ vùng nào
         &mut |ph| println!("  [{ph}] {:.1}s", t0.elapsed().as_secs_f32()),
     )
     .unwrap_or_else(|e| panic!("Xuất lỗi: {e}"));
@@ -283,6 +284,7 @@ fn chay_mot_goc(corner: &str, video_w: u32, video_h: u32, size_pct: u32, margin_
         preset: "ultrafast".into(),
         style: None,
         watermark: Some(wm),
+        vung_mo: Vec::new(),
     };
     let args = app_lib::export::build_export_args(&video, &dub, None, Some(&logo), &out, &opts);
     app_lib::export::run_export(&ffmpeg, d.path(), &args)
@@ -368,4 +370,87 @@ fn e2e_probe_video_size_doi_cho_khi_video_xoay() {
         (1080, 1920),
         "video coded 1920x1080 kèm ma trận xoay -90° phải báo về (1080,1920) — kích thước SAU autorotate, đúng cái filter chain thấy"
     );
+}
+
+// ============================================================================
+// E2E làm mờ: ffmpeg THẬT chạy nhánh split+crop+boxblur+overlay.
+//
+// Chuỗi filtergraph đúng cú pháp KHÔNG có nghĩa là ffmpeg nuốt được: nhãn thừa
+// cho ra "Filter has an unconnected output", bán kính quá lớn cho ra "Invalid
+// too big or non positive size", và cả hai chỉ lộ ra lúc chạy thật.
+//
+//   $env:DVL_E2E_WATERMARK="1"
+//   cargo test --manifest-path src-tauri/Cargo.toml --test e2e_export_test -- --ignored --nocapture lam_mo
+// ============================================================================
+
+/// Nền hai nửa: trái xanh dương, phải đỏ. Ranh giới sắc nét ở giữa là thứ duy
+/// nhất đo được "đã mờ hay chưa" — một nền đặc một màu thì làm mờ xong vẫn y
+/// hệt, và test sẽ xanh kể cả khi nhánh mờ không chạy.
+fn dung_nen_hai_nua(ffmpeg: &Path, dich: &Path, w: u32, h: u32) {
+    let out = Command::new(ffmpeg)
+        .args(["-nostdin", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i"])
+        .arg(format!("color=c=blue:s={}x{h}:d=1:r=5", w / 2))
+        .args(["-f", "lavfi", "-i"])
+        .arg(format!("color=c=red:s={}x{h}:d=1:r=5", w / 2))
+        .args([
+            "-filter_complex", "[0:v][1:v]hstack[v]",
+            "-map", "[v]",
+            "-c:v", "libx264", "-crf", "0", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+        ])
+        .arg(dich)
+        .output()
+        .expect("chạy được ffmpeg");
+    assert!(out.status.success(), "dựng nền lỗi: {}", String::from_utf8_lossy(&out.stderr));
+}
+
+#[test]
+#[ignore]
+fn e2e_lam_mo_vung_chay_duoc_bang_ffmpeg_that() {
+    doi_watermark();
+    let ffmpeg = models_dir().join("ffmpeg").join("ffmpeg.exe");
+    assert!(ffmpeg.exists(), "chưa cài ffmpeg: {}", ffmpeg.display());
+
+    let d = tempfile::tempdir().unwrap();
+    let (w, h) = (320u32, 240u32);
+    let video = d.path().join("nen.mp4");
+    dung_nen_hai_nua(&ffmpeg, &video, w, h);
+    let dub = d.path().join("dub.wav");
+    dung_dub_cam(&ffmpeg, &dub, 1.0);
+    let out = d.path().join("ra.mp4");
+
+    // Vùng mờ ôm đúng đường ranh giới giữa hai nửa.
+    let vung = app_lib::export::VungMo { x_pct: 35.0, y_pct: 35.0, w_pct: 30.0, h_pct: 30.0 };
+    let px = vung.sang_pixel(w, h);
+
+    let o = app_lib::export::ExportOpts {
+        burn_subs: false,
+        soft_subs: false,
+        has_audio: false,
+        volume_original: 0.18,
+        volume_dub: 1.0,
+        crf: 0,
+        preset: "ultrafast".into(),
+        style: None,
+        watermark: None,
+        vung_mo: vec![px],
+    };
+    let args = app_lib::export::build_export_args(&video, &dub, None, None, &out, &o);
+    app_lib::export::run_export(&ffmpeg, d.path(), &args).unwrap_or_else(|e| panic!("xuất lỗi: {e}"));
+    assert!(out.exists(), "không có file đầu ra");
+
+    // Giữa khung, ngay trên đường ranh giới: chưa mờ thì pixel vẫn thuần xanh
+    // hoặc thuần đỏ; mờ rồi thì hai màu trộn vào nhau nên CẢ hai kênh đều có
+    // mặt. Đo ngay sát mép trái của đường ranh giới.
+    let giua_x = w / 2 - 4;
+    let giua_y = h / 2;
+    let sau = pixel_rgb(&ffmpeg, &out, giua_x, giua_y);
+    assert!(
+        sau.0 > 40 && sau.2 > 40,
+        "pixel giữa vùng mờ {sau:?} vẫn thuần một màu — nhánh làm mờ không chạy"
+    );
+
+    // Ngoài vùng mờ phải nguyên vẹn: làm mờ cả khung là một lỗi khác hẳn, và
+    // nếu chỉ đo trong vùng thì không phân biệt được hai trường hợp.
+    let ngoai = pixel_rgb(&ffmpeg, &out, 4, 4);
+    assert!(la_xanh_duong(ngoai), "ngoài vùng mờ bị đụng vào: {ngoai:?}");
 }

@@ -216,6 +216,71 @@ pub const ASS_MARGIN_V: u32 = 10;
 /// phá luôn graph — tên người dùng có dấu tiếng Việt làm mọi thứ tệ hơn.
 pub const BURN_SRT_NAME: &str = "burn.srt";
 
+/// Một vùng chữ nhật bị làm mờ, đo bằng PHẦN TRĂM khung hình.
+///
+/// Phần trăm chứ không phải pixel: người dùng khoanh vùng trên khung xem thử
+/// (kích thước tuỳ cửa sổ), còn video có thể 360p hay 4K. Lưu pixel thì đổi
+/// video là vùng mờ lệch chỗ, mà không có gì báo.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VungMo {
+    pub x_pct: f32,
+    pub y_pct: f32,
+    pub w_pct: f32,
+    pub h_pct: f32,
+}
+
+/// Bề rộng/cao tối thiểu của một vùng, tính theo % khung.
+///
+/// Vùng 0% cho ra `crop=0:0` và ffmpeg CHẾT với "Invalid too big or non
+/// positive size" — một cú kéo chuột lỡ tay sẽ giết cả lần xuất video đã
+/// chạy mấy phút.
+pub const VUNG_MO_MIN_PCT: f32 = 0.5;
+
+impl VungMo {
+    /// Ép vùng nằm gọn trong khung và không nhỏ quá mức dùng được.
+    ///
+    /// Kẹp chứ không trả lỗi: dữ liệu này tới từ một cú kéo chuột, và kéo ra
+    /// ngoài mép khung là chuyện bình thường chứ không phải lỗi người dùng.
+    pub fn chuan_hoa(self) -> VungMo {
+        let x = self.x_pct.clamp(0.0, 100.0 - VUNG_MO_MIN_PCT);
+        let y = self.y_pct.clamp(0.0, 100.0 - VUNG_MO_MIN_PCT);
+        VungMo {
+            x_pct: x,
+            y_pct: y,
+            w_pct: self.w_pct.clamp(VUNG_MO_MIN_PCT, 100.0 - x),
+            h_pct: self.h_pct.clamp(VUNG_MO_MIN_PCT, 100.0 - y),
+        }
+    }
+
+    /// Đổi sang pixel của video, làm tròn xuống số CHẴN.
+    ///
+    /// Chẵn vì yuv420p lấy mẫu màu 2x2: `crop`/`overlay` ở toạ độ lẻ khiến
+    /// ffmpeg tự dịch đi một pixel hoặc báo lỗi tuỳ phiên bản. Trả `(x,y,w,h)`.
+    pub fn sang_pixel(self, video_w: u32, video_h: u32) -> (u32, u32, u32, u32) {
+        let v = self.chuan_hoa();
+        let chan = |f: f32| ((f.max(0.0) as u32) / 2) * 2;
+        let x = chan(video_w as f32 * v.x_pct / 100.0);
+        let y = chan(video_h as f32 * v.y_pct / 100.0);
+        // Rộng/cao tối thiểu 2px: làm tròn xuống số chẵn có thể ra 0 với vùng
+        // rất nhỏ trên video nhỏ, và `crop=0` thì ffmpeg chết.
+        let w = chan(video_w as f32 * v.w_pct / 100.0).max(2).min(video_w - x);
+        let h = chan(video_h as f32 * v.h_pct / 100.0).max(2).min(video_h - y);
+        (x, y, w, h)
+    }
+
+    /// Bán kính boxblur, suy từ kích thước vùng.
+    ///
+    /// Bán kính cố định là sai ở cả hai đầu: quá nhỏ với một logo to thì vẫn
+    /// đọc được chữ, quá lớn với một vùng bé thì ffmpeg chết vì bán kính vượt
+    /// nửa cạnh. Lấy theo cạnh ngắn nên vùng nào cũng nhoè tương đương.
+    pub fn ban_kinh(w: u32, h: u32) -> u32 {
+        let canh_ngan = w.min(h);
+        // ffmpeg đòi bán kính < nửa cạnh; chừa biên an toàn bằng cách chia 2 rồi
+        // trừ 1 chứ không chia đúng 2.
+        let tran = (canh_ngan / 2).saturating_sub(1).max(1);
+        (canh_ngan / 6).max(1).min(tran)
+    }
+}
 #[derive(Debug, Clone)]
 pub struct ExportOpts {
     pub burn_subs: bool,
@@ -231,6 +296,11 @@ pub struct ExportOpts {
     pub style: Option<SubStyle>,
     /// Logo đóng dấu. `None` ⇒ không có nhánh overlay nào, giữ nguyên hành vi cũ.
     pub watermark: Option<Watermark>,
+    /// Các vùng bị làm mờ, đã quy sang pixel `(x, y, w, h)` của video.
+    ///
+    /// Quy sang pixel ở lớp gọi chứ không ở đây: `build_filter_complex` không
+    /// biết kích thước video, mà đoán sai kích thước thì vùng mờ lệch chỗ.
+    pub vung_mo: Vec<(u32, u32, u32, u32)>,
 }
 
 /// `0.18` chứ không phải `0.180`; `3` chứ không phải `3.000`.
@@ -245,9 +315,28 @@ pub fn build_filter_complex(o: &ExportOpts, co_srt_input: bool) -> String {
 
     // Nhánh video chỉ tồn tại khi có việc phải làm với hình. Cả burn-in lẫn
     // logo đều buộc mã hoá lại — xem chỗ chọn `-c:v` ở build_export_args.
-    if o.burn_subs || o.watermark.is_some() {
+    if o.burn_subs || o.watermark.is_some() || !o.vung_mo.is_empty() {
         // Nhãn luồng video đang cầm, không có ngoặc vuông.
         let mut cur = "0:v".to_string();
+        // Làm mờ TRƯỚC phụ đề và logo. Làm sau thì chính phụ đề và logo mình
+        // vừa vẽ lên cũng bị nhoè theo.
+        for (k, (x, y, w, h)) in o.vung_mo.iter().enumerate() {
+            let r = VungMo::ban_kinh(*w, *h);
+            let con = if k + 1 == o.vung_mo.len() && !o.burn_subs && o.watermark.is_none() {
+                "v".to_string()
+            } else {
+                format!("vm{k}")
+            };
+            // split vì luồng vào được dùng HAI lần: một bản nguyên để làm nền,
+            // một bản cắt ra để làm mờ. Nối thẳng hai nhánh vào cùng một nhãn
+            // là lỗi "Filter has an unconnected output".
+            parts.push(format!("[{cur}]split[g{k}][c{k}]"));
+            parts.push(format!(
+                "[c{k}]crop={w}:{h}:{x}:{y},boxblur={r}:2[b{k}]"
+            ));
+            parts.push(format!("[g{k}][b{k}]overlay={x}:{y}[{con}]"));
+            cur = con;
+        }
         if o.burn_subs {
             // Nếu còn logo phía sau thì đây chưa phải đầu ra cuối cùng.
             let ra = if o.watermark.is_some() { "vs" } else { "v" };
@@ -339,7 +428,7 @@ pub fn build_export_args(
 
     // Có bất cứ filter hình nào cũng buộc mã hoá lại: `-c:v copy` chép luồng
     // nén nguyên vẹn, không có chỗ nào để chèn phụ đề hay logo vào.
-    let co_filter_video = o.burn_subs || o.watermark.is_some();
+    let co_filter_video = o.burn_subs || o.watermark.is_some() || !o.vung_mo.is_empty();
 
     a.push("-map".into());
     a.push(OsString::from(if co_filter_video { "[v]" } else { "0:v:0" }));

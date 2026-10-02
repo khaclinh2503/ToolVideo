@@ -25,6 +25,8 @@ interface AppConfig {
   tts: TtsConfig;
   subtitle: SubtitleConfig;
   watermark: WatermarkConfig;
+  /** Vùng làm mờ, đo bằng % khung hình. */
+  vung_mo: VungMoCfg[];
 }
 
 /** Font có sẵn trên mọi máy Windows và đủ dấu tiếng Việt. */
@@ -263,10 +265,15 @@ function dongHo(giay: number): string {
 /// hay bị font thay thế vẽ sai.
 const CAU_MAU_PHU_DE = "Cầu Cầu đâu rồi, lúc nãy còn ở đây mà anh?";
 
+type VungMoCfg = { x_pct: number; y_pct: number; w_pct: number; h_pct: number };
+
 function App() {
   const [status, setStatus] = useState("");
   const [running, setRunning] = useState(false);
   const [tienDo, setTienDo] = useState<TienDo | null>(null);
+  // Bật thì lớp khoanh vùng trên khung xem thử ăn chuột — đổi lại KHÔNG bấm
+  // được nút phát của video. Mặc định tắt để người dùng xem video như thường.
+  const [veVungMo, setVeVungMo] = useState(false);
   // Giây đã trôi của lần chạy hiện tại. Có bước không đếm được (nhận dạng lời
   // thoại chạy một lượt trong sherpa), mà câu hỏi thật của người dùng là "app
   // còn sống không" — một con số nhúc nhích mỗi giây trả lời được câu đó.
@@ -583,6 +590,13 @@ function App() {
     if (!projectDir) { setSoTay([]); return; }
     napSoTay(projectDir);
   }, [projectDir]);
+
+  // Ghi thẳng vào cfg rồi lưu: vùng mờ là cấu hình chung như logo, không
+  // thuộc riêng dự án nào — người dùng thường dịch nhiều video cùng một nguồn
+  // nên logo nền nằm y một chỗ.
+  function datVungMo(v: VungMoCfg[]) {
+    setCfg((c) => (c ? { ...c, vung_mo: v } : c));
+  }
 
   async function onTranslate() {
     if (!projectDir) { setStatus("Lấy lời thoại ở Bước 2 trước."); return; }
@@ -1455,6 +1469,36 @@ function App() {
             đây được lưu tự động trước khi xuất.
           </span>
         </div>
+        {cfg && (
+          <div className="row col lam-mo">
+            <div className="row">
+              <strong>Làm mờ một vùng</strong>
+              <button
+                type="button"
+                className={veVungMo ? "primary" : ""}
+                onClick={() => setVeVungMo(!veVungMo)}
+                disabled={running}
+              >
+                {veVungMo ? "Xong, xem lại video" : "Khoanh vùng trên khung xem thử"}
+              </button>
+              <span className="muted">
+                {cfg.vung_mo.length
+                  ? `${cfg.vung_mo.length} vùng`
+                  : "chưa có vùng nào"}
+              </span>
+              {cfg.vung_mo.length > 0 && (
+                <button type="button" onClick={() => datVungMo([])} disabled={running}>
+                  Xoá hết
+                </button>
+              )}
+            </div>
+            <p className={veVungMo ? "warn" : "muted"}>
+              {veVungMo
+                ? "Đang khoanh vùng: kéo chuột trên khung xem thử bên dưới để tạo vùng, kéo giữa ô để dời, kéo góc dưới-phải để giãn, bấm × để xoá. Trong lúc này KHÔNG bấm được nút phát của video."
+                : "Che logo nền, tên kênh, chữ chạy… Vùng mờ chỉ nằm trong bản xuất; bật làm mờ thì video buộc phải mã hoá lại nên xuất lâu hơn."}
+            </p>
+          </div>
+        )}
         <h3 className="muted">Xem thử</h3>
         <div className="row">
           <button type="button" onClick={onLoadCues} disabled={running || !projectDir}>
@@ -1466,7 +1510,15 @@ function App() {
             dùng nút "Xem thử phụ đề" ở trên.
           </span>
         </div>
-        {sub && <XemThu videoPath={videoPath} cues={cues} sub={sub} wm={wm} />}
+        {sub && <XemThu
+            videoPath={videoPath}
+            cues={cues}
+            sub={sub}
+            wm={wm}
+            vungMo={cfg?.vung_mo ?? []}
+            onDoiVungMo={datVungMo}
+            dangVeVungMo={veVungMo}
+          />}
       </section>
       )}
 

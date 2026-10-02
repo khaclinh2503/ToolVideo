@@ -644,3 +644,57 @@ input[type="color"] {
   -webkit-text-stroke-width: calc(var(--sub-vien) * 100cqh / var(--ass-play-res-y));
   paint-order: stroke fill;
 }
+
+/* Lớp khoanh vùng làm mờ, phủ đúng khung video trong trình xem thử. */
+.vung-mo-lop {
+  position: absolute;
+  inset: 0;
+  /* Tắt chuột khi KHÔNG khoanh vùng: lớp này phủ kín thẻ video, để nó ăn
+     chuột thì không bấm được nút phát, tua hay âm lượng. */
+  pointer-events: none;
+}
+.vung-mo-lop.dang-ve {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+.vung-mo-o {
+  position: absolute;
+  /* Mô phỏng chỗ sẽ bị làm mờ. backdrop-filter nhoè đúng phần hình nằm dưới,
+     nên nhìn gần giống bản xuất hơn hẳn một ô màu phẳng. */
+  backdrop-filter: blur(6px);
+  background: rgba(20, 20, 24, 0.25);
+  outline: 1px dashed rgba(255, 255, 255, 0.8);
+}
+.vung-mo-o.dang-nhap {
+  outline-style: solid;
+}
+.vung-mo-than {
+  position: absolute;
+  inset: 0;
+  cursor: move;
+}
+.vung-mo-tay-cam {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  background: #fff;
+  border: 1px solid #222;
+  border-radius: 2px;
+  cursor: nwse-resize;
+}
+.vung-mo-xoa {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  line-height: 1;
+  border-radius: 50%;
+}
+.lam-mo {
+  border: 1px solid var(--vien, #3a3a3a);
+  border-radius: 6px;
+  padding: 10px;
+  margin-top: 10px;
+}

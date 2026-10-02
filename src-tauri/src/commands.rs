@@ -659,6 +659,7 @@ pub async fn run_export(
             out_dir.as_deref().map(Path::new),
             Some(crate::config::doi_sang_sub_style(&cfg.subtitle)),
             &cfg.watermark,
+            &cfg.vung_mo,
             &mut |phase| {
                 let _ = app.emit("export_progress", ExportProgressEvent { phase: phase.to_string() });
             },

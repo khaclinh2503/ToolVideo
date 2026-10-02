@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import VungMoLop, { type VungMoUI } from "./VungMoLop";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 
 export interface CueDto {
@@ -15,6 +16,11 @@ export interface WatermarkConfig {
 }
 
 interface XemThuProps {
+  /** Vùng làm mờ; `undefined` ⇒ không hiện lớp khoanh vùng nào. */
+  vungMo?: VungMoUI[];
+  onDoiVungMo?: (v: VungMoUI[]) => void;
+  /** Bật thì lớp khoanh vùng ăn chuột — lúc đó KHÔNG bấm được nút phát. */
+  dangVeVungMo?: boolean;
   videoPath: string;
   cues: CueDto[];
   sub: SubtitleConfig;
@@ -84,7 +90,8 @@ function viTriLogo(corner: string, marginPct: number, rongPx: number): React.CSS
   }
 }
 
-export default function XemThu({ videoPath, cues, sub, wm }: XemThuProps) {
+
+export default function XemThu({ videoPath, cues, sub, wm, vungMo, onDoiVungMo, dangVeVungMo }: XemThuProps) {
   const ref = useRef<HTMLVideoElement>(null);
   const [tMs, setTMs] = useState(0);
   // Số pixel hiển thị ứng với MỘT đơn vị của lưới ASS cao 288 — xem
@@ -265,6 +272,9 @@ export default function XemThu({ videoPath, cues, sub, wm }: XemThuProps) {
             onPlay={(e) => dongBoTiengLong(e.currentTarget, true)}
             onError={() => setLoi("Không phát được video — file có thể đã bị xoá hoặc đổi tên.")}
           />
+          {vungMo && onDoiVungMo && (
+            <VungMoLop vungMo={vungMo} onDoi={onDoiVungMo} dangVe={!!dangVeVungMo} />
+          )}
           {wmSanSang && wm?.enabled && wm.path && (
             <img
               className="xem-thu-logo"

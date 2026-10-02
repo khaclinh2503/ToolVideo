@@ -41,6 +41,11 @@ pub struct AppConfig {
     pub compose: ComposeConfig,
     #[serde(default)]
     pub watermark: WatermarkConfig,
+    /// Các vùng làm mờ. Rỗng = không làm mờ gì, giữ nguyên hành vi cũ.
+    ///
+    /// `serde(default)` để config.json cũ đọc vẫn chạy.
+    #[serde(default)]
+    pub vung_mo: Vec<VungMoConfig>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -91,6 +96,22 @@ impl Default for SubtitleConfig {
 /// `#[serde(default)]` trần: serde lấy `Default` của KIỂU, nên `size_pct` thiếu
 /// khoá sẽ thành 0 và ffmpeg nhận `scale=0:-1` — logo biến mất mà không báo gì.
 /// `impl Default` của struct KHÔNG được serde dùng cho từng trường.
+/// Một vùng bị làm mờ trên khung hình, đo bằng PHẦN TRĂM.
+///
+/// Phần trăm chứ không phải pixel: người dùng khoanh vùng trên khung xem thử
+/// (to nhỏ tuỳ cửa sổ), còn video có thể 360p hay 4K.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+pub struct VungMoConfig {
+    #[serde(default)]
+    pub x_pct: f32,
+    #[serde(default)]
+    pub y_pct: f32,
+    #[serde(default)]
+    pub w_pct: f32,
+    #[serde(default)]
+    pub h_pct: f32,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct WatermarkConfig {
     #[serde(default)]
