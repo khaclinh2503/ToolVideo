@@ -373,3 +373,72 @@ fn lo_cuoi_chot_dung_o_tong_so_cue() {
     .unwrap();
     assert_eq!(moc.last(), Some(&(6, 6)));
 }
+
+// ---------- gán giới tính bừa cho tiếng chửi ----------
+
+/// Ca thật người dùng báo: 不要脸的东西 ra "Thằng vô liêm sỉ" trong một cảnh
+/// con gái mắng con gái. 东西 nghĩa là "thứ/đồ", không nói nam hay nữ — chính
+/// model tự bịa giới tính ra.
+#[test]
+fn bat_duoc_gan_gioi_tinh_cho_tieng_chui_trung_tinh() {
+    use app_lib::translate::gan_gioi_tinh_bua;
+    assert_eq!(
+        gan_gioi_tinh_bua("不要脸的东西，他是你姐夫。", "Thằng vô liêm sỉ, nó là anh rể của cậu."),
+        Some("thằng")
+    );
+    assert_eq!(
+        gan_gioi_tinh_bua("不要脸的东西", "Con mụ vô liêm sỉ."),
+        Some("con mụ")
+    );
+    // Bản dịch trung tính thì không có gì để sửa.
+    assert_eq!(gan_gioi_tinh_bua("不要脸的东西", "Đồ vô liêm sỉ."), None);
+}
+
+/// Bản gốc CÓ nói giới tính thì để yên: 小子 là con trai, 婆娘 là đàn bà —
+/// "thằng" ở đó là dịch đúng chứ không phải bịa.
+#[test]
+fn goc_co_gioi_tinh_thi_khong_dung_toi() {
+    use app_lib::translate::gan_gioi_tinh_bua;
+    assert_eq!(gan_gioi_tinh_bua("臭小子，滚开。", "Thằng ranh, cút đi."), None);
+    assert_eq!(gan_gioi_tinh_bua("他是你姐夫。", "Hắn là anh rể của cậu."), None);
+}
+
+/// "con" đứng một mình KHÔNG được coi là loại từ chỉ giới: "con chó",
+/// "con người", "con bé" đều vô can. Bắt nhầm thì lớp dịch lại chạy loạn và
+/// mỗi cue vô can là thêm một request.
+#[test]
+fn con_dung_mot_minh_khong_bi_bat_nham() {
+    use app_lib::translate::gan_gioi_tinh_bua;
+    assert_eq!(gan_gioi_tinh_bua("这东西真烦人。", "Con chó này phiền thật."), None);
+    assert_eq!(gan_gioi_tinh_bua("这家伙是谁？", "Con người này là ai?"), None);
+    // Nhưng "con mẹ" thì có.
+    assert_eq!(
+        gan_gioi_tinh_bua("这家伙是谁？", "Con mẹ này là ai?"),
+        Some("con mẹ")
+    );
+}
+
+/// Phải khớp theo TỪ chứ không phải theo chuỗi con: "ả" nằm trong "ảo", "gã"
+/// nằm trong "gãy" — khớp chuỗi con thì mọi câu có "ảo ảnh" đều bị gửi đi dịch
+/// lại.
+#[test]
+fn khop_theo_tu_chu_khong_phai_chuoi_con() {
+    use app_lib::translate::gan_gioi_tinh_bua;
+    assert_eq!(gan_gioi_tinh_bua("这东西是幻觉。", "Thứ này là ảo ảnh."), None);
+    assert_eq!(gan_gioi_tinh_bua("这东西断了。", "Đồ này gãy rồi."), None);
+    assert_eq!(gan_gioi_tinh_bua("这东西是谁？", "Ả này là ai?"), Some("ả"));
+}
+
+/// Lớp sửa phải được GỌI trong vòng dịch, không chỉ tồn tại.
+///
+/// Đã có tiền lệ: `dich_lai_sua_loi` từng chỉ nằm trong trait mà `LlmTrenMay`
+/// không chuyển tiếp, nên cả lớp sửa không bao giờ chạy qua app thật.
+#[test]
+fn lop_sua_gioi_tinh_duoc_goi_trong_vong_dich() {
+    let ma = std::fs::read_to_string("src/translate/mod.rs").expect("đọc được mod.rs");
+    let goi = ma
+        .find("dich_lai_cue_sai_gioi_tinh(p, chunk")
+        .expect("phải GỌI dich_lai_cue_sai_gioi_tinh trong vòng dịch");
+    let khai_bao = ma.find("fn dich_lai_cue_sai_gioi_tinh(").expect("phải có hàm");
+    assert!(goi < khai_bao, "chỗ gọi phải nằm trong vòng dịch, trước phần khai báo hàm");
+}

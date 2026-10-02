@@ -105,3 +105,110 @@ fn khong_cat_o_dau_cham_trong_so_tien_hay_ten_mien() {
     assert_eq!(ra.len(), 1, "nhận: {:?}", ra.iter().map(|s| &s.text).collect::<Vec<_>>());
     assert!(ra[0].text.contains("1.500.000"), "con số phải nguyên vẹn: {:?}", ra[0].text);
 }
+
+// ---------- ngắt dòng theo từ tiếng Việt ----------
+
+/// Ghép lại các dòng rồi kiểm từng chỗ ngắt: không chỗ nào được chấm 0 điểm.
+fn cho_ngat(v: &[app_lib::srt::Segment], toi_da: usize) -> Vec<(String, String)> {
+    let ra = app_lib::srt::cat_cue_dai(v, toi_da);
+    ra.windows(2)
+        .filter_map(|w| {
+            let a = w[0].text.split_whitespace().last()?;
+            let b = w[1].text.split_whitespace().next()?;
+            Some((a.to_string(), b.to_string()))
+        })
+        .collect()
+}
+
+/// Tiếng Việt viết rời từng âm tiết, nên khoảng trắng KHÔNG phải ranh giới từ.
+///
+/// Đây là câu có thật lấy từ phụ đề một dự án: cách cắt cũ cho ra "...báo cáo
+/// kiểm" rồi "tra chi tiết...", bổ đôi cả "kiểm tra" lẫn "chi tiết" — mà hai
+/// mảnh còn hiện ở hai thời điểm khác nhau nên người xem đọc thành hai cụm vô
+/// nghĩa. Người dùng báo đúng ca này.
+#[test]
+fn khong_bo_doi_tu_ghep_tieng_viet() {
+    use app_lib::srt::{cat_cue_dai, MAX_MOT_DONG};
+    let v = vec![seg(
+        0,
+        9000,
+        "Mỗi máy đều có báo cáo kiểm tra chi tiết, chất lượng rõ ràng, \
+         còn hỗ trợ trả lại hàng trong 7 ngày và bảo hành 1 năm.",
+    )];
+    let ra = cat_cue_dai(&v, MAX_MOT_DONG);
+    let dong: Vec<&str> = ra.iter().map(|s| s.text.as_str()).collect();
+    for cap in ["kiểm tra", "chi tiết", "chất lượng", "bảo hành"] {
+        let (a, b) = cap.split_once(' ').unwrap();
+        assert!(
+            !dong.iter().any(|d| d.ends_with(a) && d.len() > a.len()),
+            "bổ đôi {cap:?}: {dong:?}"
+        );
+        let _ = b;
+    }
+    assert!(
+        dong.iter().any(|d| d.contains("kiểm tra")),
+        "\"kiểm tra\" phải nằm trọn trong một dòng: {dong:?}"
+    );
+}
+
+/// Chỗ ngắt phải rơi trước một hư từ hoặc sau dấu câu, không cắt bừa ở khoảng
+/// trắng gần trần nhất.
+///
+/// Với ngưỡng dòng tối thiểu bằng NỬA trần, câu này không có chỗ ngắt sạch nào
+/// đủ dài (chỗ sạch duy nhất là trước "đang", dài 20 ký tự) nên bộ cắt rơi về
+/// cắt bừa và bổ đôi "chu kỳ". Ngưỡng một phần ba sửa đúng ca đó.
+#[test]
+fn ngat_truoc_hu_tu_chu_khong_cat_bua() {
+    use app_lib::srt::{MAX_MOT_DONG, diem_ngat};
+    let v = vec![seg(
+        0,
+        9000,
+        "Sự nóng lên liên tục đang làm thay đổi chu kỳ phát triển \
+         của một số loài côn trùng.",
+    )];
+    for (a, b) in cho_ngat(&v, MAX_MOT_DONG) {
+        assert!(diem_ngat(&a, &b) > 0, "cắt bừa giữa {a:?} và {b:?}");
+    }
+}
+
+/// Không tách con số khỏi đơn vị của nó. Video bán hàng đầy "7 ngày",
+/// "100 tệ", "5.439 đồng" — tách ra là người xem đọc hụt mất con số.
+#[test]
+fn khong_tach_so_khoi_don_vi() {
+    use app_lib::srt::{MAX_MOT_DONG, diem_ngat};
+    assert_eq!(diem_ngat("7", "ngày"), 0, "số và đơn vị phải dính nhau");
+    assert_eq!(diem_ngat("100", "tệ"), 0);
+    let v = vec![seg(
+        0,
+        6000,
+        "Rẻ hơn ít nhất 100 nhân dân tệ so với giá thị trường hiện nay nhé bạn.",
+    )];
+    let ra = app_lib::srt::cat_cue_dai(&v, MAX_MOT_DONG);
+    let dong: Vec<&str> = ra.iter().map(|s| s.text.as_str()).collect();
+    assert!(
+        !dong.iter().any(|d| d.trim_end().ends_with("100")),
+        "cắt ngay sau con số: {dong:?}"
+    );
+}
+
+/// Không ngắt giữa HAI hư từ: "còn | có", "đã | được" đi liền thành một cụm.
+#[test]
+fn khong_ngat_giua_hai_hu_tu() {
+    use app_lib::srt::diem_ngat;
+    for (a, b) in [("còn", "có"), ("đã", "được"), ("cũng", "không"), ("một", "số")] {
+        assert_eq!(diem_ngat(a, b), 0, "{a} | {b} phải bị coi là chỗ ngắt xấu");
+    }
+}
+
+/// Hư từ HAI MẶT chỉ được dùng khi không còn chỗ nào khá hơn: `bị` trong
+/// "chuẩn bị", `ông` trong "đàn ông", `người` trong "loài người" đều là âm tiết
+/// sau của từ ghép, nên chúng phải xếp dưới hư từ mở ngữ.
+#[test]
+fn hu_tu_hai_mat_xep_duoi_hu_tu_mo_ngu() {
+    use app_lib::srt::diem_ngat;
+    assert!(diem_ngat("xong", "rồi") > diem_ngat("đàn", "ông"));
+    assert!(diem_ngat("nhà", "và") > diem_ngat("chuẩn", "bị"));
+    assert!(diem_ngat("trời", "đã") > diem_ngat("loài", "người"));
+    // Dấu câu vẫn là chỗ ngắt tốt nhất.
+    assert!(diem_ngat("rồi.", "Tôi") > diem_ngat("nhà", "và"));
+}

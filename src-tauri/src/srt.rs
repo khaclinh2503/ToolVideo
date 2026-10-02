@@ -120,35 +120,133 @@ fn cat_van_ban(text: &str, toi_da: usize) -> Vec<String> {
     ra
 }
 
-/// Cắt một câu dài theo dấu ngắt (`,` `;` `:` `—`) rồi tới khoảng trắng.
+/// Hư từ MỞ NGỮ: gần như không bao giờ là âm tiết sau của một từ ghép, nên
+/// ngắt dòng ngay trước chúng luôn an toàn.
+///
+/// Vì sao cần bảng này: tiếng Việt viết rời từng âm tiết, nên khoảng trắng
+/// KHÔNG phải ranh giới từ. Cắt ở khoảng trắng gần nhất trước trần ký tự là
+/// cách đúng với tiếng Anh nhưng sai với tiếng Việt — "báo cáo kiểm" rồi "tra
+/// chi tiết" bổ đôi cả "kiểm tra" lẫn "chi tiết", mà hai mảnh còn hiện ở hai
+/// thời điểm khác nhau.
+///
+/// Hư từ là lớp từ ĐÓNG — vài trăm từ, không sinh thêm — nên bảng cứng là đủ.
+/// Liệt kê từ ghép thì ngược lại: vô hạn, không bao giờ đủ.
+///
+/// CỐ Ý không có: `nào` `gì` `ai` `đâu` `sao` `này` `kia` `đó` `ấy`. Chúng
+/// đứng CUỐI ngữ đoạn ("thế nào", "cái này"), ngắt trước chúng còn gãy hơn.
+const HU_TU_MO_NGU: &[&str] = &[
+    "và", "nhưng", "mà", "hoặc", "nếu", "dù", "tuy", "vì", "bởi", "nên", "rồi",
+    "còn", "khi", "để", "của", "cho", "trong", "thì",
+    "các", "những", "mọi", "mỗi", "một", "vài",
+    "đã", "đang", "sẽ", "vẫn", "cũng", "chỉ", "lại", "rất", "quá", "càng",
+    "hãy", "đừng", "không", "chưa", "chẳng",
+    "tôi", "tao", "tớ", "mình", "chúng", "bạn", "cậu", "mày", "nó", "hắn",
+];
+
+/// Hư từ HAI MẶT: mở ngữ được, nhưng cũng hay làm âm tiết sau của từ ghép —
+/// `bị` trong "chuẩn bị", `ông` trong "đàn ông", `họ` trong "bọn họ", `người`
+/// trong "loài người", `tại` trong "tồn tại", `với` trong "so với", `do`
+/// trong "lý do". Chỉ ngắt trước chúng khi không còn chỗ nào khá hơn.
+///
+/// Danh sách này rút ra từ ĐO THẬT: chạy bộ cắt trên phụ đề 193 cue của một
+/// dự án rồi đọc hết 217 chỗ ngắt, nhặt ra những cặp bị bổ đôi.
+const HU_TU_HAI_MAT: &[&str] = &[
+    "với", "cùng", "hay", "song", "dẫu", "lúc",
+    "bằng", "theo", "về", "từ", "đến", "tới", "tại", "ở", "trên", "dưới",
+    "ngoài", "giữa", "sau", "trước", "qua", "bên", "do",
+    "vừa", "mới", "từng", "hơi", "khá", "cứ", "chớ", "được", "bị", "phải",
+    "có", "là",
+    "cái", "con", "chiếc", "người",
+    "ta", "anh", "chị", "em", "ông", "bà", "cô", "chú", "bác", "cháu", "họ",
+];
+
+fn trong_bang(bang: &[&str], t: &str) -> bool {
+    let s = t.trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase();
+    bang.contains(&s.as_str())
+}
+
+/// Chấm điểm một chỗ ngắt dòng giữa `truoc` và `sau`. Càng cao càng tốt;
+/// 0 nghĩa là cắt bừa.
+///
+/// Để `pub` cho bin `do_ngat` chấm được chất lượng ngắt trên phụ đề thật;
+/// đây là chỗ duy nhất quyết định cắt ở đâu nên phải đo được.
+pub fn diem_ngat(truoc: &str, sau: &str) -> u8 {
+    let ket = truoc.chars().last().unwrap_or(' ');
+    if matches!(ket, '.' | '?' | '!' | '…') {
+        return 4;
+    }
+    if matches!(ket, ',' | ';' | ':' | '—' | '–') {
+        return 3;
+    }
+    // Không ngắt giữa HAI hư từ ("còn | có", "đã | được"): chúng dính thành
+    // một cụm, ngắt ở đó đọc còn gãy hơn.
+    if trong_bang(HU_TU_MO_NGU, truoc) || trong_bang(HU_TU_HAI_MAT, truoc) {
+        return 0;
+    }
+    // Không tách con số khỏi đơn vị: "7 | ngày", "100 | tệ". Video bán hàng
+    // đầy những cụm như vậy.
+    if truoc.chars().any(|c| c.is_ascii_digit()) {
+        return 0;
+    }
+    if trong_bang(HU_TU_MO_NGU, sau) {
+        return 2;
+    }
+    if trong_bang(HU_TU_HAI_MAT, sau) {
+        return 1;
+    }
+    0
+}
+
+fn do_dai(tu: &[&str]) -> usize {
+    tu.iter().map(|t| t.chars().count()).sum::<usize>() + tu.len().saturating_sub(1)
+}
+
+/// Cắt một câu dài: lấp dòng tới trần ký tự rồi chọn chỗ ngắt ĐIỂM CAO NHẤT
+/// trong dòng, hoà điểm thì lấy chỗ muộn nhất cho dòng đầy.
 fn cat_theo_dau_ngat(cau: &str, toi_da: usize) -> Vec<String> {
     let tu: Vec<&str> = cau.split_whitespace().collect();
     let mut ra: Vec<String> = Vec::new();
-    let mut dong = String::new();
+    let mut dau = 0usize;
 
-    for t in tu {
-        let se_dai = if dong.is_empty() {
-            t.chars().count()
-        } else {
-            dong.chars().count() + 1 + t.chars().count()
-        };
-        if !dong.is_empty() && se_dai > toi_da {
-            ra.push(std::mem::take(&mut dong));
+    while dau < tu.len() {
+        // `het` = token đầu tiên KHÔNG còn vừa dòng. Luôn nhận ít nhất một
+        // token, kể cả khi nó dài hơn cả trần (đường dẫn, URL).
+        let mut het = dau;
+        let mut dai = 0usize;
+        while het < tu.len() {
+            let them = tu[het].chars().count() + usize::from(het > dau);
+            if het > dau && dai + them > toi_da {
+                break;
+            }
+            dai += them;
+            het += 1;
         }
-        if !dong.is_empty() {
-            dong.push(' ');
+        if het >= tu.len() {
+            ra.push(tu[dau..].join(" "));
+            break;
         }
-        dong.push_str(t);
 
-        // Sau một dấu ngắt, nếu dòng đã đủ dài thì cắt ở đây — chỗ ngắt tự
-        // nhiên đọc dễ hơn là cắt giữa mệnh đề chỉ vì chạm trần ký tự.
-        let ket = t.chars().last().unwrap_or(' ');
-        if matches!(ket, ',' | ';' | ':' | '—') && dong.chars().count() >= toi_da / 2 {
-            ra.push(std::mem::take(&mut dong));
+        // Một phần ba trần, KHÔNG phải một nửa. Đo thật: với ngưỡng một nửa
+        // (21 ký tự), câu "Sự nóng lên liên tục đang làm thay đổi chu kỳ..."
+        // không có chỗ ngắt sạch nào đủ dài — chỗ sạch duy nhất là trước
+        // "đang", dài 20 ký tự — nên nó rơi về cắt bừa và bổ đôi "chu kỳ".
+        // Một dòng hơi ngắn vẫn đọc được; một từ bị bổ đôi thì không.
+        let toi_thieu = toi_da / 3;
+        let mut chon = het;
+        let mut diem_tot = 0u8;
+        let mut k = het;
+        while k > dau + 1 {
+            if do_dai(&tu[dau..k]) >= toi_thieu {
+                let d = diem_ngat(tu[k - 1], tu[k]);
+                if d > diem_tot {
+                    diem_tot = d;
+                    chon = k;
+                }
+            }
+            k -= 1;
         }
-    }
-    if !dong.is_empty() {
-        ra.push(dong);
+        ra.push(tu[dau..chon].join(" "));
+        dau = chon;
     }
     ra
 }

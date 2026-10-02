@@ -324,6 +324,11 @@ pub fn translate_segments_co_tien_do(
             dich_lai_cue_con_chu_dong_a(p, chunk, &idx, &mut translated_by_idx, src, tgt);
         }
 
+        // Gán giới tính bừa cho tiếng chửi: 不要脸的东西 không nói người bị
+        // chửi là nam hay nữ, nhưng "thằng"/"mụ" thì nói. Cảnh con gái mắng
+        // con gái mà ra "Thằng vô liêm sỉ" là sai hẳn vai.
+        dich_lai_cue_sai_gioi_tinh(p, chunk, &idx, &mut translated_by_idx, src, tgt);
+
         for (s, t) in chunk.iter().zip(translated_by_idx) {
             out.push(Segment {
                 start_ms: s.start_ms,
@@ -610,6 +615,90 @@ fn sua_cue_sai_so_tay(
 ///
 /// Nuốt lỗi là cố ý: cả lô đã dịch xong rồi, không được để một request vá lỗi
 /// hỏng kéo sập toàn bộ bản dịch.
+/// Danh từ chửi KHÔNG mang giới tính trong tiếng Trung.
+///
+/// 东西 "thứ/đồ", 家伙 "của nợ", 玩意 "cái của ấy", 货色 "thứ đồ" — không từ
+/// nào cho biết người bị chửi là nam hay nữ. Tiếng Việt thì loại từ chửi lại
+/// chia giới rõ: "thằng" là nam, "mụ" "ả" "con mẹ" là nữ, còn "đồ" thì trung
+/// tính, dùng được cho cả hai.
+///
+/// Ca thật người dùng báo: 不要脸的东西 ra "Thằng vô liêm sỉ" trong cảnh con
+/// gái mắng con gái. Bản gốc không hề nói giới tính — model tự bịa ra.
+const TU_CHUI_KHONG_GIOI: &[&str] = &["东西", "家伙", "玩意", "货色"];
+
+/// Loại từ tiếng Việt chỉ rõ giới tính của người bị nói tới.
+///
+/// Cố ý KHÔNG có "con" đứng một mình: "con chó", "con bé", "con người" đều vô
+/// can, bắt nhầm thì lớp sửa chạy loạn.
+/// Xếp cụm DÀI trước cụm ngắn: "con mụ" phải khớp trước "mụ", kẻo câu mô tả
+/// lỗi gửi cho model chỉ nói được một nửa từ sai.
+const LOAI_TU_CO_GIOI: &[&str] = &["con mẹ", "con nhỏ", "con mụ", "thằng", "gã", "mụ", "ả"];
+
+/// `hay` có xuất hiện trong `trong` như một TỪ RIÊNG không.
+fn chua_tu(trong: &str, hay: &str) -> bool {
+    let b: Vec<char> = trong.chars().collect();
+    let c: Vec<char> = hay.chars().collect();
+    if c.is_empty() || b.len() < c.len() {
+        return false;
+    }
+    (0..=b.len() - c.len()).any(|i| {
+        b[i..i + c.len()] == c[..]
+            && (i == 0 || !b[i - 1].is_alphabetic())
+            && (i + c.len() == b.len() || !b[i + c.len()].is_alphabetic())
+    })
+}
+
+/// Bản dịch có tự gán giới tính cho một tiếng chửi vốn không có giới tính
+/// không. Trả về chính từ bị gán, để câu mô tả lỗi nói đúng chỗ sai.
+///
+/// CHỈ xét khi bản gốc dùng danh từ chửi trung tính. 他/她 trong cùng câu là
+/// người THỨ BA ("他是你姐夫" — anh rể), không phải người bị chửi, nên không
+/// lấy nó làm bằng chứng giới tính được.
+pub fn gan_gioi_tinh_bua(goc: &str, dich: &str) -> Option<&'static str> {
+    if !TU_CHUI_KHONG_GIOI.iter().any(|t| goc.contains(t)) {
+        return None;
+    }
+    let thuong = dich.to_lowercase();
+    LOAI_TU_CO_GIOI.iter().find(|t| chua_tu(&thuong, t)).copied()
+}
+
+/// Cue nào gán giới tính bừa thì gửi đi dịch lại.
+///
+/// Làm ở lớp MÃ chứ không chỉ ở prompt: quy tắc trong prompt áp cho cả lô 40
+/// cue, còn đây nhắm đúng một cue và nói thẳng nó sai chỗ nào — cùng cách đã
+/// dùng cho cue sót chữ Hán và cue gọi sai tên riêng.
+fn dich_lai_cue_sai_gioi_tinh(
+    p: &dyn TranslateProvider,
+    chunk: &[Segment],
+    idx: &[usize],
+    translated_by_idx: &mut [String],
+    src: &str,
+    tgt: &str,
+) {
+    let can: Vec<(usize, &str)> = idx
+        .iter()
+        .copied()
+        .filter_map(|i| {
+            gan_gioi_tinh_bua(&chunk[i].text, &translated_by_idx[i]).map(|t| (i, t))
+        })
+        .collect();
+    for (i, tu) in can.into_iter().take(TOI_DA_DICH_LAI) {
+        let mo_ta = format!(
+            "nó dùng \"{tu}\" — một từ chỉ rõ giới tính — trong khi bản gốc không cho biết người bị chửi là nam hay nữ. Dùng từ chửi TRUNG TÍNH của tiếng Việt: 不要脸的东西 là \"Đồ vô liêm sỉ.\" chứ không phải \"Thằng vô liêm sỉ.\" hay \"Con mụ vô liêm sỉ.\""
+        );
+        let Ok(lai) = p.dich_lai_sua_loi(chunk[i].text.as_str(), &mo_ta, src, tgt) else {
+            continue;
+        };
+        let t = normalize_translated(&lai);
+        // Chỉ nhận khi HẾT gán bừa — khác luật "bớt được là nhận" của chữ Hán
+        // sót, vì ở đây không có thang nhiều ít: còn một từ giới tính là vẫn
+        // sai nguyên vẹn.
+        if !t.trim().is_empty() && gan_gioi_tinh_bua(&chunk[i].text, &t).is_none() {
+            translated_by_idx[i] = t;
+        }
+    }
+}
+
 fn dich_lai_cue_con_chu_dong_a(
     p: &dyn TranslateProvider,
     chunk: &[Segment],
