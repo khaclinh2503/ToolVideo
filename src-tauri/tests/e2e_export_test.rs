@@ -91,6 +91,7 @@ fn chay(burn: bool, soft: bool, ten: &str) {
         }),
         &app_lib::config::WatermarkConfig::default(),
         &[], // không làm mờ vùng nào
+        100, // không phóng to/thu nhỏ
         &mut |ph| println!("  [{ph}] {:.1}s", t0.elapsed().as_secs_f32()),
     )
     .unwrap_or_else(|e| panic!("Xuất lỗi: {e}"));
@@ -285,6 +286,7 @@ fn chay_mot_goc(corner: &str, video_w: u32, video_h: u32, size_pct: u32, margin_
         style: None,
         watermark: Some(wm),
         vung_mo: Vec::new(),
+        zoom: None,
     };
     let args = app_lib::export::build_export_args(&video, &dub, None, Some(&logo), &out, &opts);
     app_lib::export::run_export(&ffmpeg, d.path(), &args)
@@ -433,6 +435,7 @@ fn e2e_lam_mo_vung_chay_duoc_bang_ffmpeg_that() {
         style: None,
         watermark: None,
         vung_mo: vec![px],
+        zoom: None,
     };
     let args = app_lib::export::build_export_args(&video, &dub, None, None, &out, &o);
     app_lib::export::run_export(&ffmpeg, d.path(), &args).unwrap_or_else(|e| panic!("xuất lỗi: {e}"));

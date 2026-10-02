@@ -21,6 +21,8 @@ interface XemThuProps {
   onDoiVungMo?: (v: VungMoUI[]) => void;
   /** Bật thì lớp khoanh vùng ăn chuột — lúc đó KHÔNG bấm được nút phát. */
   dangVeVungMo?: boolean;
+  /** Phóng to/thu nhỏ nội dung, %. 100 = nguyên bản. */
+  zoomPct?: number;
   videoPath: string;
   cues: CueDto[];
   sub: SubtitleConfig;
@@ -91,7 +93,7 @@ function viTriLogo(corner: string, marginPct: number, rongPx: number): React.CSS
 }
 
 
-export default function XemThu({ videoPath, cues, sub, wm, vungMo, onDoiVungMo, dangVeVungMo }: XemThuProps) {
+export default function XemThu({ videoPath, cues, sub, wm, vungMo, onDoiVungMo, dangVeVungMo, zoomPct }: XemThuProps) {
   const ref = useRef<HTMLVideoElement>(null);
   const [tMs, setTMs] = useState(0);
   // Số pixel hiển thị ứng với MỘT đơn vị của lưới ASS cao 288 — xem
@@ -254,6 +256,13 @@ export default function XemThu({ videoPath, cues, sub, wm, vungMo, onDoiVungMo, 
         <p className="muted">Đang xin quyền mở video để xem thử…</p>
       ) : (
         <>
+          {/* Khung bị phóng: chứa HÌNH và lớp khoanh vùng, KHÔNG chứa logo và
+              phụ đề. Đúng thứ tự filtergraph bên Rust — làm mờ rồi zoom rồi mới
+              vẽ phụ đề/logo — nên vùng mờ phóng theo hình còn chữ thì không. */}
+          <div
+            className="xem-thu-phong"
+            style={{ transform: `scale(${(zoomPct ?? 100) / 100})` }}
+          >
           <video
             ref={ref}
             src={convertFileSrc(videoPath)}
@@ -275,6 +284,7 @@ export default function XemThu({ videoPath, cues, sub, wm, vungMo, onDoiVungMo, 
           {vungMo && onDoiVungMo && (
             <VungMoLop vungMo={vungMo} onDoi={onDoiVungMo} dangVe={!!dangVeVungMo} />
           )}
+          </div>
           {wmSanSang && wm?.enabled && wm.path && (
             <img
               className="xem-thu-logo"

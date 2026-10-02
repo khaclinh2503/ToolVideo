@@ -497,6 +497,8 @@ pub fn run_export_stage(
     watermark: &crate::config::WatermarkConfig,
     // Vùng làm mờ, đo bằng % khung. Rỗng ⇒ không có nhánh làm mờ nào.
     vung_mo_cfg: &[crate::config::VungMoConfig],
+    // Phóng to/thu nhỏ nội dung, tính theo %. 100 ⇒ giữ nguyên.
+    zoom_pct: u32,
     on_phase: &mut dyn FnMut(&str),
 ) -> Result<ExportResult, PipelineError> {
     // Cùng lý do trim ở run_tts_stage/run_retime_stage: hàm này tự dựng lại
@@ -607,35 +609,39 @@ pub fn run_export_stage(
     // để args không trỏ vào một file mà filtergraph không dùng.
     let logo_path = if wm.is_some() { logo_path } else { None };
 
-    // Vùng làm mờ cũng cần kích thước video để quy %→pixel. Đo LẠI ở đây chứ
-    // không dùng chung với nhánh logo: nhánh đó chỉ chạy khi có logo, mà làm mờ
-    // phải dùng được cả khi không đóng dấu gì.
-    let vung_mo: Vec<(u32, u32, u32, u32)> = if vung_mo_cfg.is_empty() {
-        Vec::new()
+    // Vùng làm mờ và zoom đều cần kích thước video để quy ra pixel. Đo MỘT
+    // lần ở đây cho cả hai; nhánh logo đo riêng vì nó chỉ chạy khi có logo,
+    // còn hai thứ này phải dùng được cả khi không đóng dấu gì.
+    let can_do = !vung_mo_cfg.is_empty() || zoom_pct != 100;
+    let kich_thuoc = if can_do {
+        crate::export::probe_video_size(ffprobe, video)
     } else {
-        match crate::export::probe_video_size(ffprobe, video) {
-            Some((w, h)) => vung_mo_cfg
-                .iter()
-                .map(|v| {
-                    crate::export::VungMo {
-                        x_pct: v.x_pct,
-                        y_pct: v.y_pct,
-                        w_pct: v.w_pct,
-                        h_pct: v.h_pct,
-                    }
-                    .sang_pixel(w, h)
-                })
-                .collect(),
-            None => {
-                warnings.push(
-                    "Đã xuất KHÔNG làm mờ vùng nào: ffprobe không đọc được kích thước khung \
-                     hình của video nên không quy được vùng ra pixel."
-                        .to_string(),
-                );
-                Vec::new()
-            }
-        }
+        None
     };
+    if can_do && kich_thuoc.is_none() {
+        warnings.push(
+            "Đã xuất KHÔNG làm mờ và KHÔNG phóng to/thu nhỏ: ffprobe không đọc được \
+             kích thước khung hình của video nên không quy được ra pixel."
+                .to_string(),
+        );
+    }
+    let vung_mo: Vec<(u32, u32, u32, u32)> = match kich_thuoc {
+        Some((w, h)) => vung_mo_cfg
+            .iter()
+            .map(|v| {
+                crate::export::VungMo {
+                    x_pct: v.x_pct,
+                    y_pct: v.y_pct,
+                    w_pct: v.w_pct,
+                    h_pct: v.h_pct,
+                }
+                .sang_pixel(w, h)
+            })
+            .collect(),
+        None => Vec::new(),
+    };
+    let zoom = kich_thuoc
+        .and_then(|(w, h)| crate::export::Zoom::moi(zoom_pct as f32 / 100.0, w, h));
 
     let export_opts = export::ExportOpts {
         burn_subs,
@@ -648,6 +654,7 @@ pub fn run_export_stage(
         style,
         watermark: wm,
         vung_mo,
+        zoom,
     };
     let args = export::build_export_args(
         video,

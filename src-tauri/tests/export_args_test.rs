@@ -31,6 +31,7 @@ fn opts(burn: bool, soft: bool, has_audio: bool) -> ExportOpts {
         style: None,
         watermark: None,
         vung_mo: Vec::new(),
+        zoom: None,
     }
 }
 

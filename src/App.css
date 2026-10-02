@@ -532,6 +532,14 @@ input[type="color"] {
 .xem-thu {
   position: relative;
   width: 100%;
+  /* Cắt phần hình tràn ra khi PHÓNG TO. Phải đặt ở thẻ CHA: transform không
+     tự bị chính nó cắt, nên overflow trên thẻ đang scale là vô nghĩa — thiếu
+     chỗ này thì hình chườm ra ngoài khung và xem thử nói dối so với bản xuất. */
+  overflow: hidden;
+  /* Nền đen cho trường hợp THU NHỎ: ffmpeg `pad` bằng màu đen, còn chỗ trống
+     quanh thẻ đã scale thì trong suốt. Không có nền thì viền ra màu của app. */
+  background: #000;
+  border-radius: var(--radius-ui);
 }
 
 .xem-thu video {
@@ -693,6 +701,24 @@ input[type="color"] {
   border-radius: 50%;
 }
 .lam-mo {
+  border: 1px solid var(--vien, #3a3a3a);
+  border-radius: 6px;
+  padding: 10px;
+  margin-top: 10px;
+}
+
+/* Khung bị phóng trong trình xem thử: chứa HÌNH và lớp khoanh vùng, không chứa
+   logo và phụ đề — đúng thứ tự filtergraph bên Rust (làm mờ → zoom → phụ đề,
+   logo). Phóng to thì phần tràn ra ngoài phải bị cắt, y như `crop` của ffmpeg;
+   thiếu overflow:hidden thì hình chườm ra khỏi khung và xem thử nói dối. */
+.xem-thu-phong {
+  /* Gốc phóng ở giữa, khớp với crop/pad lấy giữa khung bên ffmpeg. */
+  transform-origin: center center;
+  line-height: 0;
+}
+
+.bo-mau,
+.phong-to {
   border: 1px solid var(--vien, #3a3a3a);
   border-radius: 6px;
   padding: 10px;

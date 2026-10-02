@@ -785,3 +785,110 @@ fn nguong_vung_nho_nhat_khop_giua_tsx_va_rust() {
         "VungMoLop.tsx phải khai `{mong_doi}` cho khớp export::VUNG_MO_MIN_PCT"
     );
 }
+
+/// Khung xem thử phải CẮT phần hình tràn ra khi phóng to, và cắt ở thẻ CHA.
+///
+/// `transform` không tự bị chính nó cắt, nên `overflow: hidden` đặt trên thẻ
+/// đang scale là vô nghĩa — thiếu chỗ này thì hình chườm ra ngoài khung và xem
+/// thử nói dối so với bản xuất, đúng loại lỗi mà trình xem thử sinh ra để tránh.
+#[test]
+fn css_khung_xem_thu_cat_phan_tran_khi_phong_to() {
+    let css = std::fs::read_to_string("../src/App.css").expect("đọc được App.css");
+    let i = css.find(".xem-thu {").expect("phải có .xem-thu");
+    let than = &css[i..i + css[i..].find('}').expect("thiếu dấu đóng")];
+    assert!(
+        than.contains("overflow: hidden"),
+        "thẻ cha phải cắt phần tràn: {than}"
+    );
+    assert!(
+        than.contains("background: #000"),
+        "thu nhỏ thì viền phải đen như `pad` của ffmpeg, không ra màu của app: {than}"
+    );
+}
+
+/// Zoom trong trình xem thử chỉ được phóng HÌNH và vùng mờ, KHÔNG phóng phụ đề
+/// và logo — đúng thứ tự filtergraph bên Rust (làm mờ → zoom → phụ đề, logo).
+/// Phóng cả chữ thì xem thử nói một đằng, bản xuất ra một nẻo.
+#[test]
+fn xem_thu_chi_phong_hinh_chu_khong_phong_phu_de_va_logo() {
+    let tsx = std::fs::read_to_string("../src/XemThu.tsx").expect("đọc được XemThu.tsx");
+    // Tìm theo thuộc tính className chứ không theo tên lớp trần: tên lớp cũng
+    // nằm trong các dòng chú thích ở đầu file, và `find` bắt phải dòng đó thì
+    // bài test so hai vị trí hoàn toàn vô nghĩa.
+    let vi_tri = |ten: &str| {
+        tsx.find(&format!("className=\"{ten}\""))
+            .unwrap_or_else(|| panic!("phải có className={ten}"))
+    };
+    let i = vi_tri("xem-thu-phong");
+    let dong = vi_tri("xem-thu-cap");
+    let logo = vi_tri("xem-thu-logo");
+    assert!(i < dong && i < logo, "khung phóng phải mở TRƯỚC logo và phụ đề");
+    let khung_dong = tsx[i..].find("</div>").expect("khung phóng phải đóng") + i;
+    assert!(
+        khung_dong < logo && khung_dong < dong,
+        "logo và phụ đề phải nằm NGOÀI khung bị phóng"
+    );
+}
+
+/// Ngưỡng zoom bên TSX phải nằm trong khoảng Rust chấp nhận. Giao diện cho gõ
+/// 1000% trong khi Rust kẹp ở 500% thì người dùng gõ xong tưởng đã nhận.
+#[test]
+fn nguong_zoom_tren_giao_dien_nam_trong_khoang_rust_chap_nhan() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let i = tsx.find("id=\"zoom\"").expect("phải có ô zoom");
+    let sau = &tsx[i..i + 300.min(tsx.len() - i)];
+    let doc_so = |ten: &str| -> f32 {
+        let j = sau.find(ten).unwrap_or_else(|| panic!("thiếu {ten}: {sau}"));
+        sau[j + ten.len()..]
+            .chars()
+            .take_while(|c| c.is_ascii_digit())
+            .collect::<String>()
+            .parse()
+            .expect("đọc được số")
+    };
+    assert!(doc_so("min={") >= app_lib::export::ZOOM_MIN * 100.0, "min nhỏ hơn Rust cho phép");
+    assert!(doc_so("max={") <= app_lib::export::ZOOM_MAX * 100.0, "max lớn hơn Rust cho phép");
+}
+
+/// Panel bộ mẫu phải nói rõ áp mẫu là GHI ĐÈ cả bốn phần.
+///
+/// Trộn mẫu với thiết lập đang có cho ra một hình hài không giống mẫu nào, mà
+/// người dùng lại tưởng mình vừa áp đúng mẫu — và chỉ phát hiện sau khi xem
+/// bản xuất.
+#[test]
+fn ui_panel_bo_mau_noi_ro_la_ghi_de() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let i = tsx.find("Bộ mẫu định dạng").expect("Bước 6 phải có panel bộ mẫu");
+    let sau = &tsx[i..];
+    assert!(sau.contains("GHI ĐÈ"), "phải nói rõ áp mẫu là ghi đè");
+    for phan in ["kiểu chữ phụ đề", "logo", "vùng làm mờ"] {
+        assert!(sau.contains(phan), "phải liệt kê \"{phan}\" trong mẫu");
+    }
+}
+
+/// Mẫu phải lưu NGAY ra đĩa, không đợi nút "Lưu cấu hình".
+///
+/// Mẫu là thứ người dùng dựng để DÙNG LẠI; mất nó vì quên bấm lưu thì công
+/// khoanh vùng cả buổi đi theo, và không có gì gợi là phải bấm thêm.
+#[test]
+fn luu_mau_ghi_ngay_ra_dia() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let i = tsx.find("async function luuMau()").expect("phải có hàm lưu mẫu");
+    let than = &tsx[i..i + 900.min(tsx.len() - i)];
+    assert!(
+        than.contains("save_config"),
+        "luuMau phải gọi save_config ngay: {than}"
+    );
+}
+
+/// Bốn phần của mẫu phải khớp giữa TSX và Rust. Thiếu một phần ở một bên thì
+/// mẫu lưu ra thiếu, mà người dùng chỉ biết khi áp lại và thấy sai.
+#[test]
+fn bon_phan_cua_mau_khop_giua_tsx_va_rust() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let i = tsx.find("type MauDinhDang = {").expect("phải có kiểu MauDinhDang");
+    let than = &tsx[i..i + 300.min(tsx.len() - i)];
+    for truong in ["ten", "subtitle", "watermark", "vung_mo", "zoom_pct"] {
+        assert!(than.contains(truong), "kiểu MauDinhDang thiếu `{truong}`: {than}");
+    }
+}

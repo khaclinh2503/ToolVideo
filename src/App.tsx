@@ -27,6 +27,10 @@ interface AppConfig {
   watermark: WatermarkConfig;
   /** Vùng làm mờ, đo bằng % khung hình. */
   vung_mo: VungMoCfg[];
+  /// Phóng to/thu nhỏ nội dung trong khung, %. 100 = nguyên bản.
+  zoom_pct: number;
+  /// Các bộ mẫu đã lưu.
+  mau: MauDinhDang[];
 }
 
 /** Font có sẵn trên mọi máy Windows và đủ dấu tiếng Việt. */
@@ -267,6 +271,16 @@ const CAU_MAU_PHU_DE = "Cầu Cầu đâu rồi, lúc nãy còn ở đây mà an
 
 type VungMoCfg = { x_pct: number; y_pct: number; w_pct: number; h_pct: number };
 
+/// Gom mọi thứ quyết định hình hài bản xuất. Không gồm âm lượng trộn hay CRF:
+/// đó là cấu hình kỹ thuật của lần xuất, không phải hình hài của video.
+type MauDinhDang = {
+  ten: string;
+  subtitle: SubtitleConfig;
+  watermark: WatermarkConfig;
+  vung_mo: VungMoCfg[];
+  zoom_pct: number;
+};
+
 function App() {
   const [status, setStatus] = useState("");
   const [running, setRunning] = useState(false);
@@ -274,6 +288,8 @@ function App() {
   // Bật thì lớp khoanh vùng trên khung xem thử ăn chuột — đổi lại KHÔNG bấm
   // được nút phát của video. Mặc định tắt để người dùng xem video như thường.
   const [veVungMo, setVeVungMo] = useState(false);
+  const [mauDangChon, setMauDangChon] = useState("");
+  const [tenMauMoi, setTenMauMoi] = useState("");
   // Giây đã trôi của lần chạy hiện tại. Có bước không đếm được (nhận dạng lời
   // thoại chạy một lượt trong sherpa), mà câu hỏi thật của người dùng là "app
   // còn sống không" — một con số nhúc nhích mỗi giây trả lời được câu đó.
@@ -596,6 +612,63 @@ function App() {
   // nên logo nền nằm y một chỗ.
   function datVungMo(v: VungMoCfg[]) {
     setCfg((c) => (c ? { ...c, vung_mo: v } : c));
+  }
+
+  /// Áp một bộ mẫu: ghi đè CẢ BỐN phần cùng lúc.
+  ///
+  /// Ghi đè cả bốn chứ không trộn: mẫu là một hình hài hoàn chỉnh. Trộn với
+  /// thiết lập đang có cho ra một thứ không giống mẫu nào, mà người dùng lại
+  /// tưởng mình vừa áp đúng mẫu.
+  function apMau(ten: string) {
+    const m = cfg?.mau.find((x) => x.ten === ten);
+    if (!m || !cfg) return;
+    setCfg({
+      ...cfg,
+      subtitle: m.subtitle,
+      watermark: m.watermark,
+      vung_mo: m.vung_mo,
+      zoom_pct: m.zoom_pct,
+    });
+    setStatus(`Đã áp mẫu "${ten}". Bấm Xuất video để dùng.`);
+  }
+
+  /// Lưu thiết lập đang có thành mẫu. Trùng tên thì ghi đè mẫu cũ.
+  async function luuMau() {
+    if (!cfg) return;
+    const ten = tenMauMoi.trim();
+    if (!ten) { setStatus("Đặt tên cho mẫu trước khi lưu."); return; }
+    const m: MauDinhDang = {
+      ten,
+      subtitle: cfg.subtitle,
+      watermark: cfg.watermark,
+      vung_mo: cfg.vung_mo,
+      zoom_pct: cfg.zoom_pct,
+    };
+    const con = cfg.mau.filter((x) => x.ten !== m.ten);
+    const moi = { ...cfg, mau: [...con, m] };
+    setCfg(moi);
+    setMauDangChon(m.ten);
+    setTenMauMoi("");
+    // Lưu ngay ra đĩa: mẫu là thứ người dùng dựng để DÙNG LẠI, mất nó vì quên
+    // bấm "Lưu cấu hình" thì công khoanh vùng cả buổi đi theo.
+    try {
+      await invoke("save_config", { cfg: moi });
+      setStatus(`Đã lưu mẫu "${m.ten}".`);
+    } catch (e) {
+      setStatus(`Không lưu được mẫu: ${e}`);
+    }
+  }
+
+  async function xoaMau(ten: string) {
+    if (!cfg) return;
+    const moi = { ...cfg, mau: cfg.mau.filter((x) => x.ten !== ten) };
+    setCfg(moi);
+    setMauDangChon("");
+    try {
+      await invoke("save_config", { cfg: moi });
+    } catch (e) {
+      setStatus(`Không xoá được mẫu: ${e}`);
+    }
   }
 
   async function onTranslate() {
@@ -1245,6 +1318,43 @@ function App() {
       {tab === 6 && (
       <section>
         <h2>Bước 6 · Phụ đề & Logo</h2>
+        {cfg && (
+          <div className="row col bo-mau">
+            <div className="row">
+              <strong>Bộ mẫu định dạng</strong>
+              <select
+                value={mauDangChon}
+                onChange={(e) => { setMauDangChon(e.target.value); apMau(e.target.value); }}
+                disabled={running || cfg.mau.length === 0}
+              >
+                <option value="">{cfg.mau.length ? "— chọn mẫu để áp —" : "chưa có mẫu nào"}</option>
+                {cfg.mau.map((m) => (
+                  <option key={m.ten} value={m.ten}>{m.ten}</option>
+                ))}
+              </select>
+              <input
+                value={tenMauMoi}
+                onChange={(e) => setTenMauMoi(e.target.value)}
+                placeholder="tên mẫu mới"
+                disabled={running}
+              />
+              <button type="button" onClick={luuMau} disabled={running || !tenMauMoi.trim()}>
+                Lưu thành mẫu
+              </button>
+              {mauDangChon && (
+                <button type="button" onClick={() => xoaMau(mauDangChon)} disabled={running}>
+                  Xoá mẫu này
+                </button>
+              )}
+            </div>
+            <p className="muted">
+              Một mẫu gom cả bốn thứ quyết định hình hài bản xuất: kiểu chữ phụ đề, logo,
+              vùng làm mờ và cú phóng to/thu nhỏ. Dựng phim bộ thì tập nào cũng cùng một
+              mẫu — khỏi khoanh lại vùng mờ từng tập, và không tập nào che hở so với tập
+              khác. Áp mẫu sẽ GHI ĐÈ cả bốn phần bên dưới.
+            </p>
+          </div>
+        )}
         {sub && (
           <>
             {!burnSubs && (
@@ -1470,6 +1580,26 @@ function App() {
           </span>
         </div>
         {cfg && (
+          <div className="row phong-to">
+            <label className="muted" htmlFor="zoom">Phóng to / thu nhỏ</label>
+            <input
+              id="zoom"
+              type="number"
+              min={10}
+              max={500}
+              step={5}
+              className="input-lang"
+              value={cfg.zoom_pct}
+              onChange={(e) => setCfg({ ...cfg, zoom_pct: Number(e.target.value) || 100 })}
+              disabled={running}
+            />
+            <span className="muted">
+              % — 100 là nguyên bản. Lớn hơn 100 phóng to và CẮT BỚT MÉP; nhỏ hơn 100 thu
+              nhỏ và thêm viền đen. Khung hình giữ nguyên kích thước.
+            </span>
+          </div>
+        )}
+        {cfg && (
           <div className="row col lam-mo">
             <div className="row">
               <strong>Làm mờ một vùng</strong>
@@ -1518,6 +1648,7 @@ function App() {
             vungMo={cfg?.vung_mo ?? []}
             onDoiVungMo={datVungMo}
             dangVeVungMo={veVungMo}
+            zoomPct={cfg?.zoom_pct ?? 100}
           />}
       </section>
       )}

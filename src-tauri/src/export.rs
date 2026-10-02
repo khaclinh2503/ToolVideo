@@ -216,6 +216,68 @@ pub const ASS_MARGIN_V: u32 = 10;
 /// phá luôn graph — tên người dùng có dấu tiếng Việt làm mọi thứ tệ hơn.
 pub const BURN_SRT_NAME: &str = "burn.srt";
 
+/// Phóng to / thu nhỏ NỘI DUNG trong khung, khung giữ nguyên kích thước.
+///
+/// Phóng to thì cắt bớt mép, thu nhỏ thì thêm viền đen — giống phóng ảnh
+/// trong một ô cố định, KHÁC với đổi độ phân giải đầu ra.
+///
+/// Giữ nguyên kích thước khung là có chủ ý: đổi kích thước thì mọi thứ đo
+/// theo % khung (vùng mờ, logo, cỡ chữ) phải tính lại, mà người dùng không
+/// có cách nào biết điều đó đã xảy ra.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Zoom {
+    /// 1.0 = nguyên bản. >1 phóng to (cắt mép), <1 thu nhỏ (thêm viền).
+    pub ti_le: f32,
+    pub khung_w: u32,
+    pub khung_h: u32,
+}
+
+/// Giới hạn tỉ lệ phóng.
+///
+/// Dưới 0.1 thì hình còn vài pixel giữa một khung đen — không ai muốn thế mà
+/// rất dễ gõ nhầm. Trên 5.0 thì `scale` dựng một khung trung gian 25 lần diện
+/// tích gốc; với video 4K là 8 tỉ pixel mỗi khung, đủ để hết RAM.
+pub const ZOOM_MIN: f32 = 0.1;
+pub const ZOOM_MAX: f32 = 5.0;
+
+impl Zoom {
+    /// `None` khi không phải phóng gì — để filtergraph không mọc thêm nhánh
+    /// thừa, và `-c:v copy` vẫn dùng được nếu không có filter nào khác.
+    pub fn moi(ti_le: f32, khung_w: u32, khung_h: u32) -> Option<Zoom> {
+        let t = ti_le.clamp(ZOOM_MIN, ZOOM_MAX);
+        // So với biên hẹp chứ không so bằng `== 1.0`: 100.4% làm tròn ra một
+        // khung lệch 0 pixel nhưng vẫn dựng cả nhánh scale+crop vô ích.
+        if (t - 1.0).abs() < 0.005 {
+            return None;
+        }
+        Some(Zoom { ti_le: t, khung_w, khung_h })
+    }
+
+    /// Chuỗi filter, không gồm nhãn vào/ra.
+    ///
+    /// Phóng to: scale lên rồi `crop` về đúng khung, lấy giữa. Thu nhỏ: scale
+    /// xuống rồi `pad` ra đúng khung, đặt giữa. Hai nhánh khác nhau vì `crop`
+    /// không nới được và `pad` không cắt được.
+    ///
+    /// Mọi kích thước trung gian làm tròn xuống số CHẴN: yuv420p lấy mẫu màu
+    /// 2x2 nên cạnh lẻ bị ffmpeg từ chối hoặc tự dịch đi một pixel.
+    pub fn filter(&self) -> String {
+        let chan = |v: f32| ((v.max(2.0) as u32) / 2) * 2;
+        let w = chan(self.khung_w as f32 * self.ti_le);
+        let h = chan(self.khung_h as f32 * self.ti_le);
+        let (kw, kh) = (self.khung_w, self.khung_h);
+        if self.ti_le > 1.0 {
+            format!("scale={w}:{h},crop={kw}:{kh}:{}:{}", (w - kw) / 2, (h - kh) / 2)
+        } else {
+            format!(
+                "scale={w}:{h},pad={kw}:{kh}:{}:{}:black",
+                (kw - w) / 2,
+                (kh - h) / 2
+            )
+        }
+    }
+}
+
 /// Một vùng chữ nhật bị làm mờ, đo bằng PHẦN TRĂM khung hình.
 ///
 /// Phần trăm chứ không phải pixel: người dùng khoanh vùng trên khung xem thử
@@ -301,6 +363,8 @@ pub struct ExportOpts {
     /// Quy sang pixel ở lớp gọi chứ không ở đây: `build_filter_complex` không
     /// biết kích thước video, mà đoán sai kích thước thì vùng mờ lệch chỗ.
     pub vung_mo: Vec<(u32, u32, u32, u32)>,
+    /// Phóng to/thu nhỏ nội dung. `None` ⇒ giữ nguyên, không thêm nhánh nào.
+    pub zoom: Option<Zoom>,
 }
 
 /// `0.18` chứ không phải `0.180`; `3` chứ không phải `3.000`.
@@ -315,7 +379,7 @@ pub fn build_filter_complex(o: &ExportOpts, co_srt_input: bool) -> String {
 
     // Nhánh video chỉ tồn tại khi có việc phải làm với hình. Cả burn-in lẫn
     // logo đều buộc mã hoá lại — xem chỗ chọn `-c:v` ở build_export_args.
-    if o.burn_subs || o.watermark.is_some() || !o.vung_mo.is_empty() {
+    if o.burn_subs || o.watermark.is_some() || !o.vung_mo.is_empty() || o.zoom.is_some() {
         // Nhãn luồng video đang cầm, không có ngoặc vuông.
         let mut cur = "0:v".to_string();
         // Làm mờ TRƯỚC phụ đề và logo. Làm sau thì chính phụ đề và logo mình
@@ -336,6 +400,18 @@ pub fn build_filter_complex(o: &ExportOpts, co_srt_input: bool) -> String {
             ));
             parts.push(format!("[g{k}][b{k}]overlay={x}:{y}[{con}]"));
             cur = con;
+        }
+        // Zoom SAU làm mờ, TRƯỚC phụ đề và logo.
+        //
+        // Sau làm mờ vì người dùng khoanh vùng trên khung GỐC ở trình xem thử;
+        // zoom trước thì mọi toạ độ vùng mờ lệch đi mà không có gì báo.
+        //
+        // Trước phụ đề và logo vì hai thứ đó là mình vẽ thêm — zoom sau sẽ cắt
+        // mất chữ ở mép và phóng to nét chữ thành răng cưa.
+        if let Some(z) = &o.zoom {
+            let ra = if o.burn_subs || o.watermark.is_some() { "vz" } else { "v" };
+            parts.push(format!("[{cur}]{}[{ra}]", z.filter()));
+            cur = ra.to_string();
         }
         if o.burn_subs {
             // Nếu còn logo phía sau thì đây chưa phải đầu ra cuối cùng.
@@ -428,7 +504,7 @@ pub fn build_export_args(
 
     // Có bất cứ filter hình nào cũng buộc mã hoá lại: `-c:v copy` chép luồng
     // nén nguyên vẹn, không có chỗ nào để chèn phụ đề hay logo vào.
-    let co_filter_video = o.burn_subs || o.watermark.is_some() || !o.vung_mo.is_empty();
+    let co_filter_video = o.burn_subs || o.watermark.is_some() || !o.vung_mo.is_empty() || o.zoom.is_some();
 
     a.push("-map".into());
     a.push(OsString::from(if co_filter_video { "[v]" } else { "0:v:0" }));

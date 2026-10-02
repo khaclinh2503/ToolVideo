@@ -14,6 +14,7 @@ fn opts(vung_mo: Vec<(u32, u32, u32, u32)>) -> ExportOpts {
         style: None,
         watermark: None,
         vung_mo,
+        zoom: None,
     }
 }
 
@@ -127,4 +128,99 @@ fn co_vung_mo_thi_buoc_ma_hoa_lai_chu_khong_copy_luong_hinh() {
     );
     let i = a.iter().position(|x| x == "-c:v").expect("phải chọn codec hình");
     assert_ne!(a[i + 1], "copy", "có vùng mờ mà vẫn chép luồng hình: {a:?}");
+}
+
+// ============================================================================
+// Zoom: phóng to/thu nhỏ NỘI DUNG, khung giữ nguyên kích thước.
+// ============================================================================
+
+use app_lib::export::{Zoom, ZOOM_MAX, ZOOM_MIN};
+
+/// 100.4% làm tròn ra một khung lệch 0 pixel nhưng vẫn dựng cả nhánh
+/// scale+crop vô ích — và kéo theo cả việc buộc mã hoá lại.
+#[test]
+fn ti_le_sat_mot_thi_khong_dung_nhanh_nao() {
+    assert!(Zoom::moi(1.0, 1920, 1080).is_none());
+    assert!(Zoom::moi(1.004, 1920, 1080).is_none());
+    assert!(Zoom::moi(1.02, 1920, 1080).is_some());
+}
+
+/// Phóng to: scale lên rồi CẮT về đúng khung, lấy giữa. Khung ra phải y hệt
+/// khung vào — đổi kích thước thì mọi thứ đo theo % khung (vùng mờ, logo, cỡ
+/// chữ) lệch hết mà không có gì báo.
+#[test]
+fn phong_to_thi_cat_ve_dung_khung_cu() {
+    let f = Zoom::moi(1.25, 1920, 1080).unwrap().filter();
+    assert!(f.starts_with("scale=2400:1350,"), "{f}");
+    assert!(f.contains("crop=1920:1080:240:135"), "{f}");
+}
+
+/// Thu nhỏ: scale xuống rồi THÊM VIỀN ra đúng khung. `crop` không nới được nên
+/// phải là hai nhánh khác nhau.
+#[test]
+fn thu_nho_thi_them_vien_ra_dung_khung_cu() {
+    let f = Zoom::moi(0.5, 1920, 1080).unwrap().filter();
+    assert!(f.starts_with("scale=960:540,"), "{f}");
+    assert!(f.contains("pad=1920:1080:480:270:black"), "{f}");
+}
+
+/// Mọi kích thước trung gian phải CHẴN: yuv420p lấy mẫu màu 2x2 nên cạnh lẻ bị
+/// ffmpeg từ chối hoặc tự dịch đi một pixel.
+#[test]
+fn kich_thuoc_trung_gian_luon_chan() {
+    for (tl, w, h) in [(1.1_f32, 1921, 1081), (0.333, 640, 360), (2.7, 854, 480)] {
+        let f = Zoom::moi(tl, w, h).unwrap().filter();
+        let so = f.trim_start_matches("scale=");
+        let (a, b) = so.split_once(',').unwrap().0.split_once(':').unwrap();
+        assert_eq!(a.parse::<u32>().unwrap() % 2, 0, "{f}");
+        assert_eq!(b.parse::<u32>().unwrap() % 2, 0, "{f}");
+    }
+}
+
+/// Dưới 0.1 thì hình còn vài pixel giữa khung đen; trên 5.0 thì khung trung
+/// gian của video 4K là 8 tỉ pixel, đủ để hết RAM. Cả hai đều rất dễ gõ nhầm.
+#[test]
+fn ti_le_bi_kep_trong_khoang_dung_duoc() {
+    let qua_nho = Zoom::moi(0.001, 1920, 1080).unwrap();
+    assert!((qua_nho.ti_le - ZOOM_MIN).abs() < 1e-6, "{:?}", qua_nho.ti_le);
+    let qua_to = Zoom::moi(99.0, 1920, 1080).unwrap();
+    assert!((qua_to.ti_le - ZOOM_MAX).abs() < 1e-6, "{:?}", qua_to.ti_le);
+}
+
+/// Zoom phải nằm SAU làm mờ và TRƯỚC phụ đề.
+///
+/// Sau làm mờ vì người dùng khoanh vùng trên khung GỐC ở trình xem thử — zoom
+/// trước thì mọi toạ độ vùng mờ lệch đi mà không có gì báo. Trước phụ đề vì
+/// phụ đề là thứ mình vẽ thêm: zoom sau sẽ cắt mất chữ ở mép.
+#[test]
+fn zoom_nam_giua_lam_mo_va_phu_de() {
+    let mut o = opts(vec![(10, 10, 100, 100)]);
+    o.burn_subs = true;
+    o.zoom = Zoom::moi(1.2, 1920, 1080);
+    let f = build_filter_complex(&o, false);
+    let i_mo = f.find("boxblur").expect("phải có nhánh mờ");
+    let i_zoom = f.find("scale=2304").expect("phải có nhánh zoom");
+    let i_sub = f.find("subtitles=").expect("phải có nhánh phụ đề");
+    assert!(i_mo < i_zoom, "zoom chạy trước làm mờ: {f}");
+    assert!(i_zoom < i_sub, "phụ đề ghi trước khi zoom: {f}");
+}
+
+/// Zoom là filter hình nên buộc mã hoá lại; `-c:v copy` chép luồng gốc và cú
+/// phóng biến mất không dấu vết.
+#[test]
+fn co_zoom_thi_buoc_ma_hoa_lai() {
+    use app_lib::export::build_export_args;
+    use std::path::Path;
+    let mut o = opts(vec![]);
+    o.zoom = Zoom::moi(1.5, 1280, 720);
+    let a = build_export_args(
+        Path::new("in.mp4"),
+        Path::new("dub.wav"),
+        None,
+        None,
+        Path::new("out.mp4"),
+        &o,
+    );
+    let i = a.iter().position(|x| x == "-c:v").expect("phải chọn codec hình");
+    assert_ne!(a[i + 1], "copy", "có zoom mà vẫn chép luồng hình: {a:?}");
 }

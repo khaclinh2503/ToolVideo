@@ -660,6 +660,7 @@ pub async fn run_export(
             Some(crate::config::doi_sang_sub_style(&cfg.subtitle)),
             &cfg.watermark,
             &cfg.vung_mo,
+            cfg.zoom_pct,
             &mut |phase| {
                 let _ = app.emit("export_progress", ExportProgressEvent { phase: phase.to_string() });
             },

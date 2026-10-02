@@ -46,6 +46,16 @@ pub struct AppConfig {
     /// `serde(default)` để config.json cũ đọc vẫn chạy.
     #[serde(default)]
     pub vung_mo: Vec<VungMoConfig>,
+    /// Phóng to/thu nhỏ nội dung trong khung, tính theo %. 100 = nguyên bản.
+    #[serde(default = "tram")]
+    pub zoom_pct: u32,
+    /// Các bộ mẫu đã lưu. Rỗng = chưa lưu mẫu nào.
+    #[serde(default)]
+    pub mau: Vec<MauDinhDang>,
+}
+
+fn tram() -> u32 {
+    100
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -96,6 +106,27 @@ impl Default for SubtitleConfig {
 /// `#[serde(default)]` trần: serde lấy `Default` của KIỂU, nên `size_pct` thiếu
 /// khoá sẽ thành 0 và ffmpeg nhận `scale=0:-1` — logo biến mất mà không báo gì.
 /// `impl Default` của struct KHÔNG được serde dùng cho từng trường.
+/// Một bộ mẫu định dạng video: gom mọi thứ quyết định hình hài bản xuất.
+///
+/// Dựng phim bộ thì tập nào cũng cùng logo, cùng kiểu chữ, cùng chỗ che và
+/// cùng cú phóng. Không có mẫu thì mỗi tập phải khoanh lại vùng mờ bằng tay,
+/// và chỉ cần lệch vài phần trăm là tập này che được tập kia hở.
+///
+/// KHÔNG gồm âm lượng trộn hay CRF: đó là cấu hình kỹ thuật của lần xuất,
+/// không phải hình hài của video.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct MauDinhDang {
+    pub ten: String,
+    #[serde(default)]
+    pub subtitle: SubtitleConfig,
+    #[serde(default)]
+    pub watermark: WatermarkConfig,
+    #[serde(default)]
+    pub vung_mo: Vec<VungMoConfig>,
+    #[serde(default = "tram")]
+    pub zoom_pct: u32,
+}
+
 /// Một vùng bị làm mờ trên khung hình, đo bằng PHẦN TRĂM.
 ///
 /// Phần trăm chứ không phải pixel: người dùng khoanh vùng trên khung xem thử
