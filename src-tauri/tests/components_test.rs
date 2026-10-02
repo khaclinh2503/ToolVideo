@@ -21,8 +21,9 @@ fn manifest_liet_ke_du_moi_artifact_va_dung_hinh_dang() {
     // hay bớt một artifact thì phải sửa cả danh sách id bên dưới, để không ai
     // lặng lẽ thêm một thứ được tải về rồi đem chạy mà không ai soát.
     // 10 (M1-M6) + 15 file model VieNeu-TTS đã pin ở Task 4 (M7)
-    // + 3 (llama-bin, llama-cudart, gemma-3-12b) ở Task 2 (M9) = 28.
-    assert_eq!(s.len(), 28, "components.json phải có đủ 28 artifact");
+    // + 3 (llama-bin, llama-cudart, gemma-3-12b) ở Task 2 (M9)
+    // + 2 (pyannote-segmentation, speaker-embedding) để tách người nói = 30.
+    assert_eq!(s.len(), 30, "components.json phải có đủ 30 artifact");
 
     let ids: Vec<&str> = s.iter().map(|c| c.id.as_str()).collect();
     for want in [
@@ -47,6 +48,8 @@ fn manifest_liet_ke_du_moi_artifact_va_dung_hinh_dang() {
         "llama-bin",
         "llama-cudart",
         "gemma-3-12b",
+        "pyannote-segmentation",
+        "speaker-embedding",
     ] {
         assert!(ids.contains(&want), "thiếu component '{want}' trong {ids:?}");
     }

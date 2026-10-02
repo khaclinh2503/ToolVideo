@@ -6,8 +6,14 @@
     "size": 114768076,
     "archive": "zip",
     "files": [
-      { "from": "ffmpeg-9.0.2-essentials_build/bin/ffmpeg.exe", "to": "ffmpeg/ffmpeg.exe" },
-      { "from": "ffmpeg-9.0.2-essentials_build/bin/ffprobe.exe", "to": "ffmpeg/ffprobe.exe" }
+      {
+        "from": "ffmpeg-9.0.2-essentials_build/bin/ffmpeg.exe",
+        "to": "ffmpeg/ffmpeg.exe"
+      },
+      {
+        "from": "ffmpeg-9.0.2-essentials_build/bin/ffprobe.exe",
+        "to": "ffmpeg/ffprobe.exe"
+      }
     ]
   },
   {
@@ -17,7 +23,10 @@
     "size": 24805859,
     "archive": "tar.bz2",
     "files": [
-      { "from": "sherpa-onnx-v1.13.8-win-x64-shared-MT-Release/bin/", "to": "sherpa" }
+      {
+        "from": "sherpa-onnx-v1.13.8-win-x64-shared-MT-Release/bin/",
+        "to": "sherpa"
+      }
     ]
   },
   {
@@ -26,7 +35,12 @@
     "sha256": "c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51",
     "size": 239233841,
     "archive": "raw",
-    "files": [{ "from": null, "to": "sherpa/sense-voice.onnx" }]
+    "files": [
+      {
+        "from": null,
+        "to": "sherpa/sense-voice.onnx"
+      }
+    ]
   },
   {
     "id": "sense-voice-tokens",
@@ -34,7 +48,12 @@
     "sha256": "f449eb28dc567533d7fa59be34e2abca8784f771850c78a47fb731a31429a1dc",
     "size": 315894,
     "archive": "raw",
-    "files": [{ "from": null, "to": "sherpa/tokens.txt" }]
+    "files": [
+      {
+        "from": null,
+        "to": "sherpa/tokens.txt"
+      }
+    ]
   },
   {
     "id": "silero-vad",
@@ -42,7 +61,42 @@
     "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
     "size": 643854,
     "archive": "raw",
-    "files": [{ "from": null, "to": "sherpa/vad-model.onnx" }]
+    "files": [
+      {
+        "from": null,
+        "to": "sherpa/vad-model.onnx"
+      }
+    ]
+  },
+  {
+    "id": "pyannote-segmentation",
+    "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-segmentation-models/sherpa-onnx-pyannote-segmentation-3-0.tar.bz2",
+    "sha256": "24615ee884c897d9d2ba09bb4d30da6bb1b15e685065962db5b02e76e4996488",
+    "size": 6958444,
+    "archive": "tar.bz2",
+    "files": [
+      {
+        "from": "sherpa-onnx-pyannote-segmentation-3-0/model.onnx",
+        "to": "sherpa/pyannote-segmentation.onnx"
+      },
+      {
+        "from": "sherpa-onnx-pyannote-segmentation-3-0/LICENSE",
+        "to": "sherpa/pyannote-segmentation.LICENSE"
+      }
+    ]
+  },
+  {
+    "id": "speaker-embedding",
+    "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx",
+    "sha256": "aa3cfc16963a10586a9393f5035d6d6b57e98d358b347f80c2a30bf4f00ceba2",
+    "size": 28281164,
+    "archive": "raw",
+    "files": [
+      {
+        "from": null,
+        "to": "sherpa/speaker-embedding.onnx"
+      }
+    ]
   },
   {
     "id": "piper",
@@ -50,7 +104,12 @@
     "sha256": "f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea",
     "size": 22477236,
     "archive": "zip",
-    "files": [{ "from": "piper/", "to": "piper" }]
+    "files": [
+      {
+        "from": "piper/",
+        "to": "piper"
+      }
+    ]
   },
   {
     "id": "piper-voice-vi",
@@ -58,7 +117,12 @@
     "sha256": "ec7c89e2c85f4d1edc24b6120c18aaf1bda614f06b511567eb9c7c0de15e2dab",
     "size": 63201294,
     "archive": "raw",
-    "files": [{ "from": null, "to": "piper/vi_VN-vais1000-medium.onnx" }]
+    "files": [
+      {
+        "from": null,
+        "to": "piper/vi_VN-vais1000-medium.onnx"
+      }
+    ]
   },
   {
     "id": "piper-voice-vi-cfg",
@@ -66,7 +130,12 @@
     "sha256": "fafb9da1354ed4b77c31af228ed41fb41cd825c14cffa105454b25e6ae751ee0",
     "size": 4860,
     "archive": "raw",
-    "files": [{ "from": null, "to": "piper/vi_VN-vais1000-medium.onnx.json" }]
+    "files": [
+      {
+        "from": null,
+        "to": "piper/vi_VN-vais1000-medium.onnx.json"
+      }
+    ]
   },
   {
     "id": "python",
@@ -74,7 +143,12 @@
     "sha256": "0dc3a404d4d6501f3b8f99d58354410a0b1699dd5c21070778a594db02070dd3",
     "size": 48197230,
     "archive": "tar.gz",
-    "files": [{ "from": "python/", "to": "python" }]
+    "files": [
+      {
+        "from": "python/",
+        "to": "python"
+      }
+    ]
   },
   {
     "id": "yt-dlp",
@@ -82,7 +156,12 @@
     "sha256": "66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a",
     "size": 17840399,
     "archive": "raw",
-    "files": [{ "from": null, "to": "yt-dlp/yt-dlp.exe" }]
+    "files": [
+      {
+        "from": null,
+        "to": "yt-dlp/yt-dlp.exe"
+      }
+    ]
   },
   {
     "id": "vieneu-config-json",
@@ -90,7 +169,12 @@
     "sha256": "eee8e032cb936a60312f594a8156c086173a9c0255a545bd11a448f22a7c77ae",
     "size": 1553,
     "archive": "raw",
-    "files": [{ "from": null, "to": "vieneu/config.json" }]
+    "files": [
+      {
+        "from": null,
+        "to": "vieneu/config.json"
+      }
+    ]
   },
   {
     "id": "vieneu-denoiser-onnx",
@@ -98,7 +182,12 @@
     "sha256": "b7621953291cfe05e695a9c0ff4255aa2f93239fc17c26627e18b7b6b8f72f0b",
     "size": 42661414,
     "archive": "raw",
-    "files": [{ "from": null, "to": "vieneu/denoiser.onnx" }]
+    "files": [
+      {
+        "from": null,
+        "to": "vieneu/denoiser.onnx"
+      }
+    ]
   },
   {
     "id": "vieneu-onnx_update-config-json",
@@ -106,7 +195,12 @@
     "sha256": "17d89d414ee302a82db7b330bf57b4cdf8541569392119c81f552178cafcb79b",
     "size": 2152,
     "archive": "raw",
-    "files": [{ "from": null, "to": "vieneu/onnx_update/config.json" }]
+    "files": [
+      {
+        "from": null,
+        "to": "vieneu/onnx_update/config.json"
+      }
+    ]
   },
   {
     "id": "vieneu-onnx_update-tokenizer-json",
@@ -114,7 +208,12 @@
     "sha256": "6cc6bcbe380b8c37bd9f2514e37c5dfa3e00e122c6e3125dae5c4afe48e39158",
     "size": 22320,
     "archive": "raw",
-    "files": [{ "from": null, "to": "vieneu/onnx_update/tokenizer.json" }]
+    "files": [
+      {
+        "from": null,
+        "to": "vieneu/onnx_update/tokenizer.json"
+      }
+    ]
   },
   {
     "id": "vieneu-onnx_update-vieneu_acoustic_cached-onnx",
@@ -122,7 +221,12 @@
     "sha256": "f631e3387c788c3d8b9a5ac5df94952af5bc4c4d1049ff8a751e76a246fff2d4",
     "size": 7207223,
     "archive": "raw",
-    "files": [{ "from": null, "to": "vieneu/onnx_update/vieneu_acoustic_cached.onnx" }]
+    "files": [
+      {
+        "from": null,
+        "to": "vieneu/onnx_update/vieneu_acoustic_cached.onnx"
+      }
+    ]
   },
   {
     "id": "vieneu-onnx_update-vieneu_backbone_shared-data",
@@ -130,7 +234,12 @@
     "sha256": "c7c072193db33d0542457e2612c7272c44c4279d1cafaf0aa4c379964911db2f",
     "size": 415319040,
     "archive": "raw",
-    "files": [{ "from": null, "to": "vieneu/onnx_update/vieneu_backbone_shared.data" }]
+    "files": [
+      {
+        "from": null,
+        "to": "vieneu/onnx_update/vieneu_backbone_shared.data"
+      }
+    ]
   },
   {
     "id": "vieneu-onnx_update-vieneu_decode_step-onnx",
@@ -138,7 +247,12 @@
     "sha256": "bedc379cea61ea5d616312750d95ad3924e055856662d19187a889a5edc24ceb",
     "size": 306134,
     "archive": "raw",
-    "files": [{ "from": null, "to": "vieneu/onnx_update/vieneu_decode_step.onnx" }]
+    "files": [
+      {
+        "from": null,
+        "to": "vieneu/onnx_update/vieneu_decode_step.onnx"
+      }
+    ]
   },
   {
     "id": "vieneu-onnx_update-vieneu_prefill-onnx",
@@ -146,7 +260,12 @@
     "sha256": "27f8b064f6b57b5448e95d095f1959588c005d614678045c2b97ecccf3b7a0f7",
     "size": 324499,
     "archive": "raw",
-    "files": [{ "from": null, "to": "vieneu/onnx_update/vieneu_prefill.onnx" }]
+    "files": [
+      {
+        "from": null,
+        "to": "vieneu/onnx_update/vieneu_prefill.onnx"
+      }
+    ]
   },
   {
     "id": "vieneu-onnx_update-vieneu_v3_heads-npz",
@@ -154,7 +273,12 @@
     "sha256": "fb22484baa424bbb775133a6e5f0d00d6299b2b256fbe3312a864b85b9aed01e",
     "size": 52219622,
     "archive": "raw",
-    "files": [{ "from": null, "to": "vieneu/onnx_update/vieneu_v3_heads.npz" }]
+    "files": [
+      {
+        "from": null,
+        "to": "vieneu/onnx_update/vieneu_v3_heads.npz"
+      }
+    ]
   },
   {
     "id": "vieneu-codec_browser_onnx_meta-json",
@@ -162,7 +286,12 @@
     "sha256": "3e291c883bb7d11ff2fe8e964e3e495519760358859f35c951254c7741592731",
     "size": 17036,
     "archive": "raw",
-    "files": [{ "from": null, "to": "vieneu/moss/codec_browser_onnx_meta.json" }]
+    "files": [
+      {
+        "from": null,
+        "to": "vieneu/moss/codec_browser_onnx_meta.json"
+      }
+    ]
   },
   {
     "id": "vieneu-moss_audio_tokenizer_decode_full-onnx",
@@ -170,7 +299,12 @@
     "sha256": "0fbbafe3fd4afa2a019af5c5ced204af6e2d1db044fa40f021525d2aee95b4ac",
     "size": 681902,
     "archive": "raw",
-    "files": [{ "from": null, "to": "vieneu/moss/moss_audio_tokenizer_decode_full.onnx" }]
+    "files": [
+      {
+        "from": null,
+        "to": "vieneu/moss/moss_audio_tokenizer_decode_full.onnx"
+      }
+    ]
   },
   {
     "id": "vieneu-moss_audio_tokenizer_decode_shared-data",
@@ -178,7 +312,12 @@
     "sha256": "e69d52e0f4e84ca27850557ee54face46632d3a5a16c89bd246c7c408466dcad",
     "size": 44198912,
     "archive": "raw",
-    "files": [{ "from": null, "to": "vieneu/moss/moss_audio_tokenizer_decode_shared.data" }]
+    "files": [
+      {
+        "from": null,
+        "to": "vieneu/moss/moss_audio_tokenizer_decode_shared.data"
+      }
+    ]
   },
   {
     "id": "vieneu-moss_audio_tokenizer_decode_step-onnx",
@@ -186,7 +325,12 @@
     "sha256": "9527c86a29e1837edec1f74db57d5eeaadb3a715af3382703566460afed25855",
     "size": 351400,
     "archive": "raw",
-    "files": [{ "from": null, "to": "vieneu/moss/moss_audio_tokenizer_decode_step.onnx" }]
+    "files": [
+      {
+        "from": null,
+        "to": "vieneu/moss/moss_audio_tokenizer_decode_step.onnx"
+      }
+    ]
   },
   {
     "id": "vieneu-moss_audio_tokenizer_encode-data",
@@ -194,7 +338,12 @@
     "sha256": "aa751265b2bab2887eac224484546b194875aa7494b607115439b3dc6b228a2c",
     "size": 44507136,
     "archive": "raw",
-    "files": [{ "from": null, "to": "vieneu/moss/moss_audio_tokenizer_encode.data" }]
+    "files": [
+      {
+        "from": null,
+        "to": "vieneu/moss/moss_audio_tokenizer_encode.data"
+      }
+    ]
   },
   {
     "id": "vieneu-moss_audio_tokenizer_encode-onnx",
@@ -202,7 +351,12 @@
     "sha256": "eadea4a645abdcf98714c7aead122ee2ce7da6e080f9f80b977cd1ca8e19473a",
     "size": 815775,
     "archive": "raw",
-    "files": [{ "from": null, "to": "vieneu/moss/moss_audio_tokenizer_encode.onnx" }]
+    "files": [
+      {
+        "from": null,
+        "to": "vieneu/moss/moss_audio_tokenizer_encode.onnx"
+      }
+    ]
   },
   {
     "id": "llama-bin",
@@ -210,7 +364,12 @@
     "sha256": "39b5c2bf0395fe26d35b1feb712e9c67ec1e1b3505f26f42e53a1c961eaade4b",
     "size": 153546182,
     "archive": "zip",
-    "files": [{ "from": "**", "to": "llm/bin" }]
+    "files": [
+      {
+        "from": "**",
+        "to": "llm/bin"
+      }
+    ]
   },
   {
     "id": "llama-cudart",
@@ -218,7 +377,12 @@
     "sha256": "738f8c251ac22b70c3ae6f83a10cf222725df0395246a2cf58f32bdb85fbe668",
     "size": 423535356,
     "archive": "zip",
-    "files": [{ "from": "**", "to": "llm/bin" }]
+    "files": [
+      {
+        "from": "**",
+        "to": "llm/bin"
+      }
+    ]
   },
   {
     "id": "gemma-3-12b",
@@ -226,6 +390,11 @@
     "sha256": "ea6d227c4983534b4661a0ada08328c21afa07c1e3c316fb55c172776cc808b3",
     "size": 8445036896,
     "archive": "raw",
-    "files": [{ "from": null, "to": "llm/gguf/gemma-3-12b-it-Q5_K_M.gguf" }]
+    "files": [
+      {
+        "from": null,
+        "to": "llm/gguf/gemma-3-12b-it-Q5_K_M.gguf"
+      }
+    ]
   }
 ]

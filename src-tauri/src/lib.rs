@@ -16,6 +16,7 @@ pub mod retime;
 pub mod so_tay;
 pub mod srt;
 pub mod stt;
+pub mod tach_nguoi_noi;
 pub mod translate;
 pub mod tts;
 pub mod wav;
