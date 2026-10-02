@@ -946,3 +946,75 @@ fn css_cot_noi_dung_khong_bop_dep_cac_item() {
     let than = &css[i..i + css[i..].find('}').unwrap()];
     assert!(than.contains("flex-shrink: 0"), "{than}");
 }
+
+/// Danh sách dự án nằm trong HỘP BẬT LÊN, không nằm thẳng trên trang.
+///
+/// Trước đây nó chiếm gần một phần ba chiều cao màn hình ở ngay đầu trang, đẩy
+/// ba cột làm việc xuống dưới — mà mở dự án là việc làm một lần rồi thôi.
+#[test]
+fn ui_du_an_gan_day_nam_trong_hop_bat_len() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let hop = tsx.find("hop-du-an").expect("phải có hộp dự án");
+    let danh_sach = tsx.find("project-row").expect("phải có danh sách dự án");
+    assert!(hop < danh_sach, "danh sách dự án phải nằm TRONG hộp, không nằm trên trang");
+
+    // Hộp phải mở được từ đầu trang, và đóng được bằng nút.
+    assert!(tsx.contains("setMoDuAn(true)"), "thiếu nút mở hộp");
+    assert!(tsx.contains("setMoDuAn(false)"), "thiếu đường đóng hộp");
+}
+
+/// Hộp phải đóng được bằng Esc và bằng cách bấm ra ngoài. Một lớp phủ chỉ đóng
+/// được bằng đúng một nút nhỏ là cái bẫy quen thuộc.
+#[test]
+fn ui_hop_du_an_dong_duoc_bang_esc_va_bam_ra_ngoai() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    assert!(tsx.contains("\"Escape\""), "Esc phải đóng được hộp");
+    let i = tsx.find("lop-phu").expect("phải có lớp phủ");
+    let sau = &tsx[i..i + 200.min(tsx.len() - i)];
+    assert!(
+        sau.contains("onClick={() => setMoDuAn(false)}"),
+        "bấm ra ngoài phải đóng hộp: {sau}"
+    );
+}
+
+/// Mở một dự án phải ĐÓNG hộp lại. Để hộp che mất đúng thứ vừa mở là vô nghĩa.
+#[test]
+fn ui_mo_du_an_thi_dong_hop() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let i = tsx
+        .find("async function onOpenProject(")
+        .expect("phải có hàm mở dự án");
+    let than = &tsx[i..i + 200.min(tsx.len() - i)];
+    assert!(than.contains("setMoDuAn(false)"), "{than}");
+}
+
+/// Không dùng hộp thoại CHẶN của trình duyệt.
+///
+/// `window.alert`/`confirm`/`prompt` khoá cả luồng sự kiện, và trong WebView2
+/// còn có thể bị chặn hẳn — lúc đó `confirm` trả về false im lặng và người
+/// dùng tưởng mình vừa bấm Huỷ.
+///
+/// `confirm` của `@tauri-apps/plugin-dialog` thì KHÁC HẲN và được dùng: nó là
+/// hộp thoại thật của hệ điều hành, bất đồng bộ, trả Promise. Xoá vĩnh viễn
+/// một dự án đúng là chỗ cần nó.
+#[test]
+fn ui_khong_dung_hop_thoai_chan_cua_trinh_duyet() {
+    for f in ["../src/App.tsx", "../src/XemThu.tsx", "../src/VungMoLop.tsx"] {
+        let tsx = std::fs::read_to_string(f).unwrap_or_else(|_| panic!("đọc được {f}"));
+        for xau in ["window.alert(", "window.confirm(", "window.prompt(", "alert(", "prompt("] {
+            assert!(
+                !tsx.contains(xau),
+                "{f} dùng hộp thoại chặn `{xau}` — dựng lớp phủ bằng React, hoặc dùng \
+                 dialog của Tauri nếu cần hộp thoại thật của hệ điều hành"
+            );
+        }
+        // `confirm` chỉ được phép khi nó tới từ plugin dialog của Tauri.
+        if tsx.contains("confirm(") {
+            assert!(
+                tsx.contains("@tauri-apps/plugin-dialog"),
+                "{f} gọi confirm() mà không nhập từ @tauri-apps/plugin-dialog — \
+                 nhiều khả năng là confirm chặn của trình duyệt"
+            );
+        }
+    }
+}

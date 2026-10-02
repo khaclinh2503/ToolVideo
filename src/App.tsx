@@ -299,6 +299,7 @@ function App() {
   const [mauDangChon, setMauDangChon] = useState("");
   const [tinhChinh, setTinhChinh] = useState<(typeof TINH_CHINH)[number]["id"]>("phu_de");
   const [tenMauMoi, setTenMauMoi] = useState("");
+  const [moDuAn, setMoDuAn] = useState(false);
   // Giây đã trôi của lần chạy hiện tại. Có bước không đếm được (nhận dạng lời
   // thoại chạy một lượt trong sherpa), mà câu hỏi thật của người dùng là "app
   // còn sống không" — một con số nhúc nhích mỗi giây trả lời được câu đó.
@@ -511,6 +512,7 @@ function App() {
   }
 
   async function onOpenProject(p: ProjectSummaryDto) {
+    setMoDuAn(false);
     setRunning(true);
     try {
       const d = await invoke<ProjectSummaryDto>("open_project", { projectDir: p.projectDir });
@@ -607,6 +609,13 @@ function App() {
       setDangTimTen(false);
     }
   }
+
+  useEffect(() => {
+    if (!moDuAn) return;
+    const f = (e: KeyboardEvent) => { if (e.key === "Escape") setMoDuAn(false); };
+    window.addEventListener("keydown", f);
+    return () => window.removeEventListener("keydown", f);
+  }, [moDuAn]);
 
   // Đổi dự án là đổi sổ tay: tên riêng thuộc về từng phim. Xoá sạch gợi ý đang
   // hiện dở, nếu không danh sách của phim cũ sẽ được bấm thêm vào sổ phim mới.
@@ -911,7 +920,15 @@ function App() {
 
   return (
     <main className="container">
-      <h1>DichVideo-Local</h1>
+      <div className="dau-trang">
+        <h1>DichVideo-Local</h1>
+        <button type="button" onClick={() => setMoDuAn(true)} disabled={running}>
+          Dự án gần đây{projects.length ? ` (${projects.length})` : ""}
+        </button>
+        {videoPath && (
+          <span className="muted dang-mo">{baseName(videoPath)}</span>
+        )}
+      </div>
 
       {toolsReady === false && (
       <section>
@@ -930,52 +947,6 @@ function App() {
       </section>
       )}
 
-      <section>
-        <h2>Dự án gần đây</h2>
-        {projects.length === 0 && (
-          <p className="muted">Chưa có dự án nào. Chọn một video ở Bước 1 để bắt đầu.</p>
-        )}
-        {projects.map((p) => (
-          <div className="project-row" key={p.projectDir}>
-            {p.thumbnailPath && (
-              <img
-                className="project-thumb"
-                src={convertFileSrc(p.thumbnailPath)}
-                alt=""
-              />
-            )}
-            <span className="grow">
-              <b>{p.videoName}</b>
-              <span className="muted">
-                {" · "}
-                {new Date(p.updatedAt).toLocaleString()}
-                {" · "}
-                {[
-                  p.hasStt && "Phụ đề gốc",
-                  p.hasTranslation && "Dịch",
-                  p.hasTts && "Lồng tiếng",
-                  p.hasExport && "Xuất",
-                ]
-                  .filter(Boolean)
-                  .join(" · ") || "trống"}
-              </span>
-              {!p.videoExists && (
-                <>
-                  {" "}
-                  <span className="badge err">⚠ mất video gốc</span>
-                </>
-              )}
-            </span>
-            <button type="button" onClick={() => onOpenProject(p)} disabled={running}>Mở</button>
-            {p.exportPath && (
-              <button type="button" onClick={() => onReveal(p.exportPath!)} disabled={running}>
-                Mở thư mục
-              </button>
-            )}
-            <button type="button" className="danger" onClick={() => onDeleteProject(p)} disabled={running}>Xoá</button>
-          </div>
-        ))}
-      </section>
 
       {/* Ba cột: các bước bên trái, nội dung ở giữa, xem thử bên phải.
 
@@ -1771,6 +1742,71 @@ function App() {
 
         </aside>
       </div>
+
+      {/* Hộp dự án: KHÔNG dùng <dialog> hay confirm/alert của trình duyệt —
+          chúng chặn luồng và trong WebView2 còn bị chặn hẳn. Đây chỉ là một
+          lớp phủ vẽ bằng React, đóng được bằng Esc hoặc bấm ra ngoài. */}
+      {moDuAn && (
+        <div className="lop-phu" onClick={() => setMoDuAn(false)}>
+          <div
+            className="hop-du-an"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Dự án gần đây"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="row">
+              <strong>Dự án gần đây</strong>
+              <button type="button" className="dong-hop" onClick={() => setMoDuAn(false)}>
+                Đóng
+              </button>
+            </div>
+            {projects.length === 0 && (
+              <p className="muted">Chưa có dự án nào. Chọn một video ở Bước 1 để bắt đầu.</p>
+            )}
+            {projects.map((p) => (
+              <div className="project-row" key={p.projectDir}>
+                {p.thumbnailPath && (
+                  <img
+                    className="project-thumb"
+                    src={convertFileSrc(p.thumbnailPath)}
+                    alt=""
+                  />
+                )}
+                <span className="grow">
+                  <b>{p.videoName}</b>
+                  <span className="muted">
+                    {" · "}
+                    {new Date(p.updatedAt).toLocaleString()}
+                    {" · "}
+                    {[
+                      p.hasStt && "Phụ đề gốc",
+                      p.hasTranslation && "Dịch",
+                      p.hasTts && "Lồng tiếng",
+                      p.hasExport && "Xuất",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "trống"}
+                  </span>
+                  {!p.videoExists && (
+                    <>
+                      {" "}
+                      <span className="badge err">⚠ mất video gốc</span>
+                    </>
+                  )}
+                </span>
+                <button type="button" onClick={() => onOpenProject(p)} disabled={running}>Mở</button>
+                {p.exportPath && (
+                  <button type="button" onClick={() => onReveal(p.exportPath!)} disabled={running}>
+                    Mở thư mục
+                  </button>
+                )}
+                <button type="button" className="danger" onClick={() => onDeleteProject(p)} disabled={running}>Xoá</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {status && <p className="status">{status}</p>}
     </main>
