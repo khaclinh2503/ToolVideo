@@ -683,3 +683,58 @@ fn ui_khong_bia_phan_tram_khi_khong_dem_duoc() {
         "phải kiểm mẫu số trước khi tính phần trăm: {sau}"
     );
 }
+
+/// Bước 6 phải có MẪU kiểu chữ hiện sẵn.
+///
+/// Trước đây muốn thấy chữ trông thế nào phải bấm "Xem thử phụ đề" để ffmpeg
+/// dựng một khung hình thật — tức là chọn font, cỡ và màu trong tình trạng mù.
+#[test]
+fn ui_buoc_6_co_mau_kieu_chu_hien_san() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    assert!(
+        tsx.contains("CAU_MAU_PHU_DE"),
+        "Bước 6 phải có câu mẫu để chấm kiểu chữ"
+    );
+    assert!(
+        tsx.contains("mau-phu-de-chu"),
+        "phải có khối vẽ câu mẫu theo kiểu chữ đang chọn"
+    );
+}
+
+/// Câu mẫu phải dài ĐÚNG ngưỡng cắt câu.
+///
+/// Câu ngắn trông lúc nào cũng vừa khung; chỉ câu dài đúng ngưỡng mới cho thấy
+/// cỡ chữ nào bắt đầu tràn xuống hai dòng — mà đó là thứ người dùng cần biết
+/// TRƯỚC khi xuất video, không phải sau.
+#[test]
+fn cau_mau_dai_dung_nguong_cat_cau() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let i = tsx.find("const CAU_MAU_PHU_DE = \"").expect("phải có câu mẫu");
+    let sau = &tsx[i + "const CAU_MAU_PHU_DE = \"".len()..];
+    let cau = &sau[..sau.find('"').expect("câu mẫu phải đóng ngoặc kép")];
+    assert_eq!(
+        cau.chars().count(),
+        app_lib::srt::MAX_MOT_DONG,
+        "câu mẫu dài {} ký tự, phải đúng {} = ngưỡng cắt câu: {cau:?}",
+        cau.chars().count(),
+        app_lib::srt::MAX_MOT_DONG
+    );
+}
+
+/// Mẫu phải quy cỡ chữ theo lưới ASS 288 đơn vị như bản xuất, không gõ sẵn một
+/// số pixel. Gõ sẵn thì mẫu nói một đằng, video xuất ra một nẻo.
+#[test]
+fn css_mau_phu_de_quy_theo_luoi_ass_chu_khong_go_san_pixel() {
+    let css = std::fs::read_to_string("../src/App.css").expect("đọc được App.css");
+    let i = css.find(".mau-phu-de-chu").expect("phải có khối CSS cho câu mẫu");
+    let sau = &css[i..];
+    assert!(
+        sau.contains("var(--ass-play-res-y)"),
+        "cỡ chữ mẫu phải chia cho --ass-play-res-y: {}",
+        &sau[..200.min(sau.len())]
+    );
+    assert!(
+        sau.contains("cqh"),
+        "phải quy theo chiều cao khung (cqh), không theo px cố định"
+    );
+}

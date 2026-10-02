@@ -253,6 +253,16 @@ function dongHo(giay: number): string {
   return `${m}:${String(g).padStart(2, "0")}`;
 }
 
+/// Câu mẫu để chấm kiểu chữ, dài ĐÚNG `MAX_MOT_DONG` ký tự.
+///
+/// Dài đúng ngưỡng cắt mới cho thấy trường hợp xấu nhất: cỡ chữ lớn tới đâu
+/// thì câu dài nhất bắt đầu tràn xuống hai dòng. Một câu ngắn trông lúc nào
+/// cũng vừa, và người dùng chỉ phát hiện ra lúc xuất video.
+///
+/// Có đủ dấu tiếng Việt (ầ, ã, ò, ở, à) vì dấu là chỗ hay tràn khỏi ô chữ và
+/// hay bị font thay thế vẽ sai.
+const CAU_MAU_PHU_DE = "Cầu Cầu đâu rồi, lúc nãy còn ở đây mà anh?";
+
 function App() {
   const [status, setStatus] = useState("");
   const [running, setRunning] = useState(false);
@@ -1285,6 +1295,27 @@ function App() {
                 disabled={running}
               />
             </div>
+            <div className="mau-phu-de" aria-label="Mẫu kiểu chữ phụ đề">
+              <div
+                className="mau-phu-de-chu"
+                style={{
+                  fontFamily: sub.font,
+                  color: sub.color,
+                  WebkitTextStrokeColor: sub.outline_color,
+                  // Hai biến này đi vào calc() trong App.css, nơi phép quy đổi
+                  // sang lưới ASS 288 đơn vị được viết ra cho nhìn thấy được.
+                  ["--sub-co" as string]: String(sub.size),
+                  ["--sub-vien" as string]: String(sub.outline),
+                }}
+              >
+                {CAU_MAU_PHU_DE}
+              </div>
+            </div>
+            <p className="muted">
+              Mẫu trên đúng tỉ lệ cỡ chữ so với khung hình và dài đúng {MAX_MOT_DONG} ký tự —
+              ngưỡng cắt câu. Nó vẽ bằng trình duyệt nên nét chữ lệch chút ít so với bản
+              xuất; muốn chấm chính xác thì bấm “Xem thử phụ đề” để dựng khung hình thật.
+            </p>
             {fontThieu && (
               <p className="warn">
                 Máy này không có font "{sub.font}" — trình xem thử và bản xuất video
@@ -1310,7 +1341,7 @@ function App() {
             <div className="row">
               <span className={sub.size > 36 ? "warn" : "muted"}>
                 {sub.size > 36
-                  ? `Cỡ ${sub.size} khá lớn: phụ đề được cắt tối đa ${MAX_MOT_DONG} ký tự, nhưng cỡ này vẫn có thể tràn xuống hai dòng. Bấm Xem thử để chắc.`
+                  ? `Cỡ ${sub.size} khá lớn: xem mẫu ở trên — câu dài ${MAX_MOT_DONG} ký tự đã tràn xuống hai dòng chưa? Bấm Xem thử phụ đề để chấm chính xác.`
                   : `Phụ đề đã được cắt tối đa ${MAX_MOT_DONG} ký tự mỗi câu. Cỡ chữ càng lớn càng dễ tràn hai dòng — ngưỡng tuỳ kích thước video.`}
               </span>
             </div>

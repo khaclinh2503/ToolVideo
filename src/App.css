@@ -599,3 +599,48 @@ input[type="color"] {
   color: #d8a657;
   white-space: nowrap;
 }
+
+/* Mẫu kiểu chữ phụ đề ở Bước 6, hiện ngay không phải bấm gì.
+
+   Khung 16:9 và `container-type: size` để quy được cỡ chữ theo CHIỀU CAO
+   KHUNG bằng đơn vị cqh, đúng cách libass làm: `FontSize` là một tỉ lệ của
+   lưới cao 288 đơn vị chứ không phải một số pixel.
+
+   Viết phép chia ra bằng calc() thay vì gõ sẵn kết quả, y như `.xem-thu-cap`:
+   sửa một hằng là ra đúng số kia, và test ghim được hằng với bên Rust. */
+.mau-phu-de {
+  --ass-play-res-y: 288;
+  /* libass đo FontSize bằng ascent+descent, CSS đo bằng ô em. Hệ số giống hệt
+     ASS_EM_TREN_FONTSIZE trong XemThu.tsx — xem chú thích ở đó cho số đo thật. */
+  --ass-em: 0.9;
+  container-type: size;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  max-width: 512px;
+  margin: 10px 0;
+  border-radius: 6px;
+  position: relative;
+  /* Nền chuyển tối sang xám vừa: chữ trắng viền đen phải chấm được trên CẢ hai,
+     vì khung hình thật có chỗ tối chỗ sáng. Nền một màu làm người dùng tưởng
+     tương phản lúc nào cũng đủ. */
+  /* Vùng SÁNG phải nằm ở ĐÁY, đúng chỗ phụ đề ngồi: chữ trắng trên nền tối thì
+     viền dày bao nhiêu cũng trông ổn, chỉ nền sáng mới cho thấy viền có đủ
+     tách chữ khỏi hình hay không. Đặt vùng sáng ở góc trên là tự lừa mình. */
+  background: linear-gradient(to top, #9a9aa3 0%, #4a4a52 40%, #0d0d0f 100%);
+  overflow: hidden;
+}
+.mau-phu-de-chu {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  bottom: calc(100cqh * var(--ass-margin-v, 10) / var(--ass-play-res-y));
+  text-align: center;
+  line-height: 1.2;
+  font-weight: 600;
+  white-space: pre-wrap;
+  font-size: calc(var(--sub-co) * var(--ass-em) * 100cqh / var(--ass-play-res-y));
+  /* Độ dày viền KHÔNG nhân hệ số em: Outline của ASS là bề dày đường viền, đo
+     thẳng trong lưới 288, không dính gì tới metric của font. */
+  -webkit-text-stroke-width: calc(var(--sub-vien) * 100cqh / var(--ass-play-res-y));
+  paint-order: stroke fill;
+}
