@@ -42,7 +42,7 @@
     sans-serif;
   --font-mono: "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
 
-  --content-max: 72rem;
+  --content-max: 96rem;
   --transition: 0.15s ease;
 }
 
@@ -105,7 +105,8 @@ body {
 
 /* Mỗi bước của quy trình là một thẻ, xếp dọc — đúng cách app gốc trình bày
    dashboard. */
-.container > section {
+.container > section,
+.cot-noi-dung > section {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
@@ -115,7 +116,8 @@ body {
   gap: 0.75rem;
 }
 
-.container > section > h2 {
+.container > section > h2,
+.cot-noi-dung > section > h2 {
   margin: 0;
   font-size: 0.75rem;
   font-weight: 600;
@@ -723,4 +725,203 @@ input[type="color"] {
   border-radius: 6px;
   padding: 10px;
   margin-top: 10px;
+}
+
+/* ---------- bố cục ba cột ---------- */
+
+/* Các bước bên trái, nội dung ở giữa, xem thử bên phải.
+
+   `minmax(0, 1fr)` cho cột giữa chứ không phải `1fr`: mặc định một ô lưới
+   không co nhỏ hơn nội dung của nó, nên một bảng rộng hay một dòng dài không
+   ngắt sẽ ĐẨY cả cột phải ra ngoài màn hình thay vì tự cuộn ngang. */
+.bo-cuc {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr) 34rem;
+  gap: 1rem;
+  align-items: start;
+}
+
+.cot-noi-dung {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+/* Hai cột bên dính theo khi cuộn. Bước 4 có thể dài hàng trăm cue; không
+   dính thì cuộn tới giữa danh sách là mất cả thanh bước lẫn video. */
+.cot-buoc,
+.cot-noi-dung {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* Dài quá màn hình thì tự cuộn trong cột, không đẩy cả trang dài ra. */
+.cot-noi-dung {
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+}
+
+/* Thanh bước ở cột trái xếp DỌC. Ghi đè `.tabs` ngang ở trên thay vì sửa nó:
+   dưới 1200px bố cục quay về một cột và thanh ngang lại đúng. */
+.cot-buoc .tabs {
+  position: static;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  border-radius: var(--radius-card);
+  gap: 0.15rem;
+}
+
+.cot-buoc .tabs button {
+  justify-content: flex-start;
+  text-align: left;
+  border-radius: var(--radius-ui);
+  padding: 0.5rem 0.7rem;
+  /* Tên bước dài hơn cột thì xuống dòng chứ đừng tràn ra ngoài viền. */
+  white-space: normal;
+}
+
+/* Số thứ tự giữ nguyên bề ngang để tên các bước thẳng hàng nhau. */
+.cot-buoc .tab-so {
+  flex: 0 0 1.25rem;
+  text-align: center;
+}
+
+.cot-noi-dung > h3 {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Màn hẹp: về một cột, thứ tự đọc thành bước → nội dung → xem thử.
+
+   1200px vì ba cột cần tối thiểu 13 + 24 rem cho hai bên cộng chỗ cho cột
+   giữa; hẹp hơn thì cột giữa bóp tới mức các hàng điều khiển vỡ hết. */
+@media (max-width: 1200px) {
+  .bo-cuc {
+    grid-template-columns: 1fr;
+  }
+  .cot-buoc,
+  .cot-noi-dung {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+  .cot-buoc .tabs {
+    position: sticky;
+    top: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-radius: var(--radius-pill);
+  }
+  .cot-buoc .tabs button {
+    justify-content: center;
+    white-space: nowrap;
+  }
+}
+
+/* Cột phải mang nền thẻ như hai cột kia. Thiếu nền thì nó trôi lơ lửng giữa
+   nền trang trong khi trái và giữa đều có khung — mắt đọc ra ba mức khác nhau
+   của cùng một hàng. */
+.cot-noi-dung {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 1.25rem;
+}
+
+
+
+.khung-xem-thu > p {
+  margin: 0;
+}
+
+@media (max-width: 1200px) {
+  /* Một cột rồi thì nút trải hết bề ngang trang trông rất kỳ. */
+  .khung-xem-thu > button {
+    width: auto;
+    align-self: flex-start;
+  }
+}
+
+/* Khung xem thử ở giữa: là một thẻ như mọi bước khác, nhưng đứng NGOÀI bước
+   nào cả vì video cần nhìn được ở mọi bước. */
+.khung-xem-thu {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.khung-xem-thu > h3 {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-fg);
+}
+
+.khung-xem-thu > button {
+  align-self: flex-start;
+}
+
+.khung-xem-thu > p {
+  margin: 0;
+}
+
+/* Tab con của cột tinh chỉnh. Nhỏ hơn tab bước và không có số thứ tự: chúng là
+   ba mặt của cùng một việc, không phải ba bước nối tiếp nhau. */
+.tab-con {
+  position: static;
+  flex-direction: row;
+  flex-wrap: wrap;
+  border-radius: var(--radius-pill);
+}
+
+.tab-con button {
+  flex: 1 1 auto;
+  justify-content: center;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* Cột tinh chỉnh hẹp hơn giữa nên các hàng điều khiển phải xuống dòng thay vì
+   tràn ra ngoài viền. */
+.cot-noi-dung .row {
+  flex-wrap: wrap;
+}
+
+.cot-noi-dung input[type="text"],
+.cot-noi-dung input:not([type]),
+.cot-noi-dung select {
+  min-width: 0;
+}
+
+/* Cột tinh chỉnh là flex-column CÓ max-height, nên mặc định mọi item trong đó
+   đều co được theo chiều dọc — `overflow-y: auto` không ngăn chuyện đó. Mẫu
+   kiểu chữ dựa hoàn toàn vào `aspect-ratio` để có chiều cao, nên bị bóp dẹt
+   thành một dải mỏng và người dùng tưởng nó biến mất. */
+.cot-noi-dung > *,
+.cot-noi-dung .mau-phu-de {
+  flex-shrink: 0;
+}
+
+/* Cột giữa chỉ còn khung xem thử, nên nó dính theo khi cuộn: cột phải có thể
+   dài hàng trăm cue ở Bước 4, cuộn tới giữa danh sách mà mất video thì không
+   còn đối chiếu được với hình. */
+.cot-giua {
+  position: sticky;
+  top: 1rem;
+  min-width: 0;
 }

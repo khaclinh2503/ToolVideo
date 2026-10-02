@@ -271,6 +271,14 @@ const CAU_MAU_PHU_DE = "Cầu Cầu đâu rồi, lúc nãy còn ở đây mà an
 
 type VungMoCfg = { x_pct: number; y_pct: number; w_pct: number; h_pct: number };
 
+/// Ba nhóm tinh chỉnh hình ảnh. Gộp phóng to/thu nhỏ vào cùng tab với làm mờ
+/// vì cả hai đều sửa KHUNG HÌNH, còn phụ đề và logo là thứ vẽ thêm lên trên.
+const TINH_CHINH = [
+  { id: "phu_de", ten: "Phụ đề" },
+  { id: "logo", ten: "Logo" },
+  { id: "khung", ten: "Làm mờ & phóng" },
+] as const;
+
 /// Gom mọi thứ quyết định hình hài bản xuất. Không gồm âm lượng trộn hay CRF:
 /// đó là cấu hình kỹ thuật của lần xuất, không phải hình hài của video.
 type MauDinhDang = {
@@ -289,6 +297,7 @@ function App() {
   // được nút phát của video. Mặc định tắt để người dùng xem video như thường.
   const [veVungMo, setVeVungMo] = useState(false);
   const [mauDangChon, setMauDangChon] = useState("");
+  const [tinhChinh, setTinhChinh] = useState<(typeof TINH_CHINH)[number]["id"]>("phu_de");
   const [tenMauMoi, setTenMauMoi] = useState("");
   // Giây đã trôi của lần chạy hiện tại. Có bước không đếm được (nhận dạng lời
   // thoại chạy một lượt trong sherpa), mà câu hỏi thật của người dùng là "app
@@ -914,7 +923,7 @@ function App() {
             khoảng 9,5 GB, chỉ cần tải một lần. Riêng model dịch đã chiếm hơn 8 GB
             nên lần tải đầu mất hàng giờ nếu mạng chậm; cứ để chạy nền. Bản này mới
             thêm phần dịch trên máy, nên máy đã cài đủ từ trước vẫn thấy dòng này
-            hiện lại. Mọi bước bên dưới đều cần bộ này.
+            hiện lại. Mọi bước đều cần bộ này.
           </span>
         </div>
         {dl && <p className="muted">{dl}</p>}
@@ -968,6 +977,13 @@ function App() {
         ))}
       </section>
 
+      {/* Ba cột: các bước bên trái, nội dung ở giữa, xem thử bên phải.
+
+          Xem thử nằm NGOÀI từng bước chứ không nằm trong Bước 6 như trước: lúc
+          sửa phụ đề ở Bước 4 hay chọn giọng ở Bước 5 cũng cần nhìn video, mà
+          trước đây phải nhảy sang Bước 6 rồi nhảy về. */}
+      <div className="bo-cuc">
+        <div className="cot-buoc">
       <nav className={`tabs${running ? " locked" : ""}`} aria-label="Các bước">
         {BUOC.map((b) => {
           const thieu = thieuGi(b.id);
@@ -999,7 +1015,41 @@ function App() {
           {" · "}{dongHo(giayChay)} — không chuyển bước được.
         </p>
       )}
+        </div>
 
+        <div className="cot-giua">
+          {/* Video đứng MỘT MÌNH ở giữa, ngoài mọi bước: bước nào cũng cần nhìn
+              hình, mà trước đây nó nằm trong Bước 6 nên phải nhảy qua nhảy lại. */}
+          <section className="khung-xem-thu">
+            {/* Video đứng ở ĐẦU cột giữa, ngoài mọi bước: sửa phụ đề ở Bước 4
+                hay chọn giọng ở Bước 5 cũng cần nhìn hình, mà trước đây phải
+                nhảy sang Bước 6 rồi nhảy về. */}
+          <h3 className="muted">Xem thử</h3>
+          <button type="button" onClick={onLoadCues} disabled={running || !projectDir}>
+            Nạp phụ đề để xem thử
+          </button>
+          {/* Video đứng NGAY dưới nút, ghi chú đẩy xuống cuối: đây là cột để
+              NHÌN, mà trước đây hai đoạn giải thích dài chiếm hết phần trên và
+              đẩy video xuống dưới tầm mắt. */}
+          {sub && <XemThu
+              videoPath={videoPath}
+              cues={cues}
+              sub={sub}
+              wm={wm}
+              vungMo={cfg?.vung_mo ?? []}
+              onDoiVungMo={datVungMo}
+              dangVeVungMo={veVungMo}
+              zoomPct={cfg?.zoom_pct ?? 100}
+            />}
+          <p className="muted">
+            Lớp xem thử này vẽ bằng trình duyệt nên nét chữ và cách ngắt dòng lệch chút
+            ít so với bản xuất — dùng để căn bố cục và thời điểm. Chấm kiểu chữ thì
+            dùng nút "Xem thử phụ đề" ở cột bên phải.
+          </p>
+          </section>
+        </div>
+
+        <aside className="cot-noi-dung">
       {tab === 1 && (
       <section>
         <h2>Bước 1 · Chọn video</h2>
@@ -1318,338 +1368,345 @@ function App() {
       {tab === 6 && (
       <section>
         <h2>Bước 6 · Phụ đề & Logo</h2>
-        {cfg && (
-          <div className="row col bo-mau">
-            <div className="row">
-              <strong>Bộ mẫu định dạng</strong>
-              <select
-                value={mauDangChon}
-                onChange={(e) => { setMauDangChon(e.target.value); apMau(e.target.value); }}
-                disabled={running || cfg.mau.length === 0}
-              >
-                <option value="">{cfg.mau.length ? "— chọn mẫu để áp —" : "chưa có mẫu nào"}</option>
-                {cfg.mau.map((m) => (
-                  <option key={m.ten} value={m.ten}>{m.ten}</option>
-                ))}
-              </select>
-              <input
-                value={tenMauMoi}
-                onChange={(e) => setTenMauMoi(e.target.value)}
-                placeholder="tên mẫu mới"
-                disabled={running}
-              />
-              <button type="button" onClick={luuMau} disabled={running || !tenMauMoi.trim()}>
-                Lưu thành mẫu
-              </button>
-              {mauDangChon && (
-                <button type="button" onClick={() => xoaMau(mauDangChon)} disabled={running}>
-                  Xoá mẫu này
+          {/* Bộ mẫu đứng NGOÀI ba tab con vì nó ghi đè cả ba — để trong một tab
+              thì người dùng tưởng nó chỉ áp cho tab đó. */}
+          {cfg && (
+            <div className="row col bo-mau">
+              <div className="row">
+                <strong>Bộ mẫu định dạng</strong>
+                <select
+                  value={mauDangChon}
+                  onChange={(e) => { setMauDangChon(e.target.value); apMau(e.target.value); }}
+                  disabled={running || cfg.mau.length === 0}
+                >
+                  <option value="">{cfg.mau.length ? "— chọn mẫu để áp —" : "chưa có mẫu nào"}</option>
+                  {cfg.mau.map((m) => (
+                    <option key={m.ten} value={m.ten}>{m.ten}</option>
+                  ))}
+                </select>
+                <input
+                  value={tenMauMoi}
+                  onChange={(e) => setTenMauMoi(e.target.value)}
+                  placeholder="tên mẫu mới"
+                  disabled={running}
+                />
+                <button type="button" onClick={luuMau} disabled={running || !tenMauMoi.trim()}>
+                  Lưu thành mẫu
                 </button>
-              )}
-            </div>
-            <p className="muted">
-              Một mẫu gom cả bốn thứ quyết định hình hài bản xuất: kiểu chữ phụ đề, logo,
-              vùng làm mờ và cú phóng to/thu nhỏ. Dựng phim bộ thì tập nào cũng cùng một
-              mẫu — khỏi khoanh lại vùng mờ từng tập, và không tập nào che hở so với tập
-              khác. Áp mẫu sẽ GHI ĐÈ cả bốn phần bên dưới.
-            </p>
-          </div>
-        )}
-        {sub && (
-          <>
-            {!burnSubs && (
-              <p className="warn">
-                Kiểu chữ dưới đây chỉ áp dụng khi bạn tick "Ghi phụ đề vào hình" ở Bước 7.
-                Phụ đề bật/tắt được không mang kiểu chữ nào — trình phát của người xem tự
-                quyết định font.
-              </p>
-            )}
-            <div className="row">
-              <label className="muted" htmlFor="sub-font">Font</label>
-              <input
-                id="sub-font"
-                list="font-goi-y"
-                value={sub.font}
-                onChange={(e) => setSub({ font: e.target.value })}
-                disabled={running}
-              />
-              <datalist id="font-goi-y">
-                {FONT_GOI_Y.map((f) => <option key={f} value={f} />)}
-              </datalist>
-
-              <label className="muted" htmlFor="sub-size">Cỡ</label>
-              <input
-                id="sub-size"
-                type="number"
-                min={8}
-                max={96}
-                className="input-lang"
-                value={sub.size}
-                onChange={(e) => setSub({ size: Number(e.target.value) || 24 })}
-                disabled={running}
-              />
-
-              <label className="muted" htmlFor="sub-color">Màu chữ</label>
-              <input
-                id="sub-color"
-                type="color"
-                value={sub.color}
-                onChange={(e) => setSub({ color: e.target.value.toUpperCase() })}
-                disabled={running}
-              />
-
-              <label className="muted" htmlFor="sub-outline-color">Màu viền</label>
-              <input
-                id="sub-outline-color"
-                type="color"
-                value={sub.outline_color}
-                onChange={(e) => setSub({ outline_color: e.target.value.toUpperCase() })}
-                disabled={running}
-              />
-
-              <label className="muted" htmlFor="sub-outline">Dày viền</label>
-              <input
-                id="sub-outline"
-                type="number"
-                min={0}
-                max={6}
-                className="input-lang"
-                value={sub.outline}
-                onChange={(e) => setSub({ outline: Number(e.target.value) || 0 })}
-                disabled={running}
-              />
-            </div>
-            <div className="mau-phu-de" aria-label="Mẫu kiểu chữ phụ đề">
-              <div
-                className="mau-phu-de-chu"
-                style={{
-                  fontFamily: sub.font,
-                  color: sub.color,
-                  WebkitTextStrokeColor: sub.outline_color,
-                  // Hai biến này đi vào calc() trong App.css, nơi phép quy đổi
-                  // sang lưới ASS 288 đơn vị được viết ra cho nhìn thấy được.
-                  ["--sub-co" as string]: String(sub.size),
-                  ["--sub-vien" as string]: String(sub.outline),
-                }}
-              >
-                {CAU_MAU_PHU_DE}
+                {mauDangChon && (
+                  <button type="button" onClick={() => xoaMau(mauDangChon)} disabled={running}>
+                    Xoá mẫu này
+                  </button>
+                )}
               </div>
-            </div>
-            <p className="muted">
-              Mẫu trên đúng tỉ lệ cỡ chữ so với khung hình và dài đúng {MAX_MOT_DONG} ký tự —
-              ngưỡng cắt câu. Nó vẽ bằng trình duyệt nên nét chữ lệch chút ít so với bản
-              xuất; muốn chấm chính xác thì bấm “Xem thử phụ đề” để dựng khung hình thật.
-            </p>
-            {fontThieu && (
-              <p className="warn">
-                Máy này không có font "{sub.font}" — trình xem thử và bản xuất video
-                sẽ mỗi nơi TỰ CHỌN một font thay thế KHÁC NHAU (WebView2 rơi về font
-                mặc định của hệ điều hành, còn ffmpeg/libass rơi về font mà
-                fontconfig/DirectWrite chọn), nên chữ trên màn hình xem thử có thể
-                không giống chữ trong video xuất ra.
+              <p className="muted">
+                Một mẫu gom cả bốn thứ quyết định hình hài bản xuất: kiểu chữ phụ đề, logo,
+                vùng làm mờ và cú phóng to/thu nhỏ. Dựng phim bộ thì tập nào cũng cùng một
+                mẫu — khỏi khoanh lại vùng mờ từng tập, và không tập nào che hở so với tập
+                khác. Áp mẫu sẽ GHI ĐÈ cả bốn phần bên dưới.
               </p>
-            )}
-            <div className="row">
+            </div>
+          )}
+          <nav className="tabs tab-con" aria-label="Tinh chỉnh">
+            {TINH_CHINH.map((t) => (
               <button
+                key={t.id}
                 type="button"
-                onClick={onXemThuPhuDe}
-                disabled={running || subBusy || !projectDir}
-              >
-                {subBusy ? "Đang dựng…" : "Xem thử phụ đề"}
-              </button>
-              <span className="muted">
-                Dựng một khung hình thật của video để chấm kiểu chữ. Khung này chưa gồm
-                logo — xem logo ở trình phát bên dưới.
-              </span>
-            </div>
-            <div className="row">
-              <span className={sub.size > 36 ? "warn" : "muted"}>
-                {sub.size > 36
-                  ? `Cỡ ${sub.size} khá lớn: xem mẫu ở trên — câu dài ${MAX_MOT_DONG} ký tự đã tràn xuống hai dòng chưa? Bấm Xem thử phụ đề để chấm chính xác.`
-                  : `Phụ đề đã được cắt tối đa ${MAX_MOT_DONG} ký tự mỗi câu. Cỡ chữ càng lớn càng dễ tràn hai dòng — ngưỡng tuỳ kích thước video.`}
-              </span>
-            </div>
-            {subPreview && (
-              <img className="sub-preview" src={subPreview} alt="Xem thử phụ đề" />
-            )}
-          </>
-        )}
-        {wm && (
-          <>
-            <label>
-              <input
-                type="checkbox"
-                checked={wm.enabled}
-                onChange={(e) => setWm({ enabled: e.target.checked })}
+                className={tinhChinh === t.id ? "active" : ""}
+                aria-current={tinhChinh === t.id ? "true" : undefined}
+                onClick={() => setTinhChinh(t.id)}
                 disabled={running}
-              />
-              Đóng dấu logo lên video
-            </label>
-            {wm.enabled && (
+              >
+                {t.ten}
+              </button>
+            ))}
+          </nav>
+          {tinhChinh === "phu_de" && (
+            <>
+            {sub && (
               <>
-                <p className="warn">
-                  Bật logo thì video phải mã hoá lại toàn bộ — lâu ngang "Ghi phụ đề vào
-                  hình". Không bật thì xuất chỉ chép luồng hình nên nhanh hơn nhiều.
+                {!burnSubs && (
+                  <p className="warn">
+                    Kiểu chữ dưới đây chỉ áp dụng khi bạn tick "Ghi phụ đề vào hình" ở Bước 7.
+                    Phụ đề bật/tắt được không mang kiểu chữ nào — trình phát của người xem tự
+                    quyết định font.
+                  </p>
+                )}
+                <div className="row">
+                  <label className="muted" htmlFor="sub-font">Font</label>
+                  <input
+                    id="sub-font"
+                    list="font-goi-y"
+                    value={sub.font}
+                    onChange={(e) => setSub({ font: e.target.value })}
+                    disabled={running}
+                  />
+                  <datalist id="font-goi-y">
+                    {FONT_GOI_Y.map((f) => <option key={f} value={f} />)}
+                  </datalist>
+
+                  <label className="muted" htmlFor="sub-size">Cỡ</label>
+                  <input
+                    id="sub-size"
+                    type="number"
+                    min={8}
+                    max={96}
+                    className="input-lang"
+                    value={sub.size}
+                    onChange={(e) => setSub({ size: Number(e.target.value) || 24 })}
+                    disabled={running}
+                  />
+
+                  <label className="muted" htmlFor="sub-color">Màu chữ</label>
+                  <input
+                    id="sub-color"
+                    type="color"
+                    value={sub.color}
+                    onChange={(e) => setSub({ color: e.target.value.toUpperCase() })}
+                    disabled={running}
+                  />
+
+                  <label className="muted" htmlFor="sub-outline-color">Màu viền</label>
+                  <input
+                    id="sub-outline-color"
+                    type="color"
+                    value={sub.outline_color}
+                    onChange={(e) => setSub({ outline_color: e.target.value.toUpperCase() })}
+                    disabled={running}
+                  />
+
+                  <label className="muted" htmlFor="sub-outline">Dày viền</label>
+                  <input
+                    id="sub-outline"
+                    type="number"
+                    min={0}
+                    max={6}
+                    className="input-lang"
+                    value={sub.outline}
+                    onChange={(e) => setSub({ outline: Number(e.target.value) || 0 })}
+                    disabled={running}
+                  />
+                </div>
+                <div className="mau-phu-de" aria-label="Mẫu kiểu chữ phụ đề">
+                  <div
+                    className="mau-phu-de-chu"
+                    style={{
+                      fontFamily: sub.font,
+                      color: sub.color,
+                      WebkitTextStrokeColor: sub.outline_color,
+                      // Hai biến này đi vào calc() trong App.css, nơi phép quy đổi
+                      // sang lưới ASS 288 đơn vị được viết ra cho nhìn thấy được.
+                      ["--sub-co" as string]: String(sub.size),
+                      ["--sub-vien" as string]: String(sub.outline),
+                    }}
+                  >
+                    {CAU_MAU_PHU_DE}
+                  </div>
+                </div>
+                <p className="muted">
+                  Mẫu trên đúng tỉ lệ cỡ chữ so với khung hình và dài đúng {MAX_MOT_DONG} ký tự —
+                  ngưỡng cắt câu. Nó vẽ bằng trình duyệt nên nét chữ lệch chút ít so với bản
+                  xuất; muốn chấm chính xác thì bấm “Xem thử phụ đề” để dựng khung hình thật.
                 </p>
+                {fontThieu && (
+                  <p className="warn">
+                    Máy này không có font "{sub.font}" — trình xem thử và bản xuất video
+                    sẽ mỗi nơi TỰ CHỌN một font thay thế KHÁC NHAU (WebView2 rơi về font
+                    mặc định của hệ điều hành, còn ffmpeg/libass rơi về font mà
+                    fontconfig/DirectWrite chọn), nên chữ trên màn hình xem thử có thể
+                    không giống chữ trong video xuất ra.
+                  </p>
+                )}
                 <div className="row">
-                  <button type="button" onClick={onPickLogo} disabled={running}>Chọn file PNG…</button>
-                  <span className="muted">{wm.path ? baseName(wm.path) : "chưa chọn"}</span>
-                  {wm.path && (
-                    <button type="button" onClick={() => setWm({ path: "" })} disabled={running}>Bỏ</button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={onXemThuPhuDe}
+                    disabled={running || subBusy || !projectDir}
+                  >
+                    {subBusy ? "Đang dựng…" : "Xem thử phụ đề"}
+                  </button>
+                  <span className="muted">
+                    Dựng một khung hình thật của video để chấm kiểu chữ. Khung này chưa gồm
+                    logo — xem logo ở trình phát giữa màn hình.
+                  </span>
                 </div>
                 <div className="row">
-                  <label className="muted" htmlFor="wm-goc">Góc</label>
-                  <select id="wm-goc" value={wm.corner} onChange={(e) => setWm({ corner: e.target.value })} disabled={running}>
-                    {WM_GOC.map((g) => <option key={g.id} value={g.id}>{g.ten}</option>)}
-                  </select>
-
-                  <label className="muted" htmlFor="wm-size">Cỡ (% bề ngang)</label>
-                  <input
-                    id="wm-size" type="number" min={1} max={WM_SIZE_MAX} className="input-lang"
-                    value={wm.size_pct}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      // Bỏ trống giữa lúc xoá để gõ lại: đừng nhảy về mặc định ngay khi
-                      // ô còn rỗng, kẻo người dùng không xoá hết số cũ được.
-                      if (raw === "") return;
-                      const n = Number(raw);
-                      // `||` coi 0 là falsy nên gõ "0" cũng bị đẩy về mặc định — nhưng ở
-                      // đây 0 dưới min=1 mới thật vô nghĩa, nên clamp lên 1 chứ không
-                      // nhảy hẳn về WM_SIZE_MAC_DINH; chỉ giá trị không phải số (rỗng,
-                      // "abc") mới rơi về mặc định.
-                      // Kẹp CẢ TRẦN: `max` của <input> không chặn gõ tay, mà Rust thì
-                      // kẹp về WM_SIZE_MAX — không kẹp ở đây thì xem thử vẽ một cỡ còn
-                      // bản xuất ra một cỡ khác.
-                      setWm({
-                        size_pct: Number.isFinite(n)
-                          ? Math.min(WM_SIZE_MAX, Math.max(1, n))
-                          : WM_SIZE_MAC_DINH,
-                      });
-                    }}
-                    disabled={running}
-                  />
-
-                  <label className="muted" htmlFor="wm-margin">Lề (%)</label>
-                  <input
-                    id="wm-margin" type="number" min={0} max={WM_MARGIN_MAX} className="input-lang"
-                    value={wm.margin_pct}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      // Bỏ trống giữa lúc xoá để gõ lại — như ô "Cỡ" ở trên.
-                      if (raw === "") return;
-                      const n = Number(raw);
-                      // `||` coi 0 là falsy nên gõ "0" tự nhảy về mặc định — nhưng lề 0
-                      // (logo sát mép) là giá trị hợp lệ, không phải lỗi. Dùng
-                      // Number.isFinite để tách "không phải số" (rỗng, "abc") khỏi "bằng
-                      // 0"; chỉ trường hợp đầu mới rơi về mặc định.
-                      // Kẹp về 0..WM_MARGIN_MAX cho khớp `Watermark::moi` bên Rust —
-                      // như ô "Cỡ" ở trên.
-                      setWm({
-                        margin_pct: Number.isFinite(n)
-                          ? Math.min(WM_MARGIN_MAX, Math.max(0, n))
-                          : WM_MARGIN_MAC_DINH,
-                      });
-                    }}
-                    disabled={running}
-                  />
-
-                  <label className="muted" htmlFor="wm-opacity">Độ mờ</label>
-                  <input
-                    id="wm-opacity" type="range" min={0} max={100}
-                    value={Math.round(wm.opacity * 100)}
-                    onChange={(e) => setWm({ opacity: Number(e.target.value) / 100 })}
-                    disabled={running}
-                  />
-                  <span className="muted">{Math.round(wm.opacity * 100)}%</span>
+                  <span className={sub.size > 36 ? "warn" : "muted"}>
+                    {sub.size > 36
+                      ? `Cỡ ${sub.size} khá lớn: xem mẫu ở trên — câu dài ${MAX_MOT_DONG} ký tự đã tràn xuống hai dòng chưa? Bấm Xem thử phụ đề để chấm chính xác.`
+                      : `Phụ đề đã được cắt tối đa ${MAX_MOT_DONG} ký tự mỗi câu. Cỡ chữ càng lớn càng dễ tràn hai dòng — ngưỡng tuỳ kích thước video.`}
+                  </span>
                 </div>
+                {subPreview && (
+                  <img className="sub-preview" src={subPreview} alt="Xem thử phụ đề" />
+                )}
               </>
             )}
-          </>
-        )}
-        {/* Nút lưu đứng ở cấp BƯỚC, không nằm trong nhánh `wm.enabled`. Trước
-            đây nó nằm trong đó, nên ai không bật logo thì cả bước 6 không có
-            một chỗ nào để lưu kiểu chữ. Lưu thủ công giờ chỉ còn là tiện ích —
-            `onExport` đã tự lưu trước khi xuất (xem chú thích ở đó), nên quên
-            bấm cũng không xuất ra nhầm kiểu chữ nữa. */}
-        <div className="row">
-          <button type="button" onClick={onSaveCfg} disabled={running}>Lưu cấu hình</button>
-          <span className="muted">
-            Không bắt buộc: lúc bấm "Xuất video" ở Bước 7, thiết lập đang hiển thị ở
-            đây được lưu tự động trước khi xuất.
-          </span>
-        </div>
-        {cfg && (
-          <div className="row phong-to">
-            <label className="muted" htmlFor="zoom">Phóng to / thu nhỏ</label>
-            <input
-              id="zoom"
-              type="number"
-              min={10}
-              max={500}
-              step={5}
-              className="input-lang"
-              value={cfg.zoom_pct}
-              onChange={(e) => setCfg({ ...cfg, zoom_pct: Number(e.target.value) || 100 })}
-              disabled={running}
-            />
+            </>
+          )}
+          {tinhChinh === "logo" && (
+            <>
+            {wm && (
+              <>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={wm.enabled}
+                    onChange={(e) => setWm({ enabled: e.target.checked })}
+                    disabled={running}
+                  />
+                  Đóng dấu logo lên video
+                </label>
+                {wm.enabled && (
+                  <>
+                    <p className="warn">
+                      Bật logo thì video phải mã hoá lại toàn bộ — lâu ngang "Ghi phụ đề vào
+                      hình". Không bật thì xuất chỉ chép luồng hình nên nhanh hơn nhiều.
+                    </p>
+                    <div className="row">
+                      <button type="button" onClick={onPickLogo} disabled={running}>Chọn file PNG…</button>
+                      <span className="muted">{wm.path ? baseName(wm.path) : "chưa chọn"}</span>
+                      {wm.path && (
+                        <button type="button" onClick={() => setWm({ path: "" })} disabled={running}>Bỏ</button>
+                      )}
+                    </div>
+                    <div className="row">
+                      <label className="muted" htmlFor="wm-goc">Góc</label>
+                      <select id="wm-goc" value={wm.corner} onChange={(e) => setWm({ corner: e.target.value })} disabled={running}>
+                        {WM_GOC.map((g) => <option key={g.id} value={g.id}>{g.ten}</option>)}
+                      </select>
+
+                      <label className="muted" htmlFor="wm-size">Cỡ (% bề ngang)</label>
+                      <input
+                        id="wm-size" type="number" min={1} max={WM_SIZE_MAX} className="input-lang"
+                        value={wm.size_pct}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          // Bỏ trống giữa lúc xoá để gõ lại: đừng nhảy về mặc định ngay khi
+                          // ô còn rỗng, kẻo người dùng không xoá hết số cũ được.
+                          if (raw === "") return;
+                          const n = Number(raw);
+                          // `||` coi 0 là falsy nên gõ "0" cũng bị đẩy về mặc định — nhưng ở
+                          // đây 0 dưới min=1 mới thật vô nghĩa, nên clamp lên 1 chứ không
+                          // nhảy hẳn về WM_SIZE_MAC_DINH; chỉ giá trị không phải số (rỗng,
+                          // "abc") mới rơi về mặc định.
+                          // Kẹp CẢ TRẦN: `max` của <input> không chặn gõ tay, mà Rust thì
+                          // kẹp về WM_SIZE_MAX — không kẹp ở đây thì xem thử vẽ một cỡ còn
+                          // bản xuất ra một cỡ khác.
+                          setWm({
+                            size_pct: Number.isFinite(n)
+                              ? Math.min(WM_SIZE_MAX, Math.max(1, n))
+                              : WM_SIZE_MAC_DINH,
+                          });
+                        }}
+                        disabled={running}
+                      />
+
+                      <label className="muted" htmlFor="wm-margin">Lề (%)</label>
+                      <input
+                        id="wm-margin" type="number" min={0} max={WM_MARGIN_MAX} className="input-lang"
+                        value={wm.margin_pct}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          // Bỏ trống giữa lúc xoá để gõ lại — như ô "Cỡ" ở trên.
+                          if (raw === "") return;
+                          const n = Number(raw);
+                          // `||` coi 0 là falsy nên gõ "0" tự nhảy về mặc định — nhưng lề 0
+                          // (logo sát mép) là giá trị hợp lệ, không phải lỗi. Dùng
+                          // Number.isFinite để tách "không phải số" (rỗng, "abc") khỏi "bằng
+                          // 0"; chỉ trường hợp đầu mới rơi về mặc định.
+                          // Kẹp về 0..WM_MARGIN_MAX cho khớp `Watermark::moi` bên Rust —
+                          // như ô "Cỡ" ở trên.
+                          setWm({
+                            margin_pct: Number.isFinite(n)
+                              ? Math.min(WM_MARGIN_MAX, Math.max(0, n))
+                              : WM_MARGIN_MAC_DINH,
+                          });
+                        }}
+                        disabled={running}
+                      />
+
+                      <label className="muted" htmlFor="wm-opacity">Độ mờ</label>
+                      <input
+                        id="wm-opacity" type="range" min={0} max={100}
+                        value={Math.round(wm.opacity * 100)}
+                        onChange={(e) => setWm({ opacity: Number(e.target.value) / 100 })}
+                        disabled={running}
+                      />
+                      <span className="muted">{Math.round(wm.opacity * 100)}%</span>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+            </>
+          )}
+          {tinhChinh === "khung" && (
+            <>
+            {cfg && (
+              <div className="row phong-to">
+                <label className="muted" htmlFor="zoom">Phóng to / thu nhỏ</label>
+                <input
+                  id="zoom"
+                  type="number"
+                  min={10}
+                  max={500}
+                  step={5}
+                  className="input-lang"
+                  value={cfg.zoom_pct}
+                  onChange={(e) => setCfg({ ...cfg, zoom_pct: Number(e.target.value) || 100 })}
+                  disabled={running}
+                />
+                <span className="muted">
+                  % — 100 là nguyên bản. Lớn hơn 100 phóng to và CẮT BỚT MÉP; nhỏ hơn 100 thu
+                  nhỏ và thêm viền đen. Khung hình giữ nguyên kích thước.
+                </span>
+              </div>
+            )}
+            {cfg && (
+              <div className="row col lam-mo">
+                <div className="row">
+                  <strong>Làm mờ một vùng</strong>
+                  <button
+                    type="button"
+                    className={veVungMo ? "primary" : ""}
+                    onClick={() => setVeVungMo(!veVungMo)}
+                    disabled={running}
+                  >
+                    {veVungMo ? "Xong, xem lại video" : "Khoanh vùng trên khung xem thử"}
+                  </button>
+                  <span className="muted">
+                    {cfg.vung_mo.length
+                      ? `${cfg.vung_mo.length} vùng`
+                      : "chưa có vùng nào"}
+                  </span>
+                  {cfg.vung_mo.length > 0 && (
+                    <button type="button" onClick={() => datVungMo([])} disabled={running}>
+                      Xoá hết
+                    </button>
+                  )}
+                </div>
+                <p className={veVungMo ? "warn" : "muted"}>
+                  {veVungMo
+                    ? "Đang khoanh vùng: kéo chuột trên khung xem thử ở giữa để tạo vùng, kéo giữa ô để dời, kéo góc dưới-phải để giãn, bấm × để xoá. Trong lúc này KHÔNG bấm được nút phát của video."
+                    : "Che logo nền, tên kênh, chữ chạy… Vùng mờ chỉ nằm trong bản xuất; bật làm mờ thì video buộc phải mã hoá lại nên xuất lâu hơn."}
+                </p>
+              </div>
+            )}
+            </>
+          )}
+          {/* Nút lưu đứng ở cấp BƯỚC, không nằm trong nhánh `wm.enabled`. Trước
+              đây nó nằm trong đó, nên ai không bật logo thì cả bước 6 không có
+              một chỗ nào để lưu kiểu chữ. Lưu thủ công giờ chỉ còn là tiện ích —
+              `onExport` đã tự lưu trước khi xuất (xem chú thích ở đó), nên quên
+              bấm cũng không xuất ra nhầm kiểu chữ nữa. */}
+          <div className="row">
+            <button type="button" onClick={onSaveCfg} disabled={running}>Lưu cấu hình</button>
             <span className="muted">
-              % — 100 là nguyên bản. Lớn hơn 100 phóng to và CẮT BỚT MÉP; nhỏ hơn 100 thu
-              nhỏ và thêm viền đen. Khung hình giữ nguyên kích thước.
+              Không bắt buộc: lúc bấm "Xuất video" ở Bước 7, thiết lập đang hiển thị ở
+              đây được lưu tự động trước khi xuất.
             </span>
           </div>
-        )}
-        {cfg && (
-          <div className="row col lam-mo">
-            <div className="row">
-              <strong>Làm mờ một vùng</strong>
-              <button
-                type="button"
-                className={veVungMo ? "primary" : ""}
-                onClick={() => setVeVungMo(!veVungMo)}
-                disabled={running}
-              >
-                {veVungMo ? "Xong, xem lại video" : "Khoanh vùng trên khung xem thử"}
-              </button>
-              <span className="muted">
-                {cfg.vung_mo.length
-                  ? `${cfg.vung_mo.length} vùng`
-                  : "chưa có vùng nào"}
-              </span>
-              {cfg.vung_mo.length > 0 && (
-                <button type="button" onClick={() => datVungMo([])} disabled={running}>
-                  Xoá hết
-                </button>
-              )}
-            </div>
-            <p className={veVungMo ? "warn" : "muted"}>
-              {veVungMo
-                ? "Đang khoanh vùng: kéo chuột trên khung xem thử bên dưới để tạo vùng, kéo giữa ô để dời, kéo góc dưới-phải để giãn, bấm × để xoá. Trong lúc này KHÔNG bấm được nút phát của video."
-                : "Che logo nền, tên kênh, chữ chạy… Vùng mờ chỉ nằm trong bản xuất; bật làm mờ thì video buộc phải mã hoá lại nên xuất lâu hơn."}
-            </p>
-          </div>
-        )}
-        <h3 className="muted">Xem thử</h3>
-        <div className="row">
-          <button type="button" onClick={onLoadCues} disabled={running || !projectDir}>
-            Nạp phụ đề để xem thử
-          </button>
-          <span className="muted">
-            Lớp xem thử này vẽ bằng trình duyệt nên nét chữ và cách ngắt dòng lệch chút
-            ít so với bản xuất — dùng để căn bố cục và thời điểm. Chấm kiểu chữ thì
-            dùng nút "Xem thử phụ đề" ở trên.
-          </span>
-        </div>
-        {sub && <XemThu
-            videoPath={videoPath}
-            cues={cues}
-            sub={sub}
-            wm={wm}
-            vungMo={cfg?.vung_mo ?? []}
-            onDoiVungMo={datVungMo}
-            dangVeVungMo={veVungMo}
-            zoomPct={cfg?.zoom_pct ?? 100}
-          />}
       </section>
       )}
 
@@ -1711,6 +1768,9 @@ function App() {
         )}
       </section>
       )}
+
+        </aside>
+      </div>
 
       {status && <p className="status">{status}</p>}
     </main>

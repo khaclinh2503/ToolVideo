@@ -892,3 +892,57 @@ fn bon_phan_cua_mau_khop_giua_tsx_va_rust() {
         assert!(than.contains(truong), "kiểu MauDinhDang thiếu `{truong}`: {than}");
     }
 }
+
+/// Bố cục ba cột: các bước bên trái, khung xem thử ở giữa, nội dung bước bên
+/// phải. Khung xem thử phải nằm NGOÀI mọi bước — bước nào cũng cần nhìn hình,
+/// mà trước đây nó nằm trong Bước 6 nên phải nhảy qua nhảy lại để đối chiếu.
+#[test]
+fn ui_ba_cot_va_khung_xem_thu_nam_ngoai_moi_buoc() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let vi_tri = |ten: &str| {
+        tsx.find(&format!("className=\"{ten}\""))
+            .unwrap_or_else(|| panic!("phải có className={ten}"))
+    };
+    let buoc = vi_tri("cot-buoc");
+    let giua = vi_tri("cot-giua");
+    let noi_dung = vi_tri("cot-noi-dung");
+    assert!(buoc < giua && giua < noi_dung, "thứ tự cột phải là bước → giữa → nội dung");
+
+    // Khung xem thử nằm trong cột giữa, trước khi cột nội dung mở ra.
+    let xem_thu = vi_tri("khung-xem-thu");
+    assert!(
+        giua < xem_thu && xem_thu < noi_dung,
+        "khung xem thử phải nằm trong cột giữa, ngoài mọi bước"
+    );
+    // Và phải đứng ngoài mọi `{tab === N && ...}`.
+    let tab_dau = tsx.find("{tab === 1 &&").expect("phải có bước 1");
+    assert!(xem_thu < tab_dau, "khung xem thử bị kẹt trong một bước");
+}
+
+/// Cột tinh chỉnh của Bước 6 chia thành tab con. Ba nhóm là ba MẶT của cùng một
+/// việc chứ không phải ba bước nối tiếp, nên chúng là tab con chứ không phải
+/// thêm bước vào thanh bên trái.
+#[test]
+fn ui_buoc_6_chia_thanh_tab_con() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    for ten in ["\"Phụ đề\"", "\"Logo\"", "\"Làm mờ & phóng\""] {
+        assert!(tsx.contains(ten), "thiếu tab con {ten}");
+    }
+    assert!(tsx.contains("tab-con"), "tab con phải có lớp riêng để tạo kiểu khác tab bước");
+}
+
+/// Cột nội dung là flex-column CÓ max-height, nên mặc định mọi item trong đó co
+/// được theo chiều dọc — `overflow-y: auto` không ngăn chuyện đó. Mẫu kiểu chữ
+/// dựa hoàn toàn vào `aspect-ratio` để có chiều cao nên bị bóp dẹt thành một
+/// dải mỏng, và người dùng tưởng nó biến mất.
+#[test]
+fn css_cot_noi_dung_khong_bop_dep_cac_item() {
+    let css = std::fs::read_to_string("../src/App.css").expect("đọc được App.css");
+    assert!(
+        css.contains(".cot-noi-dung > *,"),
+        "phải có quy tắc chặn co cho mọi item của cột nội dung"
+    );
+    let i = css.find(".cot-noi-dung > *,").unwrap();
+    let than = &css[i..i + css[i..].find('}').unwrap()];
+    assert!(than.contains("flex-shrink: 0"), "{than}");
+}
