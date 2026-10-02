@@ -1009,3 +1009,49 @@ input[type="color"] {
   align-items: center;
   gap: 0.4rem;
 }
+
+/* ---------- giọng theo nhân vật ---------- */
+
+.nguoi-noi {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-ui);
+  padding: 0.75rem;
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* HAI TẦNG, không phải ba cột cạnh nhau. Đã thử ba cột và đo trên app thật:
+   ô <select> tự giãn hết chỗ còn lại nên câu mẫu bị bóp về 0 và biến mất —
+   mà câu mẫu chính là thứ duy nhất cho biết speaker_03 là ai. */
+.hang-nguoi {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "so giong"
+    "cau cau";
+  gap: 0.25rem 0.5rem;
+  align-items: center;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.hang-nguoi .so-doan { grid-area: so; }
+.hang-nguoi select { grid-area: giong; min-width: 0; }
+
+.hang-nguoi .so-doan {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Một dòng, tràn thì cắt bằng dấu ba chấm — chuột rê vào có tooltip đầy đủ.
+   Để nó xuống dòng thì hàng cao gấp ba và bảng nhân vật dài thành một cột
+   không đọc được. */
+.hang-nguoi .cau-mau {
+  grid-area: cau;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}

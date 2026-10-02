@@ -1081,3 +1081,50 @@ fn css_hang_cue_xep_tang_cho_cot_hep() {
     assert!(so_cot <= 2, "hàng cue có {so_cot} cột, quá rộng cho cột 24rem: {dong}");
     assert!(than.contains("grid-template-areas"), "phải xếp bằng vùng tên: {than}");
 }
+
+/// Bảng giọng theo nhân vật phải nằm ở BƯỚC 5 (Lồng tiếng), không phải Bước 6.
+///
+/// Bước 6 là mọi thứ nhìn thấy trên hình; chọn giọng là chuyện nghe. Để nhầm
+/// chỗ thì người dùng phải nhảy qua lại giữa hai bước cho một việc.
+#[test]
+fn ui_bang_giong_nhan_vat_nam_o_buoc_5() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    let b5 = tsx.find("{tab === 5 &&").expect("phải có bước 5");
+    let b6 = tsx.find("{tab === 6 &&").expect("phải có bước 6");
+    let bang = tsx.find("className=\"nguoi-noi\"").expect("phải có bảng người nói");
+    assert!(b5 < bang && bang < b6, "bảng giọng theo nhân vật phải nằm trong Bước 5");
+}
+
+/// Ba lệnh của bảng người nói phải được GỌI từ giao diện.
+///
+/// Một lệnh đăng ký ở Rust mà giao diện không gọi thì im lặng y như không có:
+/// repo này đã mất một vòng đo vì `dich_lai_sua_loi` nằm trong trait mà không
+/// ai chuyển tiếp.
+#[test]
+fn ui_goi_du_ba_lenh_nguoi_noi() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    for lenh in ["nguoi_noi_doc", "nguoi_noi_tach", "nguoi_noi_dat_giong"] {
+        assert!(tsx.contains(&format!("\"{lenh}\"")), "giao diện chưa gọi lệnh {lenh}");
+    }
+    let lib = std::fs::read_to_string("src/lib.rs").expect("đọc được lib.rs");
+    for lenh in ["nguoi_noi_doc", "nguoi_noi_tach", "nguoi_noi_dat_giong"] {
+        assert!(
+            lib.contains(&format!("commands::{lenh},")),
+            "lệnh {lenh} chưa đăng ký trong invoke_handler"
+        );
+    }
+}
+
+/// Số nhân vật mặc định ở giao diện phải khớp hằng số bên Rust.
+#[test]
+fn ui_so_nhan_vat_mac_dinh_khop_rust() {
+    let tsx = std::fs::read_to_string("../src/App.tsx").expect("đọc được App.tsx");
+    assert!(
+        tsx.contains(&format!("const SO_NGUOI_MAC_DINH = {};", app_lib::nguoi_noi::SO_NGUOI_MAC_DINH)),
+        "App.tsx phải khai SO_NGUOI_MAC_DINH khớp nguoi_noi::SO_NGUOI_MAC_DINH"
+    );
+    assert!(
+        tsx.contains(&format!("const SO_NGUOI_TOI_DA = {};", app_lib::nguoi_noi::SO_NGUOI_TOI_DA)),
+        "App.tsx phải khai SO_NGUOI_TOI_DA khớp nguoi_noi::SO_NGUOI_TOI_DA"
+    );
+}

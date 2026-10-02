@@ -173,6 +173,25 @@ const BUOC = [
   { id: 7, ten: "Xuất video" },
 ] as const;
 
+/** Một người nói do bước tách người nói tìm ra (lệnh `nguoi_noi_doc`). */
+interface NguoiNoiDto {
+  /** Nhãn công cụ đặt: `speaker_00`. Không phải tên nhân vật. */
+  ten: string;
+  so_doan: number;
+  cau_mau: string;
+  /** Rỗng = dùng giọng mặc định của dự án. */
+  giong: string;
+}
+
+interface BangNguoiNoiDto {
+  so_nguoi: number;
+  nguoi: NguoiNoiDto[];
+}
+
+/// Số nhân vật mặc định, khớp `nguoi_noi::SO_NGUOI_MAC_DINH` ở Rust.
+const SO_NGUOI_MAC_DINH = 6;
+const SO_NGUOI_TOI_DA = 12;
+
 /** Một giọng đọc mà một nhà cung cấp TTS hỗ trợ (trả về từ lệnh `tts_voices`). */
 interface VoiceDto {
   id: string;
@@ -250,6 +269,13 @@ type TienDo = { buoc: string; xong: number; tong: number };
 const TEN_BUOC: Record<string, string> = {
   dich: "Đang dịch",
   long_tieng: "Đang lồng tiếng",
+  tach_nguoi_noi: "Đang nghe xem có mấy người nói",
+};
+
+/// Đơn vị của con số tiến độ. Mặc định là "câu"; bước nào đếm bằng phần
+/// trăm thì để rỗng, kẻo hiện ra "42/100 câu" trong khi phim có 193 câu.
+const DON_VI_BUOC: Record<string, string> = {
+  tach_nguoi_noi: "",
 };
 
 /// mm:ss cho đồng hồ chạy.
@@ -570,6 +596,9 @@ function App() {
   }
 
   const [soTay, setSoTay] = useState<MucSoTay[]>([]);
+  const [nguoiNoi, setNguoiNoi] = useState<NguoiNoiDto[]>([]);
+  const [soNguoi, setSoNguoi] = useState(SO_NGUOI_MAC_DINH);
+  const [dangTach, setDangTach] = useState(false);
   const [tenTim, setTenTim] = useState<TenTim[]>([]);
   const [dangTimTen, setDangTimTen] = useState(false);
 
@@ -591,6 +620,45 @@ function App() {
       await invoke("so_tay_ghi", { projectDir, soTay: { version: 1, muc } });
     } catch (e) {
       setStatus(`Không ghi được sổ tay: ${e}`);
+    }
+  }
+
+  // Bảng người nói thuộc về từng phim, nên nạp lại mỗi lần đổi dự án.
+  async function napNguoiNoi(dir: string) {
+    try {
+      const b = await invoke<BangNguoiNoiDto>("nguoi_noi_doc", { projectDir: dir });
+      setNguoiNoi(b?.nguoi ?? []);
+      if (b?.so_nguoi) setSoNguoi(b.so_nguoi);
+    } catch {
+      setNguoiNoi([]);
+    }
+  }
+
+  async function onTachNguoiNoi() {
+    if (!projectDir) { setStatus("Chọn dự án trước."); return; }
+    setDangTach(true);
+    setStatus("Đang nghe xem có mấy người nói…");
+    try {
+      const b = await invoke<BangNguoiNoiDto>("nguoi_noi_tach", {
+        projectDir,
+        soNguoi,
+      });
+      setNguoiNoi(b?.nguoi ?? []);
+      setStatus(`Tìm được ${b?.nguoi?.length ?? 0} người nói.`);
+    } catch (e) {
+      setStatus(`Tách người nói lỗi: ${e}`);
+    } finally {
+      setDangTach(false);
+    }
+  }
+
+  async function datGiongNguoiNoi(ten: string, giong: string) {
+    setNguoiNoi((ds) => ds.map((n) => (n.ten === ten ? { ...n, giong } : n)));
+    if (!projectDir) return;
+    try {
+      await invoke("nguoi_noi_dat_giong", { projectDir, ten, giong });
+    } catch (e) {
+      setStatus(`Không lưu được giọng: ${e}`);
     }
   }
 
@@ -621,8 +689,9 @@ function App() {
   // hiện dở, nếu không danh sách của phim cũ sẽ được bấm thêm vào sổ phim mới.
   useEffect(() => {
     setTenTim([]);
-    if (!projectDir) { setSoTay([]); return; }
+    if (!projectDir) { setSoTay([]); setNguoiNoi([]); return; }
     napSoTay(projectDir);
+    napNguoiNoi(projectDir);
   }, [projectDir]);
 
   // Ghi thẳng vào cfg rồi lưu: vùng mờ là cấu hình chung như logo, không
@@ -977,10 +1046,11 @@ function App() {
           );
         })}
       </nav>
-      {running && (
+      {(running || dangTach) && (
         <p className="muted tabs-khoa">
           {tienDo && tienDo.tong > 0
-            ? `${TEN_BUOC[tienDo.buoc] ?? tienDo.buoc} ${tienDo.xong}/${tienDo.tong} câu` +
+            ? `${TEN_BUOC[tienDo.buoc] ?? tienDo.buoc} ` +
+              `${tienDo.xong}/${tienDo.tong}${DON_VI_BUOC[tienDo.buoc] ?? " câu"}` +
               ` (${Math.floor((tienDo.xong / tienDo.tong) * 100)}%)`
             : "Đang chạy"}
           {" · "}{dongHo(giayChay)} — không chuyển bước được.
@@ -1314,6 +1384,70 @@ function App() {
           </div>
         )}
         {demoAudio && <audio src={demoAudio} controls autoPlay />}
+
+        {/* Mỗi nhân vật một giọng. Giọng ở hàng trên là giọng MẶC ĐỊNH —
+            người nào chưa gán riêng thì đọc bằng giọng đó. */}
+        <div className="nguoi-noi">
+          <div className="row">
+            <strong>Giọng theo nhân vật</strong>
+            <span className="cap">
+              <label className="muted" htmlFor="so-nguoi">Số nhân vật</label>
+              <input
+                id="so-nguoi"
+                type="number"
+                min={2}
+                max={SO_NGUOI_TOI_DA}
+                className="input-lang"
+                value={soNguoi}
+                onChange={(e) => setSoNguoi(Number(e.target.value) || SO_NGUOI_MAC_DINH)}
+                disabled={running || dangTach}
+              />
+            </span>
+            <button
+              type="button"
+              onClick={onTachNguoiNoi}
+              disabled={running || dangTach || !projectDir}
+            >
+              {dangTach ? "Đang nghe…" : "Tách người nói"}
+            </button>
+          </div>
+
+          {nguoiNoi.length === 0 && (
+            <p className="muted">
+              Chưa tách. Bấm "Tách người nói" để máy nghe xem trong phim có
+              những ai, rồi gán cho mỗi người một giọng. Phải chạy xong bước
+              Lời thoại gốc trước, vì nó cần file âm thanh.
+            </p>
+          )}
+
+          {nguoiNoi.map((n) => (
+            <div key={n.ten} className="hang-nguoi">
+              <span className="muted so-doan">{n.so_doan} câu</span>
+              <select
+                value={n.giong}
+                onChange={(e) => datGiongNguoiNoi(n.ten, e.target.value)}
+                disabled={running || voices.length === 0}
+                aria-label={`Giọng cho ${n.ten}`}
+              >
+                <option value="">— giọng mặc định —</option>
+                {voices.map((v) => (
+                  <option key={v.id} value={v.id}>{voiceLabel(v)}</option>
+                ))}
+              </select>
+              <span className="cau-mau" title={n.cau_mau}>
+                {n.cau_mau || <em className="muted">chưa dịch nên chưa có câu mẫu</em>}
+              </span>
+            </div>
+          ))}
+
+          {nguoiNoi.length > 0 && (
+            <p className="muted">
+              Câu bên phải là câu dài nhất người đó nói — đọc nó để biết đang
+              gán giọng cho ai. Đổi giọng xong bấm "Lồng tiếng" lại; chỉ câu
+              của người vừa đổi phải đọc lại, phần còn lại dùng lại bản cũ.
+            </p>
+          )}
+        </div>
         {demoBusy && (
           <p className="muted">
             Lần đầu mất khoảng 10 giây vì phải nạp model; nghe lại cùng giọng
