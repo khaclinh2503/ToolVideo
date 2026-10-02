@@ -1404,59 +1404,69 @@ function App() {
                   </p>
                 )}
                 <div className="row">
-                  <label className="muted" htmlFor="sub-font">Font</label>
-                  <input
-                    id="sub-font"
-                    list="font-goi-y"
-                    value={sub.font}
-                    onChange={(e) => setSub({ font: e.target.value })}
-                    disabled={running}
-                  />
+                  <span className="cap">
+                    <label className="muted" htmlFor="sub-font">Font</label>
+                    <input
+                      id="sub-font"
+                      list="font-goi-y"
+                      value={sub.font}
+                      onChange={(e) => setSub({ font: e.target.value })}
+                      disabled={running}
+                    />
+                  </span>
                   <datalist id="font-goi-y">
                     {FONT_GOI_Y.map((f) => <option key={f} value={f} />)}
                   </datalist>
 
-                  <label className="muted" htmlFor="sub-size">Cỡ</label>
-                  <input
-                    id="sub-size"
-                    type="number"
-                    min={8}
-                    max={96}
-                    className="input-lang"
-                    value={sub.size}
-                    onChange={(e) => setSub({ size: Number(e.target.value) || 24 })}
-                    disabled={running}
-                  />
+                  <span className="cap">
+                    <label className="muted" htmlFor="sub-size">Cỡ</label>
+                    <input
+                      id="sub-size"
+                      type="number"
+                      min={8}
+                      max={96}
+                      className="input-lang"
+                      value={sub.size}
+                      onChange={(e) => setSub({ size: Number(e.target.value) || 24 })}
+                      disabled={running}
+                    />
+                  </span>
 
-                  <label className="muted" htmlFor="sub-color">Màu chữ</label>
-                  <input
-                    id="sub-color"
-                    type="color"
-                    value={sub.color}
-                    onChange={(e) => setSub({ color: e.target.value.toUpperCase() })}
-                    disabled={running}
-                  />
+                  <span className="cap">
+                    <label className="muted" htmlFor="sub-color">Màu chữ</label>
+                    <input
+                      id="sub-color"
+                      type="color"
+                      value={sub.color}
+                      onChange={(e) => setSub({ color: e.target.value.toUpperCase() })}
+                      disabled={running}
+                    />
+                  </span>
 
-                  <label className="muted" htmlFor="sub-outline-color">Màu viền</label>
-                  <input
-                    id="sub-outline-color"
-                    type="color"
-                    value={sub.outline_color}
-                    onChange={(e) => setSub({ outline_color: e.target.value.toUpperCase() })}
-                    disabled={running}
-                  />
+                  <span className="cap">
+                    <label className="muted" htmlFor="sub-outline-color">Màu viền</label>
+                    <input
+                      id="sub-outline-color"
+                      type="color"
+                      value={sub.outline_color}
+                      onChange={(e) => setSub({ outline_color: e.target.value.toUpperCase() })}
+                      disabled={running}
+                    />
+                  </span>
 
-                  <label className="muted" htmlFor="sub-outline">Dày viền</label>
-                  <input
-                    id="sub-outline"
-                    type="number"
-                    min={0}
-                    max={6}
-                    className="input-lang"
-                    value={sub.outline}
-                    onChange={(e) => setSub({ outline: Number(e.target.value) || 0 })}
-                    disabled={running}
-                  />
+                  <span className="cap">
+                    <label className="muted" htmlFor="sub-outline">Dày viền</label>
+                    <input
+                      id="sub-outline"
+                      type="number"
+                      min={0}
+                      max={6}
+                      className="input-lang"
+                      value={sub.outline}
+                      onChange={(e) => setSub({ outline: Number(e.target.value) || 0 })}
+                      disabled={running}
+                    />
+                  </span>
                 </div>
                 <div className="mau-phu-de" aria-label="Mẫu kiểu chữ phụ đề">
                   <div

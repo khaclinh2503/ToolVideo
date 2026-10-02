@@ -1018,3 +1018,66 @@ fn ui_khong_dung_hop_thoai_chan_cua_trinh_duyet() {
         }
     }
 }
+
+/// Cột giữa phải RỘNG NHẤT. Hai cột bên chỉ để bấm và gõ, còn cột giữa là chỗ
+/// nhìn — một khung hình nhỏ thì không soi được phụ đề lệch hay logo đè lên mặt
+/// người. Vì cả ba cột nằm cùng một `grid-template-columns`, mỗi lần nới một
+/// panel bên phải là cột giữa hẹp đi mà không ai nhận ra.
+///
+/// Ngưỡng 34rem: hai bên cộng lại không được quá nửa cửa sổ 1080px (= 67,5rem).
+#[test]
+fn css_cot_giua_rong_nhat() {
+    let css = std::fs::read_to_string("../src/App.css").expect("đọc được App.css");
+    let i = css.find(".bo-cuc {").expect("phải có lưới .bo-cuc");
+    let than = &css[i..i + css[i..].find('}').unwrap()];
+    let dong = than
+        .lines()
+        .find(|d| d.contains("grid-template-columns"))
+        .unwrap_or_else(|| panic!("{than}"));
+    let gia_tri = dong.split(':').nth(1).unwrap().trim_end_matches(';').trim();
+
+    let cot: Vec<&str> = gia_tri.split("minmax(0, 1fr)").collect();
+    assert_eq!(cot.len(), 2, "cột giữa phải là minmax(0, 1fr): {gia_tri}");
+
+    let rem = |s: &str| -> f32 {
+        s.trim()
+            .trim_end_matches("rem")
+            .replace(',', ".")
+            .parse()
+            .unwrap_or_else(|_| panic!("cột bên phải là số rem cố định, gặp {s:?}"))
+    };
+    let trai = rem(cot[0]);
+    let phai = rem(cot[1]);
+    assert!(
+        trai + phai <= 34.0,
+        "hai cột bên cộng lại {}rem, quá nửa cửa sổ hẹp nhất — cột giữa còn quá bé",
+        trai + phai
+    );
+}
+
+/// Hàng cue xếp thành TẦNG, không phải bốn cột cạnh nhau.
+///
+/// Bước 4 nằm trong cột nội dung rộng 24rem. Bốn cột (số thứ tự · hai ô thời
+/// gian · ô chữ · hai nút) cần hơn 20rem chỉ riêng phần cố định, nên ô chữ bị
+/// bóp còn một sợi, nút "Lưu" đứt mất một nửa và cả danh sách mọc thanh cuộn
+/// ngang. Đây là thứ im lặng quay lại mỗi lần ai đó nới cột nội dung.
+#[test]
+fn css_hang_cue_xep_tang_cho_cot_hep() {
+    let css = std::fs::read_to_string("../src/App.css").expect("đọc được App.css");
+    let i = css.find(".cue-row {").expect("phải có .cue-row");
+    let than = &css[i..i + css[i..].find('}').unwrap()];
+    let dong = than
+        .lines()
+        .find(|d| d.contains("grid-template-columns"))
+        .unwrap_or_else(|| panic!("{than}"));
+    let so_cot = dong
+        .split(':')
+        .nth(1)
+        .unwrap()
+        .trim_end_matches(';')
+        .replace("minmax(0, 1fr)", "X")
+        .split_whitespace()
+        .count();
+    assert!(so_cot <= 2, "hàng cue có {so_cot} cột, quá rộng cho cột 24rem: {dong}");
+    assert!(than.contains("grid-template-areas"), "phải xếp bằng vùng tên: {than}");
+}
