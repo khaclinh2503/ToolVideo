@@ -162,8 +162,16 @@ pub fn run_tts_stage(
     scales: &ScalePlan,
     tgt: &str,
 ) -> Result<TtsResult, PipelineError> {
-    run_tts_stage_co_tien_do(project_dir, p, voice, scales, tgt, &mut |_, _| {})
+    run_tts_stage_co_tien_do(
+        project_dir, p, voice, &GiongCue::new(), scales, tgt, &mut |_, _| {},
+    )
 }
+
+/// Giọng riêng của từng cue, khoá là số thứ tự cue (từ 1). Cue không có mặt
+/// trong bảng thì dùng giọng mặc định của dự án.
+///
+/// Có mặt để lồng tiếng PHIM: mỗi nhân vật một giọng.
+pub type GiongCue = std::collections::HashMap<usize, String>;
 
 /// Như trên nhưng báo tiến độ `(số câu đã đọc, số câu PHẢI đọc)`.
 ///
@@ -175,6 +183,7 @@ pub fn run_tts_stage_co_tien_do(
     project_dir: &Path,
     p: &dyn TtsProvider,
     voice: &str,
+    giong_cue: &GiongCue,
     scales: &ScalePlan,
     tgt: &str,
     on_tien_do: &mut dyn FnMut(usize, usize),
@@ -223,11 +232,15 @@ pub fn run_tts_stage_co_tien_do(
                 cache_key: None,
                 length_scale,
                 duration_ms: 0,
+                voice: None,
             });
             continue;
         }
 
-        let key = tts::cache_key(p.id(), voice, length_scale, &s.text);
+        // Giọng của cue quyết định cả khoá cache: đổi giọng cho một nhân vật
+        // thì chỉ cue của nhân vật đó sinh lại, phần còn lại dùng lại được.
+        let giong = giong_cue.get(&index).map(String::as_str).unwrap_or(voice);
+        let key = tts::cache_key(p.id(), giong, length_scale, &s.text);
         let rel = format!("segments/cue-{index:04}.wav");
         let abs = tts_dir.join(format!("segments/cue-{index:04}.wav"));
 
@@ -246,6 +259,7 @@ pub fn run_tts_stage_co_tien_do(
                 cache_key: Some(key),
                 length_scale,
                 duration_ms: *dur,
+                voice: Some(giong.to_string()),
             });
         } else {
             jobs.push(TtsJob {
@@ -253,6 +267,7 @@ pub fn run_tts_stage_co_tien_do(
                 text: s.text.clone(),
                 out: abs,
                 length_scale,
+                voice: Some(giong.to_string()),
             });
             entries.push(tts_manifest::SegmentEntry {
                 index,
@@ -263,6 +278,7 @@ pub fn run_tts_stage_co_tien_do(
                 cache_key: Some(key),
                 length_scale,
                 duration_ms: 0,
+                voice: Some(giong.to_string()),
             });
         }
     }
@@ -354,8 +370,12 @@ pub fn run_tts_stage_co_tien_do(
         }
     }
     // Provider tự dọn file phụ trợ của mình (VieNeu giữ bản gốc tốc độ tự nhiên).
-    let van_ban: Vec<String> = m.segments.iter().map(|s| s.text.clone()).collect();
-    p.don_rac(&seg_dir, &van_ban);
+    let con_lai: Vec<(String, String)> = m
+        .segments
+        .iter()
+        .map(|s| (s.voice.clone().unwrap_or_else(|| voice.to_string()), s.text.clone()))
+        .collect();
+    p.don_rac(&seg_dir, &con_lai);
 
     Ok(TtsResult {
         manifest_path,

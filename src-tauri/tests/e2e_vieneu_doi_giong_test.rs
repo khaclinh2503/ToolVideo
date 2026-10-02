@@ -37,6 +37,7 @@ fn job(index: usize, out: PathBuf) -> TtsJob {
         text: "Xin chào, đây là câu kiểm tra đổi giọng.".into(),
         out,
         length_scale: 1.0,
+        voice: None,
     }
 }
 

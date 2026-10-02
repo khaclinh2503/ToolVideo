@@ -10,6 +10,7 @@ pub mod export;
 pub mod han_viet;
 pub mod ffmpeg;
 pub mod pipeline;
+pub mod nguoi_noi;
 pub mod project;
 pub mod pyenv;
 pub mod retime;
@@ -78,6 +79,9 @@ pub fn run() {
             commands::list_cues,
             commands::save_cue,
             commands::preview_cue,
+            commands::nguoi_noi_doc,
+            commands::nguoi_noi_tach,
+            commands::nguoi_noi_dat_giong,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

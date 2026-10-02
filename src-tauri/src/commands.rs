@@ -309,6 +309,7 @@ pub fn tao_demo(
             text: CAU_DEMO.to_string(),
             out: out.clone(),
             length_scale: 1.0,
+            voice: None,
         }],
         &mut |_| {},
     )?;
@@ -698,10 +699,22 @@ pub async fn run_tts(
         let models = models_dir();
         let p = crate::tts::make_provider(&cfg.tts.default_provider, &cfg.tts, &models)
             .map_err(|e| e.to_string())?;
+        // Giọng theo nhân vật: đọc từ chính dự án, không bắt lớp gọi truyền
+        // vào — để mọi đường tới bước lồng tiếng đều áp bảng như nhau.
+        let nn = crate::nguoi_noi::doc(Path::new(&project_dir));
+        let srt = Path::new(&project_dir)
+            .join("subtitles")
+            .join(format!("translated.{}.srt", tgt.trim()));
+        let giong_cue = std::fs::read_to_string(&srt)
+            .ok()
+            .and_then(|t| crate::srt::parse_srt(&t).ok())
+            .map(|segs| crate::nguoi_noi::giong_cue(&nn, &segs))
+            .unwrap_or_default();
         let r = crate::pipeline::run_tts_stage_co_tien_do(
             Path::new(&project_dir),
             p.as_ref(),
             &cfg.tts.voice,
+            &giong_cue,
             &crate::tts::ScalePlan::uniform(cfg.tts.length_scale),
             &tgt,
             &mut |xong, tong| bao_tien_do(&app, "long_tieng", xong, tong),
@@ -931,4 +944,120 @@ pub async fn preview_cue(
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+// ---------- tách người nói (lồng tiếng theo nhân vật) ----------
+
+#[derive(serde::Serialize)]
+pub struct NguoiNoiDto {
+    /// Nhãn do công cụ đặt: `speaker_00`...
+    pub ten: String,
+    /// Số đoạn người này nói — dùng để xếp nhân vật chính lên đầu.
+    pub so_doan: usize,
+    /// Câu thoại dài nhất của người này, để người dùng nhận ra đó là ai.
+    pub cau_mau: String,
+    /// Giọng đã gán; rỗng nghĩa là dùng giọng mặc định của dự án.
+    pub giong: String,
+}
+
+#[derive(serde::Serialize)]
+pub struct BangNguoiNoiDto {
+    pub so_nguoi: u32,
+    pub nguoi: Vec<NguoiNoiDto>,
+}
+
+/// Đọc phụ đề đã dịch của dự án; thiếu thì trả danh sách rỗng chứ không lỗi —
+/// bảng người nói vẫn xem được trước khi dịch xong.
+fn cue_da_dich(project_dir: &std::path::Path) -> Vec<crate::srt::Segment> {
+    let tgt = crate::config::load_config().translate.target_lang;
+    let p = project_dir
+        .join("subtitles")
+        .join(format!("translated.{}.srt", tgt.trim()));
+    std::fs::read_to_string(p)
+        .ok()
+        .and_then(|t| crate::srt::parse_srt(&t).ok())
+        .unwrap_or_default()
+}
+
+fn bang_nguoi_noi(project_dir: &std::path::Path) -> BangNguoiNoiDto {
+    let nn = crate::nguoi_noi::doc(project_dir);
+    let cues = cue_da_dich(project_dir);
+    let nguoi = crate::nguoi_noi::dem_theo_nguoi(&nn)
+        .into_iter()
+        .map(|(ten, so_doan)| NguoiNoiDto {
+            cau_mau: crate::nguoi_noi::cau_tieu_bieu(&nn, &cues, &ten)
+                .unwrap_or_default()
+                .to_string(),
+            giong: nn.giong.get(&ten).cloned().unwrap_or_default(),
+            ten,
+            so_doan,
+        })
+        .collect();
+    BangNguoiNoiDto {
+        so_nguoi: nn.so_nguoi,
+        nguoi,
+    }
+}
+
+#[tauri::command]
+pub fn nguoi_noi_doc(project_dir: String) -> BangNguoiNoiDto {
+    bang_nguoi_noi(std::path::Path::new(&project_dir))
+}
+
+/// Chạy tách người nói trên audio của dự án rồi lưu lại.
+///
+/// Giữ nguyên bảng giọng đã gán: chạy lại với số nhân vật khác thì nhãn vẫn là
+/// `speaker_00`... nên giọng cũ còn dùng được, không bắt người dùng chọn lại
+/// từ đầu.
+#[tauri::command]
+pub async fn nguoi_noi_tach(
+    app: tauri::AppHandle,
+    project_dir: String,
+    so_nguoi: u32,
+) -> Result<BangNguoiNoiDto, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<BangNguoiNoiDto, String> {
+        let dir = std::path::Path::new(&project_dir);
+        let wav = dir.join("audio").join("source.wav");
+        if !wav.exists() {
+            return Err(format!(
+                "Chưa có âm thanh — chạy Lời thoại gốc trước ({})",
+                wav.display()
+            ));
+        }
+        let so_nguoi = so_nguoi.clamp(2, crate::nguoi_noi::SO_NGUOI_TOI_DA);
+        let m = crate::tach_nguoi_noi::models(&models_dir());
+        let doan = crate::tach_nguoi_noi::chay(&m, &wav, so_nguoi, &mut |pct| {
+            // Công cụ báo phần trăm; quy về thang 0..100 cho thanh tiến độ
+            // chung, vì nó không biết trước tổng số đoạn.
+            bao_tien_do(&app, "tach_nguoi_noi", pct.round() as usize, 100);
+        })
+        .map_err(|e| e.to_string())?;
+
+        let mut nn = crate::nguoi_noi::doc(dir);
+        nn.version = 1;
+        nn.so_nguoi = so_nguoi;
+        nn.doan = doan;
+        crate::nguoi_noi::ghi(dir, &nn).map_err(|e| e.to_string())?;
+        touch_project(&project_dir, |_| {});
+        Ok(bang_nguoi_noi(dir))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Gán giọng cho một người nói. Giọng rỗng ⇒ xoá gán, trở về giọng mặc định.
+#[tauri::command]
+pub fn nguoi_noi_dat_giong(
+    project_dir: String,
+    ten: String,
+    giong: String,
+) -> Result<(), String> {
+    let dir = std::path::Path::new(&project_dir);
+    let mut nn = crate::nguoi_noi::doc(dir);
+    if giong.trim().is_empty() {
+        nn.giong.remove(&ten);
+    } else {
+        nn.giong.insert(ten, giong);
+    }
+    crate::nguoi_noi::ghi(dir, &nn).map_err(|e| e.to_string())
 }

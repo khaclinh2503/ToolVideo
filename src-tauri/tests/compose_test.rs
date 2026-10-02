@@ -19,6 +19,7 @@ fn seg(index: usize, start_ms: u64, rel: Option<&str>) -> SegmentEntry {
         cache_key: rel.map(|_| "k".to_string()),
         length_scale: 1.0,
         duration_ms: 0,
+        voice: None,
     }
 }
 

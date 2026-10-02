@@ -3,7 +3,7 @@ use app_lib::tts::{TtsJob, TtsProvider};
 use std::path::PathBuf;
 
 fn job(index: usize, text: &str, length_scale: f32) -> TtsJob {
-    TtsJob { index, text: text.into(), out: PathBuf::from(format!("out/cue-{index:04}.wav")), length_scale }
+    TtsJob { index, text: text.into(), out: PathBuf::from(format!("out/cue-{index:04}.wav")), length_scale, voice: None }
 }
 
 /// `VieNeu` với `python` không tồn tại — đủ cho các test không thật sự cần

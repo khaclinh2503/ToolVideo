@@ -62,6 +62,7 @@ fn entry(index: usize, start_ms: u64, text: &str) -> SegmentEntry {
         cache_key: Some("cu".into()),
         length_scale: 1.0,
         duration_ms: 0,
+        voice: None,
     }
 }
 

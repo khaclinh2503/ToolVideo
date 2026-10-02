@@ -193,6 +193,12 @@ fn duong_dan_goc(out: &Path, voice: &str, text: &str) -> PathBuf {
 }
 
 impl VieNeu {
+    /// Giọng dùng cho một cue: giọng riêng của cue nếu có, không thì giọng
+    /// mặc định của dự án.
+    fn giong<'a>(&'a self, job: &'a TtsJob) -> &'a str {
+        job.voice.as_deref().unwrap_or(&self.voice)
+    }
+
     /// Ép tốc độ đọc của WAV vừa sinh cho khớp `job.length_scale`.
     ///
     /// Không làm gì khi hệ số bằng 1.0 — đừng chạy ffmpeg vô ích cho mọi cue
@@ -329,11 +335,14 @@ impl TtsProvider for VieNeu {
 
     /// Xoá bản gốc tốc độ tự nhiên của những cue không còn tồn tại (người dùng
     /// sửa văn bản hoặc xoá bớt cue). Không dọn thì thư mục `.goc/` lớn dần mãi.
-    fn don_rac(&self, seg_dir: &Path, van_ban_con_lai: &[String]) {
+    fn don_rac(&self, seg_dir: &Path, con_lai: &[(String, String)]) {
         let goc_dir = seg_dir.join(".goc");
-        let giu: std::collections::HashSet<String> = van_ban_con_lai
+        // Băm theo CẶP (giọng, chữ), không chỉ theo chữ: từ khi mỗi nhân vật
+        // một giọng, cùng một câu có thể tồn tại dưới nhiều giọng, và dọn
+        // theo chữ thôi sẽ xoá nhầm bản gốc của giọng khác.
+        let giu: std::collections::HashSet<String> = con_lai
             .iter()
-            .map(|t| khoa_goc(&self.voice, t))
+            .map(|(v, t)| khoa_goc(v, t))
             .collect();
         if let Ok(rd) = std::fs::read_dir(&goc_dir) {
             for e in rd.flatten() {
@@ -371,7 +380,7 @@ impl TtsProvider for VieNeu {
         // dạng sóng; xem `duong_dan_goc`.
         let mut can_sinh: Vec<&TtsJob> = Vec::new();
         for j in jobs {
-            let goc = duong_dan_goc(&j.out, &self.voice, &j.text);
+            let goc = duong_dan_goc(&j.out, self.giong(j), &j.text);
             if goc.exists() {
                 if let Some(d) = j.out.parent() {
                     std::fs::create_dir_all(d).map_err(|e| PipelineError::Io(e.to_string()))?;
@@ -423,7 +432,7 @@ impl TtsProvider for VieNeu {
         // do (treo ống 4KB trên Windows, byte không phải UTF-8 trong đường
         // dẫn output_file làm chết `.lines()`).
 
-        let lines: Vec<String> = can_sinh.iter().map(|j| build_line(j, &self.voice)).collect();
+        let lines: Vec<String> = can_sinh.iter().map(|j| build_line(j, self.giong(j))).collect();
         let mut done = 0usize;
         let (done_count, stderr_tail) = run_line_protocol(&mut child, lines, &mut |_line| {
             // `on_done` nhận `job.index` GỐC (không phải số thứ tự trong
@@ -461,7 +470,7 @@ impl TtsProvider for VieNeu {
         // Lưu bản gốc TRƯỚC khi ép tốc độ: sau bước `atempo` thì `j.out` không
         // còn là tốc độ tự nhiên nữa, và lần retime sau sẽ không có gì để ép lại.
         for j in &can_sinh {
-            let goc = duong_dan_goc(&j.out, &self.voice, &j.text);
+            let goc = duong_dan_goc(&j.out, self.giong(j), &j.text);
             if let Some(d) = goc.parent() {
                 std::fs::create_dir_all(d).map_err(|e| PipelineError::Io(e.to_string()))?;
             }

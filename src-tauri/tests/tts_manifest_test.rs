@@ -16,6 +16,7 @@ fn sample() -> Manifest {
                 cache_key: Some("abc123".into()),
                 length_scale: 1.0,
                 duration_ms: 1840,
+                voice: None,
             },
             SegmentEntry {
                 index: 2,
@@ -26,6 +27,7 @@ fn sample() -> Manifest {
                 cache_key: None,
                 length_scale: 1.0,
                 duration_ms: 0,
+                voice: None,
             },
         ],
     }

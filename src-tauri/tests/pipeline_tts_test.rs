@@ -319,3 +319,110 @@ fn hoan_tac_van_ban_sau_khi_hong_thi_van_sinh_lai() {
         p3.generated()
     );
 }
+
+// ---------- giọng theo nhân vật ----------
+
+/// Provider giả có nhớ GIỌNG của từng cue.
+struct GhiGiong {
+    giong: RefCell<Vec<(usize, Option<String>)>>,
+}
+
+impl TtsProvider for GhiGiong {
+    fn id(&self) -> &'static str { "fake" }
+    fn sample_rate(&self) -> u32 { 22050 }
+    fn synthesize(&self, jobs: &[TtsJob], on_done: &mut dyn FnMut(usize)) -> Result<(), PipelineError> {
+        for j in jobs {
+            if let Some(d) = j.out.parent() {
+                std::fs::create_dir_all(d).unwrap();
+            }
+            write_one_second_wav(&j.out, 22050);
+            self.giong.borrow_mut().push((j.index, j.voice.clone()));
+            on_done(j.index);
+        }
+        Ok(())
+    }
+}
+
+/// Giọng riêng của từng cue phải đi được tới tận engine.
+///
+/// Có tiền lệ đúng loại lỗi này: `dich_lai_sua_loi` từng chỉ nằm trong trait mà
+/// `LlmTrenMay` không chuyển tiếp, nên cả một lớp sửa không bao giờ chạy qua
+/// app thật mà không gì báo. Một bảng giọng được lưu tử tế rồi bị bỏ quên ở
+/// bước cuối cũng im lặng y như vậy.
+#[test]
+fn giong_cua_tung_cue_di_toi_tan_engine() {
+    use app_lib::pipeline::{run_tts_stage_co_tien_do, GiongCue};
+    let dir = tempfile::tempdir().unwrap();
+    write_translated(dir.path(), &[("Câu một", 0, 1000), ("Câu hai", 1000, 2000), ("Câu ba", 2000, 3000)]);
+
+    let mut g = GiongCue::new();
+    g.insert(2, "Trúc Ly".to_string());
+
+    let p = GhiGiong { giong: RefCell::new(Vec::new()) };
+    run_tts_stage_co_tien_do(
+        dir.path(), &p, "Mai Anh", &g, &ScalePlan::uniform(1.0), "vi", &mut |_, _| {},
+    )
+    .unwrap();
+
+    let thay = p.giong.borrow().clone();
+    assert_eq!(thay.len(), 3);
+    assert_eq!(thay[0].1.as_deref(), Some("Mai Anh"), "cue không có trong bảng ⇒ giọng mặc định");
+    assert_eq!(thay[1].1.as_deref(), Some("Trúc Ly"), "cue 2 phải mang giọng riêng");
+    assert_eq!(thay[2].1.as_deref(), Some("Mai Anh"));
+}
+
+/// Đổi giọng cho MỘT nhân vật chỉ sinh lại cue của nhân vật đó.
+///
+/// Khoá cache băm cả giọng, nên nếu ai đó quên truyền giọng vào khoá thì đổi
+/// giọng sẽ không sinh lại gì cả — audio cũ giữ nguyên và người dùng nghe mãi
+/// giọng cũ mà tưởng app hỏng.
+#[test]
+fn doi_giong_mot_nguoi_chi_sinh_lai_cue_cua_nguoi_do() {
+    use app_lib::pipeline::{run_tts_stage_co_tien_do, GiongCue};
+    let dir = tempfile::tempdir().unwrap();
+    write_translated(dir.path(), &[("Câu một", 0, 1000), ("Câu hai", 1000, 2000), ("Câu ba", 2000, 3000)]);
+
+    let mut g = GiongCue::new();
+    g.insert(2, "Trúc Ly".to_string());
+    let p1 = FakeTts::new();
+    run_tts_stage_co_tien_do(
+        dir.path(), &p1, "Mai Anh", &g, &ScalePlan::uniform(1.0), "vi", &mut |_, _| {},
+    )
+    .unwrap();
+
+    g.insert(2, "Thiện Minh".to_string());
+    let p2 = FakeTts::new();
+    let r = run_tts_stage_co_tien_do(
+        dir.path(), &p2, "Mai Anh", &g, &ScalePlan::uniform(1.0), "vi", &mut |_, _| {},
+    )
+    .unwrap();
+    assert_eq!(r.generated, 1, "chỉ cue 2 đổi giọng nên chỉ nó phải sinh lại");
+    assert_eq!(r.cached, 2);
+    assert_eq!(p2.generated(), vec![2]);
+}
+
+/// Manifest ghi lại giọng của từng cue; manifest CŨ (chưa có trường này) vẫn
+/// đọc được chứ không bắt sinh lại toàn bộ audio.
+#[test]
+fn manifest_ghi_giong_va_doc_duoc_ban_cu() {
+    use app_lib::pipeline::{run_tts_stage_co_tien_do, GiongCue};
+    let dir = tempfile::tempdir().unwrap();
+    write_translated(dir.path(), &[("Câu một", 0, 1000), ("Câu hai", 1000, 2000)]);
+    let mut g = GiongCue::new();
+    g.insert(2, "Trúc Ly".to_string());
+    let p = FakeTts::new();
+    let r = run_tts_stage_co_tien_do(
+        dir.path(), &p, "Mai Anh", &g, &ScalePlan::uniform(1.0), "vi", &mut |_, _| {},
+    )
+    .unwrap();
+    let m = app_lib::tts::manifest::load(&r.manifest_path).unwrap();
+    assert_eq!(m.segments[0].voice.as_deref(), Some("Mai Anh"));
+    assert_eq!(m.segments[1].voice.as_deref(), Some("Trúc Ly"));
+
+    let cu = r#"{"version":1,"provider":"fake","voice":"Mai Anh","sample_rate":22050,
+      "segments":[{"index":1,"start_ms":0,"end_ms":1000,"text":"Câu một",
+      "audio_path":"segments/cue-0001.wav","cache_key":"k","length_scale":1.0,"duration_ms":1000}]}"#;
+    std::fs::write(&r.manifest_path, cu).unwrap();
+    let doc_lai = app_lib::tts::manifest::load(&r.manifest_path).expect("manifest cũ phải đọc được");
+    assert_eq!(doc_lai.segments[0].voice, None);
+}

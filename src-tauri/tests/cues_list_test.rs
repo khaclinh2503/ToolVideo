@@ -22,6 +22,7 @@ fn entry(index: usize, start_ms: u64, text: &str, audio: Option<&str>, dur: u64)
         cache_key: audio.map(|_| "k".to_string()),
         length_scale: 1.0,
         duration_ms: dur,
+        voice: None,
     }
 }
 

@@ -27,7 +27,7 @@ fn piper_that_nghe_lenh_ep_toc_do_qua_co_dong_lenh() {
 
     let out_nen = dir.path().join("scale-1_0.wav");
     p.synthesize(
-        &[TtsJob { index: 1, text: text.into(), out: out_nen.clone(), length_scale: 1.0 }],
+        &[TtsJob { index: 1, text: text.into(), out: out_nen.clone(), length_scale: 1.0, voice: None }],
         &mut |_| {},
     )
     .unwrap_or_else(|e| panic!("tổng hợp length_scale=1.0 lỗi: {e}"));
@@ -35,7 +35,7 @@ fn piper_that_nghe_lenh_ep_toc_do_qua_co_dong_lenh() {
 
     let out_ep = dir.path().join("scale-0_6.wav");
     p.synthesize(
-        &[TtsJob { index: 2, text: text.into(), out: out_ep.clone(), length_scale: 0.6 }],
+        &[TtsJob { index: 2, text: text.into(), out: out_ep.clone(), length_scale: 0.6, voice: None }],
         &mut |_| {},
     )
     .unwrap_or_else(|e| panic!("tổng hợp length_scale=0.6 lỗi: {e}"));

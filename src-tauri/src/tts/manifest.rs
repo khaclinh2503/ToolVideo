@@ -14,6 +14,11 @@ pub struct SegmentEntry {
     pub cache_key: Option<String>,
     pub length_scale: f32,
     pub duration_ms: u64,
+    /// Giọng đã dùng cho cue này. `None` ⇒ giọng mặc định của dự án, giữ
+    /// nguyên để manifest cũ (trước khi có lồng tiếng theo nhân vật) đọc
+    /// được mà không phải sinh lại toàn bộ audio.
+    #[serde(default)]
+    pub voice: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

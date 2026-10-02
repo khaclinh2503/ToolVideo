@@ -271,6 +271,7 @@ pub fn preview(
                 text: seg.text.clone(),
                 out: tmp.clone(),
                 length_scale: scale,
+                voice: None,
             }],
             &mut |_| {},
         )?;

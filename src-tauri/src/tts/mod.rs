@@ -15,6 +15,13 @@ pub struct TtsJob {
     pub text: String,
     pub out: PathBuf,
     pub length_scale: f32,
+    /// Giọng riêng cho cue này; `None` là dùng giọng mặc định của provider.
+    ///
+    /// Có mặt để lồng tiếng PHIM: mỗi nhân vật một giọng. VieNeu gửi khoá
+    /// `"voice"` theo TỪNG DÒNG cho cầu nối nên đổi giọng giữa chừng không
+    /// tốn thêm lần nạp model nào. Piper thì mỗi giọng là một model riêng và
+    /// app chỉ ghim đúng một giọng tiếng Việt, nên Piper bỏ qua trường này.
+    pub voice: Option<String>,
 }
 
 pub trait TtsProvider {
@@ -34,7 +41,7 @@ pub trait TtsProvider {
     ///
     /// Mặc định không làm gì: Piper không sinh file phụ nào. VieNeu giữ bản gốc
     /// tốc độ tự nhiên nên cần dọn, và pipeline không phải biết chi tiết đó.
-    fn don_rac(&self, _seg_dir: &Path, _van_ban_con_lai: &[String]) {}
+    fn don_rac(&self, _seg_dir: &Path, _con_lai: &[(String, String)]) {}
 }
 
 /// Khoá cache: đổi provider/voice/tốc độ/text ⇒ đổi khoá.

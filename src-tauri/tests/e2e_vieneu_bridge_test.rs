@@ -85,8 +85,8 @@ fn vieneu_provider_that_tong_hop_hai_job_on_done_dung_index_goc() {
     // vị trí 1 -> index 2): nếu `synthesize` lỡ báo số thứ tự batch thay vì
     // `job.index` gốc, test này bắt được ngay, khác với 1/2 dễ trùng nhau.
     let jobs = vec![
-        TtsJob { index: 5, text: "Xin chào, đây là cue thứ nhất.".into(), out: out1.clone(), length_scale: 1.0 },
-        TtsJob { index: 2, text: "Và đây là cue thứ hai.".into(), out: out2.clone(), length_scale: 1.0 },
+        TtsJob { index: 5, text: "Xin chào, đây là cue thứ nhất.".into(), out: out1.clone(), length_scale: 1.0, voice: None },
+        TtsJob { index: 2, text: "Và đây là cue thứ hai.".into(), out: out2.clone(), length_scale: 1.0, voice: None },
     ];
 
     let p = VieNeu {
